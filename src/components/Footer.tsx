@@ -2,17 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { 
-  Building2, 
-  ShieldCheck, 
-  Award, 
-  Heart, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Sparkles,
-  ExternalLink
-} from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import { CityInfo } from '@/lib/types';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -24,41 +14,9 @@ interface FooterProps {
   onOpenPostProperty: () => void;
 }
 
-export function Footer({
-  onSelectCity,
-  onOpenEmiCalculator,
-  onOpenAiValuation,
-  onOpenPostProperty,
-}: FooterProps) {
+export function Footer(_props: FooterProps) {
   return (
     <footer className="bg-[#0F2A43] text-slate-300 text-xs border-t border-[#163b5c]">
-      
-      {/* Top Banner with Key Metrics */}
-      <div className="border-b border-[#163b5c] py-8 px-4 sm:px-8">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center md:text-left">
-          
-          <div className="space-y-1">
-            <div className="text-xl font-bold text-white tracking-tight">2 Million+</div>
-            <div className="text-slate-300 text-xs">Active Real Estate Listings</div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="text-xl font-bold text-white tracking-tight">500+ Cities</div>
-            <div className="text-slate-300 text-xs">Pan-India Real Estate Coverage</div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="text-xl font-bold text-white tracking-tight">15 Million+</div>
-            <div className="text-slate-300 text-xs">Monthly Home Buyers & Renters</div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="text-xl font-bold text-white tracking-tight">100% RERA</div>
-            <div className="text-slate-300 text-xs">Strict Legal & Title Verification</div>
-          </div>
-
-        </div>
-      </div>
 
       {/* Main Links Grid */}
       <div className="py-12 px-4 sm:px-8">
@@ -70,11 +28,21 @@ export function Footer({
               <BrandLogo variant="onDark" className="h-9 w-auto" />
             </div>
             <p className="text-slate-300 leading-relaxed max-w-sm text-xs">
-              India&apos;s trusted property portal for buying, selling, and renting residential flats, luxury villas, commercial office spaces, and land plots with zero brokerage.
+              A property portal for buying, selling, and renting residential flats, villas, commercial spaces, and land plots &mdash; with owner-direct, zero-brokerage listings.
             </p>
             <div className="pt-2 text-slate-400 space-y-1 text-xs">
-              <div>Customer Care: 1800-41-99099 (Toll Free)</div>
-              <div>Email: support@baybayt.com</div>
+              <div>
+                Phone:{' '}
+                <a href="tel:+917991549436" className="hover:text-white transition-colors">
+                  +91 79915 49436
+                </a>
+              </div>
+              <div>
+                Email:{' '}
+                <a href="mailto:support@baybayt.com" className="hover:text-white transition-colors">
+                  support@baybayt.com
+                </a>
+              </div>
             </div>
           </div>
 
@@ -86,12 +54,12 @@ export function Footer({
             <ul className="space-y-1.5 text-slate-300">
               {CITIES_DATA.slice(0, 6).map((c) => (
                 <li key={c.name}>
-                  <button
-                    onClick={() => onSelectCity(c)}
-                    className="hover:text-white transition-colors text-left cursor-pointer"
+                  <Link
+                    href={`/properties?city=${encodeURIComponent(c.name)}`}
+                    className="hover:text-white transition-colors"
                   >
                     Properties in {c.name}
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -139,16 +107,6 @@ export function Footer({
             </div>
             <ul className="space-y-1.5 text-slate-300">
               <li>
-                <button onClick={onOpenAiValuation} className="hover:text-white transition-colors cursor-pointer text-left">
-                  AI Property Valuation
-                </button>
-              </li>
-              <li>
-                <button onClick={onOpenEmiCalculator} className="hover:text-white transition-colors cursor-pointer text-left">
-                  Home Loan EMI Calculator
-                </button>
-              </li>
-              <li>
                 <Link href="/collections" className="hover:text-white transition-colors text-[#22C39A] font-semibold">
                   Curated Collections
                 </Link>
@@ -159,12 +117,12 @@ export function Footer({
                 </Link>
               </li>
               <li>
-                <Link href="/properties?filter=verified" className="hover:text-white transition-colors">
+                <Link href="/properties?verified=true" className="hover:text-white transition-colors">
                   Verified Listings
                 </Link>
               </li>
               <li>
-                <Link href="/properties?filter=owner" className="hover:text-white transition-colors">
+                <Link href="/properties?owner=true" className="hover:text-white transition-colors">
                   0% Brokerage Homes
                 </Link>
               </li>
@@ -178,14 +136,16 @@ export function Footer({
       <div className="bg-[#091a2a] py-5 px-4 sm:px-8 border-t border-[#163b5c] text-[11px] text-slate-400">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <div>
-            © {new Date().getFullYear()} BayBayt Realty Services Ltd. All rights reserved.
+            © {new Date().getFullYear()} BayBayt. All rights reserved.
           </div>
           <div className="flex items-center gap-4">
-            <span className="hover:text-white cursor-pointer">Privacy Policy</span>
+            <Link href="/privacy-policy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
             <span>•</span>
-            <span className="hover:text-white cursor-pointer">Terms & Conditions</span>
-            <span>•</span>
-            <span className="hover:text-white cursor-pointer">RERA Compliance</span>
+            <Link href="/terms" className="hover:text-white transition-colors">
+              Terms &amp; Conditions
+            </Link>
           </div>
         </div>
       </div>
