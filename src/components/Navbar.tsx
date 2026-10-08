@@ -82,14 +82,14 @@ export function Navbar({
           </div>
 
           <div className="flex items-center space-x-5 text-slate-200 text-xs font-medium">
-            <button 
+            {/* <button 
               id="nav-mb-advice-btn"
               onClick={onOpenAiValuation}
               className="hover:text-[#22C39A] flex items-center gap-1 transition-colors cursor-pointer"
             >
               <TrendingUp className="w-3.5 h-3.5 text-[#22C39A]" />
               <span>AI Property Valuation</span>
-            </button>
+            </button> */}
             {/* Top Bar Auth Quick Link */}
             {isAuthenticated && user ? (
               <div className="flex items-center gap-3 text-slate-200 hidden md:flex">
@@ -116,7 +116,7 @@ export function Navbar({
 
             <div className="flex items-center gap-1.5 text-slate-400 border-l border-[#163b5c] pl-4 hidden md:flex">
               <Phone className="w-3 h-3 text-slate-400" />
-              <span>Toll Free: 1800-41-99099</span>
+              <span>Toll Free: +91 79915 49436</span>
             </div>
           </div>
         </div>
