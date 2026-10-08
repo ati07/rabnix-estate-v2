@@ -116,7 +116,7 @@ export function Navbar({
 
             <div className="flex items-center gap-1.5 text-slate-400 border-l border-[#163b5c] pl-4 hidden md:flex">
               <Phone className="w-3 h-3 text-slate-400" />
-              <span>Toll Free: +91 79915 49436</span>
+              <span>Toll Free: +91 99196 13999</span>
             </div>
           </div>
         </div>
