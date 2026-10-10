@@ -16,10 +16,13 @@ import {
   X, 
   ArrowRight, 
   Tag, 
-  Home, 
-  Briefcase, 
-  Trees, 
+  Home,
+  Briefcase,
+  Trees,
   BedDouble,
+  Store,
+  Warehouse,
+  Ruler,
   SlidersHorizontal,
   RotateCcw,
   Check,
@@ -27,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
-import { ListingType } from '@/lib/types';
+import { ListingType, CommercialListingType } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
 
 const ALL_CATEGORIES: { label: string; value: string; icon: any }[] = [
@@ -35,9 +38,20 @@ const ALL_CATEGORIES: { label: string; value: string; icon: any }[] = [
   { label: 'Apartments', value: 'Apartment', icon: Building2 },
   { label: 'Villas & Houses', value: 'Villa', icon: Home },
   { label: 'Plots & Land', value: 'Residential Plot', icon: Trees },
-  { label: 'Commercial Office', value: 'Commercial Office', icon: Briefcase },
   { label: 'PG & Co-Living', value: 'PG / Co-Living', icon: BedDouble }
 ];
+
+// Commercial listings use a dedicated set of property types.
+const COMMERCIAL_CATEGORIES: { label: string; value: string; icon: any }[] = [
+  { label: 'All Types', value: 'All', icon: Tag },
+  { label: 'Office', value: 'Commercial Office', icon: Briefcase },
+  { label: 'Shop', value: 'Retail Shop', icon: Store },
+  { label: 'Warehouse', value: 'Warehouse', icon: Warehouse },
+  { label: 'Land', value: 'Commercial Land', icon: Trees },
+];
+
+// Minimum commercial size (sq.ft) the catalog filter allows.
+const MIN_SIZE_SQFT = 80;
 
 const LISTING_TYPES: { id: string; label: string }[] = [
   { id: 'all', label: 'All Listings' },
@@ -85,6 +99,21 @@ function PropertiesCatalogContent() {
     return [];
   }, [searchParams]);
 
+  const initialCommercialType = useMemo(() => {
+    const t = searchParams.get('commercialType');
+    if (t === 'rent' || t === 'sale') return t as CommercialListingType;
+    return 'all' as const;
+  }, [searchParams]);
+
+  const initialMinSize = useMemo(() => {
+    const n = parseInt(searchParams.get('minSize') || '', 10);
+    return !isNaN(n) && n >= MIN_SIZE_SQFT ? n : MIN_SIZE_SQFT;
+  }, [searchParams]);
+  const initialMaxSize = useMemo(() => {
+    const n = parseInt(searchParams.get('maxSize') || '', 10);
+    return !isNaN(n) && n > 0 ? n : 0;
+  }, [searchParams]);
+
   const initialVerified = useMemo(() => searchParams.get('verified') === 'true' || searchParams.get('isVerified') === 'true', [searchParams]);
   const initialOwner = useMemo(() => searchParams.get('owner') === 'true' || searchParams.get('isOwner') === 'true', [searchParams]);
   const initialRera = useMemo(() => searchParams.get('rera') === 'true' || searchParams.get('reraApproved') === 'true', [searchParams]);
@@ -99,8 +128,11 @@ function PropertiesCatalogContent() {
   const [selectedCity, setSelectedCity] = useState<string>(initialCity);
   const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery);
   const [listingType, setListingType] = useState<ListingType | 'all'>(initialListingType);
+  const [commercialDealType, setCommercialDealType] = useState<CommercialListingType | 'all'>(initialCommercialType);
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [selectedBhk, setSelectedBhk] = useState<number[]>(initialBhk);
+  const [minSize, setMinSize] = useState<number>(initialMinSize);
+  const [maxSize, setMaxSize] = useState<number>(initialMaxSize); // 0 = no upper cap
   const [minPrice, setMinPrice] = useState<number>(0);
   const [maxPrice, setMaxPrice] = useState<number>(100000000);
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(initialVerified);
@@ -118,6 +150,20 @@ function PropertiesCatalogContent() {
   const activeListingType = listingType;
   const activeSearchQuery = searchQuery;
   const activeBhk = selectedBhk;
+  const isCommercial = activeListingType === 'commercial';
+  const sizeActive = isCommercial && (minSize > MIN_SIZE_SQFT || maxSize > 0);
+
+  // Switching listing type keeps the selected category valid for that type.
+  const handleListingTypeChange = (next: string) => {
+    setListingType(next as any);
+    const commercialValues = COMMERCIAL_CATEGORIES.map((c) => c.value);
+    if (next === 'commercial') {
+      if (!commercialValues.includes(selectedCategory)) setSelectedCategory('All');
+    } else {
+      if (commercialValues.includes(selectedCategory) && selectedCategory !== 'All') setSelectedCategory('All');
+      setCommercialDealType('all');
+    }
+  };
 
   // Toggle BHK
   const handleToggleBhk = (bhkVal: number) => {
@@ -133,8 +179,11 @@ function PropertiesCatalogContent() {
     setSelectedCity('All');
     setSearchQuery('');
     setListingType('all');
+    setCommercialDealType('all');
     setSelectedCategory('All');
     setSelectedBhk([]);
+    setMinSize(MIN_SIZE_SQFT);
+    setMaxSize(0);
     setMinPrice(0);
     setMaxPrice(100000000);
     setVerifiedOnly(false);
@@ -158,12 +207,22 @@ function PropertiesCatalogContent() {
         if (activeListingType !== 'all' && p.listingType !== activeListingType) {
           return false;
         }
+        // Commercial deal type (rent / sale)
+        if (isCommercial && commercialDealType !== 'all' && p.commercialListingType !== commercialDealType) {
+          return false;
+        }
         // Category filter
         if (activeCategory !== 'All' && p.category.toLowerCase() !== activeCategory.toLowerCase()) {
           return false;
         }
-        // BHK filter
-        if (activeBhk.length > 0 && p.bhk && !activeBhk.includes(p.bhk)) {
+        // Commercial size (sq.ft) filter
+        if (isCommercial) {
+          const size = p.carpetAreaSqFt || 0;
+          if (size < minSize) return false;
+          if (maxSize > 0 && size > maxSize) return false;
+        }
+        // BHK filter (residential only; hidden for commercial)
+        if (!isCommercial && activeBhk.length > 0 && p.bhk && !activeBhk.includes(p.bhk)) {
           return false;
         }
         // Price filter
@@ -234,8 +293,12 @@ function PropertiesCatalogContent() {
     properties,
     activeCity,
     activeListingType,
+    isCommercial,
+    commercialDealType,
     activeCategory,
     activeBhk,
+    minSize,
+    maxSize,
     minPrice,
     maxPrice,
     verifiedOnly,
@@ -252,7 +315,9 @@ function PropertiesCatalogContent() {
     if (activeCity !== 'All') count++;
     if (activeCategory !== 'All') count++;
     if (activeListingType !== 'all') count++;
-    if (activeBhk.length > 0) count += activeBhk.length;
+    if (isCommercial && commercialDealType !== 'all') count++;
+    if (sizeActive) count++;
+    if (!isCommercial && activeBhk.length > 0) count += activeBhk.length;
     if (verifiedOnly) count++;
     if (ownerOnly) count++;
     if (reraOnly) count++;
@@ -265,6 +330,9 @@ function PropertiesCatalogContent() {
     activeCity,
     activeCategory,
     activeListingType,
+    isCommercial,
+    commercialDealType,
+    sizeActive,
     activeBhk,
     verifiedOnly,
     ownerOnly,
@@ -335,7 +403,7 @@ function PropertiesCatalogContent() {
               <button
                 key={type.id}
                 type="button"
-                onClick={() => setListingType(type.id as any)}
+                onClick={() => handleListingTypeChange(type.id)}
                 className={`py-2 px-3 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-[#0F2A43] text-white shadow-xs'
@@ -349,13 +417,45 @@ function PropertiesCatalogContent() {
         </div>
       </div>
 
+      {/* Commercial Deal Type (Rent / Sale) — only for commercial listings */}
+      {isCommercial && (
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-[#0F2A43] uppercase tracking-wider block">
+            Rent or Sale
+          </label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              { id: 'all', label: 'All' },
+              { id: 'sale', label: 'Sale' },
+              { id: 'rent', label: 'Rent' },
+            ] as { id: CommercialListingType | 'all'; label: string }[]).map((d) => {
+              const isSelected = commercialDealType === d.id;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setCommercialDealType(d.id)}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#18A67D] text-white shadow-xs'
+                      : 'bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] border border-[#E2E8F0]'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Property Category */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-[#0F2A43] uppercase tracking-wider block">
-          Property Category
+          {isCommercial ? 'Commercial Type' : 'Property Category'}
         </label>
         <div className="space-y-1">
-          {ALL_CATEGORIES.map((cat) => {
+          {(isCommercial ? COMMERCIAL_CATEGORIES : ALL_CATEGORIES).map((cat) => {
             const Icon = cat.icon;
             const isSelected = activeCategory.toLowerCase() === cat.value.toLowerCase();
             return (
@@ -380,31 +480,64 @@ function PropertiesCatalogContent() {
         </div>
       </div>
 
-      {/* BHK Selection */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-[#0F2A43] uppercase tracking-wider block">
-          Bedrooms (BHK)
-        </label>
-        <div className="flex items-center gap-1.5">
-          {[1, 2, 3, 4, 5].map((bhk) => {
-            const isSelected = activeBhk.includes(bhk);
-            return (
-              <button
-                key={bhk}
-                type="button"
-                onClick={() => handleToggleBhk(bhk)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#0F2A43] text-white shadow-xs'
-                    : 'bg-[#F8FAFC] text-[#475569] border border-[#E2E8F0] hover:bg-[#F1F5F9]'
-                }`}
-              >
-                {bhk} {bhk === 5 ? '5+' : 'BHK'}
-              </button>
-            );
-          })}
+      {/* Size (commercial) or Bedrooms (residential) */}
+      {isCommercial ? (
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-[#0F2A43] uppercase tracking-wider flex items-center gap-1.5">
+            <Ruler className="w-3.5 h-3.5 text-[#18A67D]" />
+            Size (sq.ft)
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="number"
+                min={MIN_SIZE_SQFT}
+                value={minSize}
+                onChange={(e) => setMinSize(Math.max(MIN_SIZE_SQFT, Number(e.target.value) || MIN_SIZE_SQFT))}
+                className="w-full px-3 py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#0F2A43] outline-none focus:border-[#18A67D] focus:bg-white"
+                placeholder={`Min ${MIN_SIZE_SQFT}`}
+              />
+            </div>
+            <span className="text-xs font-bold text-[#64748B]">to</span>
+            <div className="flex-1 relative">
+              <input
+                type="number"
+                min={minSize}
+                value={maxSize || ''}
+                onChange={(e) => setMaxSize(Number(e.target.value) || 0)}
+                className="w-full px-3 py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#0F2A43] outline-none focus:border-[#18A67D] focus:bg-white"
+                placeholder="Max (any)"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-[#64748B]">Commercial spaces start from {MIN_SIZE_SQFT} sq.ft.</p>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-[#0F2A43] uppercase tracking-wider block">
+            Bedrooms (BHK)
+          </label>
+          <div className="flex items-center gap-1.5">
+            {[1, 2, 3, 4, 5].map((bhk) => {
+              const isSelected = activeBhk.includes(bhk);
+              return (
+                <button
+                  key={bhk}
+                  type="button"
+                  onClick={() => handleToggleBhk(bhk)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0F2A43] text-white shadow-xs'
+                      : 'bg-[#F8FAFC] text-[#475569] border border-[#E2E8F0] hover:bg-[#F1F5F9]'
+                  }`}
+                >
+                  {bhk} {bhk === 5 ? '5+' : 'BHK'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Verified & Zero Brokerage Toggles */}
       <div className="space-y-2 pt-2 border-t border-[#E2E8F0]">
@@ -696,7 +829,22 @@ function PropertiesCatalogContent() {
                   </span>
                 )}
 
-                {activeBhk.map((b) => (
+                {isCommercial && commercialDealType !== 'all' && (
+                  <span className="bg-[#E7F6F1] border border-[#18A67D] text-[#0E7C5D] px-2.5 py-1 rounded-full font-bold flex items-center gap-1 shadow-2xs">
+                    <span className="capitalize">For {commercialDealType}</span>
+                    <button onClick={() => setCommercialDealType('all')} className="hover:text-rose-600 ml-0.5 cursor-pointer">×</button>
+                  </span>
+                )}
+
+                {sizeActive && (
+                  <span className="bg-slate-100 border border-slate-300 text-[#0F2A43] px-2.5 py-1 rounded-full font-bold flex items-center gap-1 shadow-2xs">
+                    <Ruler className="w-3 h-3 text-[#18A67D]" />
+                    {minSize}{maxSize > 0 ? `–${maxSize}` : '+'} sq.ft
+                    <button onClick={() => { setMinSize(MIN_SIZE_SQFT); setMaxSize(0); }} className="hover:text-rose-600 ml-0.5 cursor-pointer">×</button>
+                  </span>
+                )}
+
+                {!isCommercial && activeBhk.map((b) => (
                   <span key={b} className="bg-slate-100 border border-slate-300 text-[#0F2A43] px-2.5 py-1 rounded-full font-bold flex items-center gap-1 shadow-2xs">
                     <span>{b} BHK</span>
                     <button onClick={() => handleToggleBhk(b)} className="hover:text-rose-600 ml-0.5 cursor-pointer">×</button>

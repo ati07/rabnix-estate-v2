@@ -166,6 +166,17 @@ export default function HomeView() {
     if (current.bhk && current.bhk.length > 0) {
       params.set('bhk', current.bhk.join(','));
     }
+    if (current.listingType === 'commercial') {
+      if (current.commercialListingType) {
+        params.set('commercialType', current.commercialListingType);
+      }
+      if (current.minSizeSqFt !== undefined && current.minSizeSqFt > 80) {
+        params.set('minSize', current.minSizeSqFt.toString());
+      }
+      if (current.maxSizeSqFt !== undefined && current.maxSizeSqFt > 0) {
+        params.set('maxSize', current.maxSizeSqFt.toString());
+      }
+    }
     if (current.minPrice !== undefined && current.minPrice > 0) {
       params.set('minPrice', current.minPrice.toString());
     }

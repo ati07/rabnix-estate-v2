@@ -28,8 +28,22 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { useProperties } from '@/lib/propertyContext';
-import { ListingType, PropertyCategory, FurnishingStatus, ConstructionStatus, FacingDirection } from '@/lib/types';
+import { ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, ConstructionStatus, FacingDirection } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
+
+// Commercial listings use a dedicated set of property types (Office / Shop /
+// Warehouse / Land) and a rent-or-sale deal type instead of residential BHK.
+const COMMERCIAL_CATEGORIES: { label: string; value: PropertyCategory }[] = [
+  { label: 'Office', value: 'Commercial Office' },
+  { label: 'Shop', value: 'Retail Shop' },
+  { label: 'Warehouse', value: 'Warehouse' },
+  { label: 'Land', value: 'Commercial Land' },
+];
+const RESIDENTIAL_CATEGORIES: PropertyCategory[] = [
+  'Apartment', 'Villa', 'Builder Floor', 'Penthouse', 'Studio', 'Residential Plot',
+];
+// Commercial spaces can't be smaller than this.
+const MIN_COMMERCIAL_SIZE_SQFT = 80;
 
 const AMENITIES_LIST = [
   'Swimming Pool', 'Gymnasium', 'Clubhouse', 'Children Play Area',
@@ -81,6 +95,7 @@ export default function PostPropertyPage() {
 
   // Form States
   const [listingType, setListingType] = useState<ListingType>('buy');
+  const [commercialListingType, setCommercialListingType] = useState<CommercialListingType>('sale');
   const [category, setCategory] = useState<PropertyCategory>('Apartment');
   const [city, setCity] = useState<string>(user?.city || 'Bangalore');
   const [locality, setLocality] = useState<string>('');
@@ -136,6 +151,19 @@ export default function PostPropertyPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedCityData = CITIES_DATA.find((c) => c.name === city) || CITIES_DATA[0];
+  const isCommercial = listingType === 'commercial';
+  // Commercial-rent and residential rent/pg are all monthly; everything else is a total sale price.
+  const isMonthlyPrice = listingType === 'rent' || listingType === 'pg' || (isCommercial && commercialListingType === 'rent');
+
+  // Switching the listing purpose keeps the category valid for that purpose.
+  const handleListingTypeChange = (next: ListingType) => {
+    setListingType(next);
+    if (next === 'commercial') {
+      if (!COMMERCIAL_CATEGORIES.some((c) => c.value === category)) setCategory('Commercial Office');
+    } else if (COMMERCIAL_CATEGORIES.some((c) => c.value === category)) {
+      setCategory('Apartment');
+    }
+  };
 
   const handleToggleAmenity = (name: string) => {
     if (selectedAmenities.includes(name)) {
@@ -194,11 +222,15 @@ export default function PostPropertyPage() {
       }
       if (!title.trim()) {
         // Auto-generate title if empty
-        setTitle(`${bhk} BHK ${category} in ${locality}, ${city}`);
+        setTitle(isCommercial ? `${category} in ${locality}, ${city}` : `${bhk} BHK ${category} in ${locality}, ${city}`);
       }
     } else if (currentStep === 2) {
       if (price <= 0) {
         setErrorMessage('Please enter a valid price / rent amount');
+        return;
+      }
+      if (isCommercial && carpetAreaSqFt < MIN_COMMERCIAL_SIZE_SQFT) {
+        setErrorMessage(`Commercial size must be at least ${MIN_COMMERCIAL_SIZE_SQFT} sq.ft`);
         return;
       }
       if (carpetAreaSqFt <= 0) {
@@ -227,8 +259,10 @@ export default function PostPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      const generatedTitle = title.trim() || `${bhk} BHK ${category} in ${locality}, ${city}`;
-      
+      const generatedTitle = title.trim() || (isCommercial
+        ? `${category} in ${locality}, ${city}`
+        : `${bhk} BHK ${category} in ${locality}, ${city}`);
+
       const documents: string[] = [];
       if (hasEncumbranceCert) documents.push('Encumbrance Certificate (EC)');
       if (hasFloorPlanDoc) documents.push('Approved Sanction Plan');
@@ -236,8 +270,11 @@ export default function PostPropertyPage() {
 
       const created = addProperty({
         title: generatedTitle,
-        tagline: `${bhk} BHK • ${carpetAreaSqFt} sq.ft • ${furnishing}`,
+        tagline: isCommercial
+          ? `${category} • ${carpetAreaSqFt} sq.ft • ${furnishing}`
+          : `${bhk} BHK • ${carpetAreaSqFt} sq.ft • ${furnishing}`,
         listingType,
+        commercialListingType: isCommercial ? commercialListingType : undefined,
         category,
         city,
         locality: locality || selectedCityData.popularLocalities[0],
@@ -245,9 +282,9 @@ export default function PostPropertyPage() {
         price,
         carpetAreaSqFt,
         superBuiltUpAreaSqFt: superBuiltUpAreaSqFt || Math.round(carpetAreaSqFt * 1.2),
-        bhk,
+        bhk: isCommercial ? undefined : bhk,
         bathrooms,
-        balconies,
+        balconies: isCommercial ? undefined : balconies,
         furnishing,
         floor,
         totalFloors,
@@ -528,7 +565,7 @@ export default function PostPropertyPage() {
                         <button
                           key={t.id}
                           type="button"
-                          onClick={() => setListingType(t.id as ListingType)}
+                          onClick={() => handleListingTypeChange(t.id as ListingType)}
                           className={`py-3 px-3 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
                             listingType === t.id
                               ? 'bg-[#0F2A43] text-white border-[#0F2A43] shadow-xs'
@@ -541,33 +578,55 @@ export default function PostPropertyPage() {
                     </div>
                   </div>
 
+                  {/* Commercial Rent / Sale deal type */}
+                  {isCommercial && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-[#172033] uppercase tracking-wider">
+                        Commercial Deal Type:
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 max-w-xs">
+                        {([
+                          { id: 'sale', label: 'For Sale' },
+                          { id: 'rent', label: 'For Rent' },
+                        ] as { id: CommercialListingType; label: string }[]).map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => setCommercialListingType(d.id)}
+                            className={`py-2.5 px-3 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
+                              commercialListingType === d.id
+                                ? 'bg-[#18A67D] text-white border-[#18A67D] shadow-xs'
+                                : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#172033] hover:border-[#18A67D]'
+                            }`}
+                          >
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Property Category */}
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-[#172033] uppercase tracking-wider">
-                      Property Category:
+                      {isCommercial ? 'Commercial Type:' : 'Property Category:'}
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {[
-                        'Apartment',
-                        'Villa',
-                        'Builder Floor',
-                        'Penthouse',
-                        'Studio',
-                        'Commercial Office',
-                        'Retail Shop',
-                        'Residential Plot'
-                      ].map((cat) => (
+                      {(isCommercial
+                        ? COMMERCIAL_CATEGORIES
+                        : RESIDENTIAL_CATEGORIES.map((c) => ({ label: c, value: c }))
+                      ).map((cat) => (
                         <button
-                          key={cat}
+                          key={cat.value}
                           type="button"
-                          onClick={() => setCategory(cat as PropertyCategory)}
+                          onClick={() => setCategory(cat.value as PropertyCategory)}
                           className={`py-2.5 px-3 rounded-xl text-xs font-semibold border text-left transition-all cursor-pointer ${
-                            category === cat
+                            category === cat.value
                               ? 'bg-[#E7F6F1] border-[#18A67D] text-[#0E7C5D] font-bold ring-1 ring-[#18A67D]'
                               : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#172033] hover:border-[#CBD5E1]'
                           }`}
                         >
-                          {cat}
+                          {cat.label}
                         </button>
                       ))}
                     </div>
@@ -652,8 +711,9 @@ export default function PostPropertyPage() {
               {/* ================= STEP 2: SPECS & PRICING ================= */}
               {currentStep === 2 && (
                 <div className="space-y-6 animate-in fade-in">
-                  
-                  {/* BHK & Bathrooms */}
+
+                  {/* BHK & Bathrooms — not applicable to commercial (Size is used instead) */}
+                  {!isCommercial && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#172033] uppercase">Bedrooms (BHK)</label>
@@ -716,12 +776,17 @@ export default function PostPropertyPage() {
                     </div>
                   </div>
 
+                  )}
+
                   {/* Area Details */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#172033] uppercase">Carpet Area (sq.ft) *</label>
+                      <label className="block text-xs font-bold text-[#172033] uppercase">
+                        {isCommercial ? `Size (sq.ft) * — min ${MIN_COMMERCIAL_SIZE_SQFT}` : 'Carpet Area (sq.ft) *'}
+                      </label>
                       <input
                         type="number"
+                        min={isCommercial ? MIN_COMMERCIAL_SIZE_SQFT : undefined}
                         value={carpetAreaSqFt}
                         onChange={(e) => setCarpetAreaSqFt(Number(e.target.value))}
                         className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-bold text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
@@ -742,7 +807,7 @@ export default function PostPropertyPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#172033] uppercase">
-                        {listingType === 'rent' || listingType === 'pg' ? 'Monthly Rent (₹) *' : 'Total Expected Price (₹) *'}
+                        {isMonthlyPrice ? 'Monthly Rent (₹) *' : 'Total Expected Price (₹) *'}
                       </label>
                       <div className="relative flex items-center">
                         <span className="absolute left-3.5 text-xs font-bold text-[#64748B]">₹</span>

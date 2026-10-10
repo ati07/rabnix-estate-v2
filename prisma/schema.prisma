@@ -89,6 +89,7 @@ model Property {
   title                String
   tagline              String?
   listingType          String   // buy | rent | pg | plot | commercial
+  commercialListingType String? // commercial only: rent | sale
   category             String
   city                 String
   locality             String

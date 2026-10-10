@@ -22,9 +22,18 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
-import { Property, ListingType, PropertyCategory, FurnishingStatus, FacingDirection, ConstructionStatus } from '@/lib/types';
+import { Property, ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, FacingDirection, ConstructionStatus } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import { formatIndianCurrency } from '@/lib/formatters';
+
+const COMMERCIAL_CATEGORIES: { label: string; value: PropertyCategory }[] = [
+  { label: 'Office', value: 'Commercial Office' },
+  { label: 'Shop', value: 'Retail Shop' },
+  { label: 'Warehouse', value: 'Warehouse' },
+  { label: 'Land', value: 'Commercial Land' },
+];
+const RESIDENTIAL_CATEGORIES: PropertyCategory[] = ['Apartment', 'Villa', 'Builder Floor', 'Penthouse', 'Residential Plot'];
+const MIN_COMMERCIAL_SIZE_SQFT = 80;
 
 interface PostPropertyModalProps {
   isOpen: boolean;
@@ -43,6 +52,7 @@ export function PostPropertyModal({
 
   // Form Fields
   const [listingType, setListingType] = useState<ListingType>('buy');
+  const [commercialListingType, setCommercialListingType] = useState<CommercialListingType>('sale');
   const [category, setCategory] = useState<PropertyCategory>('Apartment');
   const [city, setCity] = useState<string>(user?.city || 'Bangalore');
   const [locality, setLocality] = useState<string>('');
@@ -104,6 +114,18 @@ export function PostPropertyModal({
 
   if (!isOpen) return null;
 
+  const isCommercial = listingType === 'commercial';
+  const isMonthlyPrice = listingType === 'rent' || listingType === 'pg' || (isCommercial && commercialListingType === 'rent');
+
+  const handleListingTypeChange = (next: ListingType) => {
+    setListingType(next);
+    if (next === 'commercial') {
+      if (!COMMERCIAL_CATEGORIES.some((c) => c.value === category)) setCategory('Commercial Office');
+    } else if (COMMERCIAL_CATEGORIES.some((c) => c.value === category)) {
+      setCategory('Apartment');
+    }
+  };
+
   const AMENITIES_LIST = [
     'Clubhouse (40,000 sq.ft)',
     'Temperature Controlled Infinity Pool',
@@ -130,14 +152,20 @@ export function PostPropertyModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const formattedPrice = listingType === 'rent' || listingType === 'pg'
+    const formattedPrice = isMonthlyPrice
       ? `₹${price.toLocaleString('en-IN')} / mo`
       : formatIndianCurrency(price);
 
+    const commercialCategoryLabel = COMMERCIAL_CATEGORIES.find((c) => c.value === category)?.label ?? 'Commercial';
+    const fallbackTitle = isCommercial
+      ? `${commercialCategoryLabel} for ${commercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${locality || 'Prime Locality'}, ${city}`
+      : `${bhk} BHK ${category} in ${locality || 'Prime Locality'}, ${city}`;
+
     const newProp: Property = {
       id: `mb-user-${Date.now()}`,
-      title: title || `${bhk} BHK ${category} in ${locality || 'Prime Locality'}, ${city}`,
+      title: title || fallbackTitle,
       listingType,
+      commercialListingType: isCommercial ? commercialListingType : undefined,
       category,
       city,
       locality: locality || 'Central Hub',
@@ -145,7 +173,7 @@ export function PostPropertyModal({
       priceFormatted: formattedPrice,
       pricePerSqFt: Math.round(price / (carpetAreaSqFt || 1000)),
       maintenance,
-      bhk,
+      bhk: isCommercial ? undefined : bhk,
       bathrooms,
       carpetAreaSqFt,
       superBuiltUpAreaSqFt: Math.round(carpetAreaSqFt * 1.3),
@@ -167,7 +195,9 @@ export function PostPropertyModal({
             'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
             'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=80'
           ],
-      description: description || `Direct owner listing for ${bhk} BHK in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Zero brokerage for buyers.`,
+      description: description || (isCommercial
+        ? `Direct owner commercial listing (${commercialCategoryLabel}) for ${commercialListingType === 'rent' ? 'rent' : 'sale'} in ${locality}, ${city}. Prime location, ${carpetAreaSqFt} sq.ft, 24/7 security and full power backup. Zero brokerage.`
+        : `Direct owner listing for ${bhk} BHK in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Zero brokerage for buyers.`),
       amenities: selectedAmenities,
       postedBy: {
         name: `${ownerName} (Owner)`,
@@ -294,7 +324,7 @@ export function PostPropertyModal({
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setListingType(item.id as ListingType)}
+                        onClick={() => handleListingTypeChange(item.id as ListingType)}
                         className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                           listingType === item.id
                             ? 'border-[#18A67D] bg-[#E7F6F1] text-[#0E7C5D] shadow-xs'
@@ -307,24 +337,55 @@ export function PostPropertyModal({
                   </div>
                 </div>
 
+                {/* Commercial Deal Type: Rent or Sale */}
+                {isCommercial && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#172033] uppercase tracking-wider">
+                      Commercial Deal Type:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 'sale', label: 'For Sale' },
+                        { id: 'rent', label: 'For Rent' },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setCommercialListingType(item.id as CommercialListingType)}
+                          className={`p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            commercialListingType === item.id
+                              ? 'border-[#18A67D] bg-[#E7F6F1] text-[#0E7C5D] shadow-xs'
+                              : 'border-[#E2E8F0] bg-white text-[#172033] hover:bg-[#F8FAFC]'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Category */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#172033] uppercase tracking-wider">
-                    Property Category:
+                    {isCommercial ? 'Commercial Type:' : 'Property Category:'}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {['Apartment', 'Villa', 'Builder Floor', 'Penthouse', 'Residential Plot', 'Commercial Office'].map((cat) => (
+                    {(isCommercial
+                      ? COMMERCIAL_CATEGORIES
+                      : RESIDENTIAL_CATEGORIES.map((c) => ({ label: c, value: c }))
+                    ).map((cat) => (
                       <button
-                        key={cat}
+                        key={cat.value}
                         type="button"
-                        onClick={() => setCategory(cat as PropertyCategory)}
+                        onClick={() => setCategory(cat.value)}
                         className={`p-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
-                          category === cat
+                          category === cat.value
                             ? 'border-[#0F2A43] bg-[#0F2A43] text-white'
                             : 'border-[#E2E8F0] bg-white text-[#172033] hover:bg-[#F8FAFC]'
                         }`}
                       >
-                        {cat}
+                        {cat.label}
                       </button>
                     ))}
                   </div>
@@ -391,40 +452,45 @@ export function PostPropertyModal({
                 
                 {/* Configuration: BHK & Bathrooms */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#172033]">BHK</label>
-                    <select
-                      value={bhk}
-                      onChange={(e) => setBhk(Number(e.target.value))}
-                      className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
-                    >
-                      <option value={1}>1 BHK</option>
-                      <option value={2}>2 BHK</option>
-                      <option value={3}>3 BHK</option>
-                      <option value={4}>4 BHK</option>
-                      <option value={5}>5+ BHK</option>
-                    </select>
-                  </div>
+                  {!isCommercial && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-[#172033]">BHK</label>
+                      <select
+                        value={bhk}
+                        onChange={(e) => setBhk(Number(e.target.value))}
+                        className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
+                      >
+                        <option value={1}>1 BHK</option>
+                        <option value={2}>2 BHK</option>
+                        <option value={3}>3 BHK</option>
+                        <option value={4}>4 BHK</option>
+                        <option value={5}>5+ BHK</option>
+                      </select>
+                    </div>
+                  )}
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#172033]">Bathrooms</label>
+                    <label className="text-xs font-bold text-[#172033]">{isCommercial ? 'Washrooms' : 'Bathrooms'}</label>
                     <select
                       value={bathrooms}
                       onChange={(e) => setBathrooms(Number(e.target.value))}
                       className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
                     >
-                      <option value={1}>1 Bath</option>
-                      <option value={2}>2 Baths</option>
-                      <option value={3}>3 Baths</option>
-                      <option value={4}>4 Baths</option>
+                      <option value={1}>1</option>
+                      <option value={2}>2</option>
+                      <option value={3}>3</option>
+                      <option value={4}>4</option>
                     </select>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#172033]">Carpet Area (sq.ft)</label>
+                    <label className="text-xs font-bold text-[#172033]">
+                      {isCommercial ? `Size (sq.ft) · min ${MIN_COMMERCIAL_SIZE_SQFT}` : 'Carpet Area (sq.ft)'}
+                    </label>
                     <input
                       type="number"
                       required
+                      min={isCommercial ? MIN_COMMERCIAL_SIZE_SQFT : undefined}
                       value={carpetAreaSqFt}
                       onChange={(e) => setCarpetAreaSqFt(Number(e.target.value))}
                       className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
@@ -449,7 +515,7 @@ export function PostPropertyModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-[#172033]">
-                      {listingType === 'rent' || listingType === 'pg' ? 'Expected Monthly Rent (₹)' : 'Expected Total Price (₹)'}
+                      {isMonthlyPrice ? 'Expected Monthly Rent (₹)' : 'Expected Total Price (₹)'}
                     </label>
                     <input
                       type="number"

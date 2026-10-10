@@ -19,6 +19,7 @@ export function serializeProperty(p: DbProperty): Property {
     title: p.title,
     tagline: p.tagline ?? undefined,
     listingType: p.listingType as Property['listingType'],
+    commercialListingType: (p.commercialListingType as Property['commercialListingType']) ?? undefined,
     category: p.category as Property['category'],
     city: p.city,
     locality: p.locality,

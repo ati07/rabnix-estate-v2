@@ -16,9 +16,19 @@ import {
   Users,
   CheckCircle2,
   SlidersHorizontal,
+  Ruler,
   X
 } from 'lucide-react';
-import { CityInfo, ListingType, PropertyCategory, SearchFilters } from '@/lib/types';
+import { CityInfo, CommercialListingType, ListingType, PropertyCategory, SearchFilters } from '@/lib/types';
+
+const MIN_SIZE_SQFT = 80;
+
+const CATEGORY_DISPLAY_LABELS: Partial<Record<PropertyCategory, string>> = {
+  'Commercial Office': 'Office',
+  'Retail Shop': 'Shop',
+  'Warehouse': 'Warehouse',
+  'Commercial Land': 'Land',
+};
 
 interface HeroSearchProps {
   selectedCity: CityInfo;
@@ -36,7 +46,7 @@ const PROPERTY_TYPES_BY_LISTING: Record<ListingType, PropertyCategory[]> = {
   rent: ['Apartment', 'Villa', 'Builder Floor', 'Studio'],
   pg: ['PG / Co-Living', 'Studio'],
   plot: ['Residential Plot'],
-  commercial: ['Commercial Office', 'Retail Shop']
+  commercial: ['Commercial Office', 'Retail Shop', 'Warehouse', 'Commercial Land']
 };
 
 export function HeroSearch({
@@ -53,6 +63,7 @@ export function HeroSearch({
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
   const [showBhkDropdown, setShowBhkDropdown] = useState(false);
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const [showLocalitySuggestions, setShowLocalitySuggestions] = useState(false);
   // Locality suggestions come from the DB (approved-listing localities for the
   // selected city); the city's static popularLocalities is the fallback.
@@ -78,6 +89,9 @@ export function HeroSearch({
   const localitySource = dbLocalities.length ? dbLocalities : selectedCity.popularLocalities;
 
   const availableCategories = PROPERTY_TYPES_BY_LISTING[currentListingType] || [];
+
+  const isCommercial = currentListingType === 'commercial';
+  const commercialDealType: CommercialListingType | undefined = filters.commercialListingType;
 
   const handleLocalitySelect = (loc: string) => {
     let updated = [...(filters.localities || [])];
@@ -129,7 +143,7 @@ export function HeroSearch({
     { label: '₹1.5 Lac+', min: 150000, max: 500000 },
   ];
 
-  const activeBudgetPresets = currentListingType === 'rent' || currentListingType === 'pg'
+  const activeBudgetPresets = currentListingType === 'rent' || currentListingType === 'pg' || (isCommercial && commercialDealType === 'rent')
     ? budgetPresetsRent
     : budgetPresetsBuy;
 
@@ -149,10 +163,22 @@ export function HeroSearch({
     return `${filters.bhk.join(', ')} BHK`;
   };
 
+  const getSizeLabel = () => {
+    const min = filters.minSizeSqFt;
+    const max = filters.maxSizeSqFt;
+    const hasMin = min !== undefined && min > MIN_SIZE_SQFT;
+    const hasMax = max !== undefined && max > 0;
+    if (!hasMin && !hasMax) return 'Any Size';
+    const minVal = hasMin ? min : MIN_SIZE_SQFT;
+    return hasMax ? `${minVal}–${max} sq.ft` : `${minVal}+ sq.ft`;
+  };
+
   const getCategoryLabel = () => {
-    if (filters.category) return filters.category;
+    if (filters.category) return CATEGORY_DISPLAY_LABELS[filters.category] ?? filters.category;
     if (filters.categories && filters.categories.length > 0) {
-      return filters.categories.length === 1 ? filters.categories[0] : `${filters.categories.length} Selected`;
+      return filters.categories.length === 1
+        ? (CATEGORY_DISPLAY_LABELS[filters.categories[0]] ?? filters.categories[0])
+        : `${filters.categories.length} Selected`;
     }
     return 'Property Type';
   };
@@ -231,6 +257,34 @@ export function HeroSearch({
               </button>
             </div>
           </div>
+
+          {/* Commercial Deal Type: Rent or Sale */}
+          {isCommercial && (
+            <div className="bg-white border-b border-[#E2E8F0] px-3 sm:px-4 pt-3 flex items-center gap-2">
+              <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mr-1">Looking to:</span>
+              {[
+                { id: undefined, label: 'All' },
+                { id: 'sale' as const, label: 'Sale' },
+                { id: 'rent' as const, label: 'Rent' },
+              ].map((opt) => {
+                const isActive = commercialDealType === opt.id || (!commercialDealType && opt.id === undefined);
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => onFilterChange({ commercialListingType: opt.id })}
+                    className={`px-4 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#18A67D] text-white border-[#18A67D]'
+                        : 'bg-white text-[#172033] border-[#CBD5E1] hover:border-[#18A67D]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Search Inputs Bar */}
           <div className="p-3 sm:p-4 bg-white">
@@ -355,7 +409,7 @@ export function HeroSearch({
                           ) : (
                             <Square className="w-4 h-4 text-[#64748B]" />
                           )}
-                          <span>{cat}</span>
+                          <span>{CATEGORY_DISPLAY_LABELS[cat] ?? cat}</span>
                         </div>
                       );
                     })}
@@ -427,9 +481,10 @@ export function HeroSearch({
                 )}
               </div>
 
-              {/* 4. Bedrooms (BHK) Filter */}
+              {/* 4. Bedrooms (BHK) Filter — or Size for Commercial */}
+              {!isCommercial ? (
               <div className="md:col-span-2 relative">
-                <div 
+                <div
                   id="hero-bhk-trigger"
                   onClick={() => {
                     setShowBhkDropdown(!showBhkDropdown);
@@ -489,6 +544,75 @@ export function HeroSearch({
                   </div>
                 )}
               </div>
+              ) : (
+              <div className="md:col-span-2 relative">
+                <div
+                  id="hero-size-trigger"
+                  onClick={() => {
+                    setShowSizeDropdown(!showSizeDropdown);
+                    setShowTypeDropdown(false);
+                    setShowBudgetDropdown(false);
+                    setShowBhkDropdown(false);
+                    setShowLocalitySuggestions(false);
+                  }}
+                  className="flex items-center justify-between border border-[#CBD5E1] rounded-xl px-3 py-2.5 bg-white hover:border-[#18A67D] cursor-pointer transition-colors"
+                >
+                  <div className="overflow-hidden">
+                    <span className="block text-[10px] font-medium text-[#64748B] uppercase">Size</span>
+                    <span className="text-xs sm:text-sm font-bold text-[#172033] truncate block">
+                      {getSizeLabel()}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-[#64748B] shrink-0 ml-1" />
+                </div>
+
+                {/* Size (sq.ft) Popover */}
+                {showSizeDropdown && (
+                  <div className="absolute top-full left-0 md:-left-12 w-60 mt-2 bg-white rounded-xl shadow-2xl border border-[#E2E8F0] p-3 z-40 space-y-2 animate-in fade-in">
+                    <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
+                      <Ruler className="w-3.5 h-3.5 text-[#18A67D]" />
+                      <span>Size (sq.ft) · min {MIN_SIZE_SQFT}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-[#64748B]">Min</label>
+                        <input
+                          type="number"
+                          min={MIN_SIZE_SQFT}
+                          value={filters.minSizeSqFt ?? MIN_SIZE_SQFT}
+                          onChange={(e) => onFilterChange({ minSizeSqFt: Number(e.target.value) || MIN_SIZE_SQFT })}
+                          className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2 outline-none focus:border-[#18A67D] text-[#172033]"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-[#64748B]">Max (0 = any)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={filters.maxSizeSqFt ?? 0}
+                          onChange={(e) => onFilterChange({ maxSizeSqFt: Number(e.target.value) || 0 })}
+                          className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2 outline-none focus:border-[#18A67D] text-[#172033]"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-[#E2E8F0] flex justify-between items-center">
+                      <button
+                        onClick={() => onFilterChange({ minSizeSqFt: MIN_SIZE_SQFT, maxSizeSqFt: 0 })}
+                        className="text-xs text-[#64748B] hover:text-[#172033] font-medium cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => setShowSizeDropdown(false)}
+                        className="text-xs bg-[#0F2A43] text-white px-3 py-1 rounded font-bold cursor-pointer"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              )}
 
               {/* 5. Primary Search Button */}
               <div className="md:col-span-1.5">

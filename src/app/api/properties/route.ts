@@ -107,6 +107,8 @@ export async function POST(req: NextRequest) {
         title: b.title || 'Residential Property',
         tagline: b.tagline,
         listingType: b.listingType || 'buy',
+        // Rent/sale sub-type only applies to commercial listings.
+        commercialListingType: b.listingType === 'commercial' ? (b.commercialListingType || 'sale') : null,
         category: b.category || 'Apartment',
         city: city,
         locality: locality,

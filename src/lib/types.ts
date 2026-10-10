@@ -1,6 +1,9 @@
 export type ListingType = 'buy' | 'rent' | 'pg' | 'plot' | 'commercial';
 
-export type PropertyCategory = 
+// For commercial listings only: whether the space is offered for rent or sale.
+export type CommercialListingType = 'rent' | 'sale';
+
+export type PropertyCategory =
   | 'Apartment'
   | 'Villa'
   | 'Builder Floor'
@@ -8,6 +11,8 @@ export type PropertyCategory =
   | 'Studio'
   | 'Commercial Office'
   | 'Retail Shop'
+  | 'Warehouse'
+  | 'Commercial Land'
   | 'Residential Plot'
   | 'PG / Co-Living';
 
@@ -21,6 +26,7 @@ export interface Property {
   title: string;
   tagline?: string;
   listingType: ListingType;
+  commercialListingType?: CommercialListingType; // only when listingType==='commercial'
   category: PropertyCategory;
   city: string;
   locality: string;
@@ -92,12 +98,15 @@ export interface CityInfo {
 export interface SearchFilters {
   city?: string;
   listingType: ListingType;
+  commercialListingType?: CommercialListingType;
   locality?: string;
   localities?: string[];
   category?: PropertyCategory;
   categories?: PropertyCategory[];
   minPrice?: number;
   maxPrice?: number;
+  minSizeSqFt?: number;
+  maxSizeSqFt?: number;
   bhk?: number[];
   constructionStatus?: ConstructionStatus | ConstructionStatus[];
   furnishing?: FurnishingStatus | FurnishingStatus[];
@@ -115,6 +124,7 @@ export interface SearchFilters {
 
 export interface PostPropertyFormState {
   listingType: ListingType;
+  commercialListingType?: CommercialListingType;
   category: PropertyCategory;
   city: string;
   locality: string;
