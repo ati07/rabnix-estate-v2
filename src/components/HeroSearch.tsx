@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react';
 import { CityInfo, CommercialListingType, ListingType, PropertyCategory, SearchFilters } from '@/lib/types';
+import { CITY_SEARCH_LOCALITIES } from '@/lib/realEstateData';
 
 const MIN_SIZE_SQFT = 80;
 
@@ -65,19 +66,20 @@ export function HeroSearch({
   const [showBhkDropdown, setShowBhkDropdown] = useState(false);
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const [showLocalitySuggestions, setShowLocalitySuggestions] = useState(false);
-  // Locality suggestions come from the DB (approved-listing localities for the
-  // selected city); the city's static popularLocalities is the fallback.
+  // Locality suggestions are derived from LIVE inventory: the distinct localities
+  // that appear on approved listings for the selected city (ranked by count).
+  // These merge with — and rank above — the city's static locality set.
   const [dbLocalities, setDbLocalities] = useState<string[]>([]);
 
   useEffect(() => {
     const city = selectedCity?.name;
     if (!city || city === 'All Cities') { setDbLocalities([]); return; }
     let active = true;
-    fetch(`/api/localities?city=${encodeURIComponent(city)}`)
+    fetch(`/api/localities/distinct?city=${encodeURIComponent(city)}`)
       .then((r) => r.json())
       .then((d) => {
-        if (active && d?.success && Array.isArray(d.localities) && d.localities.length) {
-          setDbLocalities(d.localities.map((l: { name: string }) => l.name).filter(Boolean));
+        if (active && d?.success && Array.isArray(d.localities)) {
+          setDbLocalities(d.localities.filter(Boolean));
         } else if (active) {
           setDbLocalities([]);
         }
@@ -86,7 +88,23 @@ export function HeroSearch({
     return () => { active = false; };
   }, [selectedCity?.name]);
 
-  const localitySource = dbLocalities.length ? dbLocalities : selectedCity.popularLocalities;
+  // Suggestion source = live DB localities (approved listings) + the city's full
+  // static locality list + popular tiles, merged and de-duplicated (DB first so
+  // real-inventory areas rank above static ones). This gives a MagicBricks-style
+  // "type any area and it shows up" autocomplete even for cities with little
+  // live inventory.
+  const localitySource = React.useMemo(() => {
+    const staticList = CITY_SEARCH_LOCALITIES[selectedCity.name] ?? [];
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    for (const loc of [...dbLocalities, ...staticList, ...selectedCity.popularLocalities]) {
+      const key = loc.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(loc);
+    }
+    return merged;
+  }, [dbLocalities, selectedCity.name, selectedCity.popularLocalities]);
 
   const availableCategories = PROPERTY_TYPES_BY_LISTING[currentListingType] || [];
 
@@ -183,9 +201,12 @@ export function HeroSearch({
     return 'Property Type';
   };
 
-  const matchingLocalities = localitySource.filter(l =>
-    !localityQuery || l.toLowerCase().includes(localityQuery.toLowerCase())
-  );
+  const trimmedQuery = localityQuery.trim().toLowerCase();
+  const matchingLocalities = (
+    trimmedQuery
+      ? localitySource.filter((l) => l.toLowerCase().includes(trimmedQuery))
+      : localitySource
+  ).slice(0, 80);
 
   return (
     <section className="relative z-20 w-full bg-[#0F2A43] text-white border-b border-[#163b5c]">
@@ -208,7 +229,7 @@ export function HeroSearch({
             Find Your Dream Home in <span className="text-[#22C39A]">{selectedCity.name}</span>
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm">
-            Over {selectedCity.totalListingsCount.toLocaleString()}+ verified properties for buy, rent & investment with zero brokerage options.
+            Over {selectedCity.totalListingsCount.toLocaleString()}+ verified properties for buy, rent & investment with direct owner options.
           </p>
         </div>
 
@@ -253,7 +274,7 @@ export function HeroSearch({
                 className="flex items-center gap-1.5 bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer"
               >
                 <span>Post Property FREE</span>
-                <span className="bg-[#18A67D] text-white text-[9px] font-black px-1.5 py-0.2 rounded-xs uppercase">Zero Brok.</span>
+                <span className="bg-[#18A67D] text-white text-[9px] font-black px-1.5 py-0.2 rounded-xs uppercase">Owner Direct</span>
               </button>
             </div>
           </div>
@@ -332,8 +353,8 @@ export function HeroSearch({
                 {showLocalitySuggestions && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-[#E2E8F0] p-2.5 z-40 space-y-1 animate-in fade-in">
                     <div className="text-[11px] font-bold text-[#64748B] px-2 py-1 uppercase tracking-wider flex justify-between items-center">
-                      <span>Popular Localities in {selectedCity.name}</span>
-                      <button 
+                      <span>{trimmedQuery ? `Localities in ${selectedCity.name}` : `Popular Localities in ${selectedCity.name}`}</span>
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowLocalitySuggestions(false);
@@ -364,6 +385,21 @@ export function HeroSearch({
                           </div>
                         );
                       })}
+
+                      {/* No preset match — let the user search their typed text as-is. */}
+                      {matchingLocalities.length === 0 && trimmedQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowLocalitySuggestions(false);
+                            onExecuteSearch();
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer text-xs font-semibold text-[#172033] hover:bg-[#F8FAFC] text-left"
+                        >
+                          <Search className="w-3.5 h-3.5 text-[#18A67D]" />
+                          <span>Search “{localityQuery.trim()}” in {selectedCity.name}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -641,7 +677,7 @@ export function HeroSearch({
                   : 'bg-white text-[#172033] border-[#CBD5E1] hover:border-[#18A67D]'
               }`}
             >
-              ⭐ Owner Properties (0 Brokerage)
+              ⭐ Owner Properties (Direct)
             </button>
 
             <button
@@ -695,7 +731,7 @@ export function HeroSearch({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
           {[
             { title: '100% Verified Listings', desc: 'RERA approved with physical verification' },
-            { title: 'Direct Owner Connect', desc: 'Zero brokerage on 10,000+ homes' },
+            { title: 'Direct Owner Connect', desc: 'Connect directly with owners on 10,000+ homes' },
             { title: 'BayBayt AI Valuation', desc: 'Real-time price & rental estimation' }
           ].map((badge, idx) => (
             <div key={idx} className="flex items-center gap-2.5 bg-[#163b5c]/60 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">

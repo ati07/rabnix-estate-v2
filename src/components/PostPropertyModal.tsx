@@ -196,14 +196,14 @@ export function PostPropertyModal({
             'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=80'
           ],
       description: description || (isCommercial
-        ? `Direct owner commercial listing (${commercialCategoryLabel}) for ${commercialListingType === 'rent' ? 'rent' : 'sale'} in ${locality}, ${city}. Prime location, ${carpetAreaSqFt} sq.ft, 24/7 security and full power backup. Zero brokerage.`
-        : `Direct owner listing for ${bhk} BHK in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Zero brokerage for buyers.`),
+        ? `Direct owner commercial listing (${commercialCategoryLabel}) for ${commercialListingType === 'rent' ? 'rent' : 'sale'} in ${locality}, ${city}. Prime location, ${carpetAreaSqFt} sq.ft, 24/7 security and full power backup. Connect directly with the owner.`
+        : `Direct owner listing for ${bhk} BHK in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Connect directly with the owner.`),
       amenities: selectedAmenities,
       postedBy: {
         name: `${ownerName} (Owner)`,
         type: 'Owner',
         phone: ownerPhone,
-        responseTime: 'Zero Brokerage - Direct Owner',
+        responseTime: 'Direct Owner',
         rating: 5.0
       },
       createdAt: new Date().toISOString().split('T')[0]
@@ -293,7 +293,7 @@ export function PostPropertyModal({
             </div>
             <h3 className="text-2xl font-black text-[#0F2A43]">Property Published Successfully!</h3>
             <p className="text-sm text-[#64748B] max-w-md mx-auto">
-              Your property has been listed on BayBayt with verified status and zero brokerage. You will start receiving direct buyer enquiries.
+              Your property has been listed on BayBayt with verified status. You will start receiving direct buyer enquiries.
             </p>
             <button
               onClick={onClose}

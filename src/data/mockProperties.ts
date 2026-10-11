@@ -260,7 +260,7 @@ export const MOCK_PROPERTIES: Property[] = [
   {
     id: 'baybayt-pun-505',
     title: 'Kharadi EON Free Zone 2 BHK Gated Society',
-    tagline: 'Modern tech-corridor apartment with zero brokerage fee direct from owner',
+    tagline: 'Modern tech-corridor apartment direct from owner',
     propertyType: 'apartment',
     listingType: 'rent',
     price: 36000,
@@ -304,7 +304,7 @@ export const MOCK_PROPERTIES: Property[] = [
       rating: 4.9,
       responseTime: 'Responds within 15 mins'
     },
-    description: 'Zero brokerage! Beautiful sunlit 2 BHK flat available for immediate move-in for IT professionals/families. Equipped with dry balcony, piped gas, geysers, wardrobes, and modular kitchen chimney.',
+    description: 'Direct from owner! Beautiful sunlit 2 BHK flat available for immediate move-in for IT professionals/families. Equipped with dry balcony, piped gas, geysers, wardrobes, and modular kitchen chimney.',
     postedDate: '4 days ago',
     aiInsights: {
       estimatedFairValue: '₹34,000 – ₹38,000 / mo',

@@ -490,7 +490,7 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { id: 'buyer', label: 'Buyer / Tenant', icon: Home, desc: 'Search & Buy' },
-                  { id: 'owner', label: 'Property Owner', icon: Key, desc: 'Post 0% Brok.' },
+                  { id: 'owner', label: 'Property Owner', icon: Key, desc: 'Post Directly' },
                   { id: 'agent', label: 'Verified Agent', icon: Briefcase, desc: 'List & Close' },
                   { id: 'builder', label: 'Builder / Dev', icon: Building, desc: 'New Launches' }
                 ].map((item) => {

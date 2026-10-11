@@ -16,8 +16,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Phone, 
-  MessageSquare, 
-  Calculator,
+  MessageSquare,
   Award,
   Layers,
   ArrowRight
@@ -31,7 +30,6 @@ interface PropertyCardProps {
   onToggleShortlist: (propertyId: string) => void;
   onViewDetails: (property: Property) => void;
   onContactAgent: (property: Property) => void;
-  onOpenEmiForProperty: (price: number) => void;
 }
 
 export function PropertyCard({
@@ -40,7 +38,6 @@ export function PropertyCard({
   onToggleShortlist,
   onViewDetails,
   onContactAgent,
-  onOpenEmiForProperty,
 }: PropertyCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -82,7 +79,7 @@ export function PropertyCard({
           {property.isExclusiveOwner && (
             <span className="bg-[#0E7C5D] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1">
               <CheckCircle className="w-3 h-3" />
-              <span>OWNER • 0% BROKERAGE</span>
+              <span>OWNER DIRECT</span>
             </span>
           )}
           {property.isVerified && !property.isExclusiveOwner && (
@@ -177,21 +174,6 @@ export function PropertyCard({
               </Link>
             </div>
 
-            {/* Quick EMI calculator trigger for Buy */}
-            {property.listingType === 'buy' && (
-              <button
-                id={`card-emi-btn-${property.id}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenEmiForProperty(property.price);
-                }}
-                className="hidden sm:flex items-center gap-1 text-xs font-semibold text-[#64748B] hover:text-[#18A67D] bg-[#F8FAFC] hover:bg-[#E7F6F1] border border-[#E2E8F0] px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-                title="Calculate EMI for this property"
-              >
-                <Calculator className="w-3.5 h-3.5 text-amber-500" />
-                <span>EMI ~₹{formatIndianNumber(Math.round((property.price * 0.8 * 0.085) / 12))}/mo</span>
-              </button>
-            )}
           </div>
 
           {/* Locality & Sublocality with MapPin */}

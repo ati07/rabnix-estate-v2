@@ -110,7 +110,7 @@ export function ExploreCategoriesSection({ cityName, properties, onSelectCategor
             </h2>
           </div>
           <div className="text-xs font-semibold text-[#64748B]">
-            Curated listings verified with legal titles & 0% brokerage options
+            Curated listings verified with legal titles & direct owner options
           </div>
         </div>
 

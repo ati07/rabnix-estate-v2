@@ -20,9 +20,8 @@ import {
   Layers, 
   Sparkles, 
   ArrowLeft, 
-  Check, 
-  Calculator, 
-  Info, 
+  Check,
+  Info,
   Award,
   AlertCircle,
   FileText,
@@ -56,11 +55,6 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
   const [isInquirySubmitted, setIsInquirySubmitted] = useState(false);
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
 
-  // EMI Calculator states
-  const propertyPrice = property?.price || 10000000;
-  const [downPaymentPercent, setDownPaymentPercent] = useState(20);
-  const [loanTenureYears, setLoanTenureYears] = useState(20);
-  const [interestRatePercent, setInterestRatePercent] = useState(8.5);
   const [isCopied, setIsCopied] = useState(false);
 
   // Record a real view once per browser session for this listing (avoids
@@ -86,14 +80,6 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
       keepalive: true,
     }).catch(() => {});
   }, [property?.id, propertyId]);
-
-  // Calculate EMI
-  const loanAmount = Math.max(0, propertyPrice * (1 - downPaymentPercent / 100));
-  const monthlyRate = interestRatePercent / 12 / 100;
-  const totalMonths = loanTenureYears * 12;
-  const calculatedEmi = monthlyRate > 0
-    ? Math.round((loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1))
-    : 0;
 
   if (!property) {
     return (
@@ -250,7 +236,7 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
               )}
               {property.postedBy.type === 'Owner' && (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  0% Brokerage (Owner Direct)
+                  Owner Direct
                 </span>
               )}
             </div>
@@ -277,7 +263,7 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
             </div>
             {property.pricePerSqFt && (
               <div className="text-xs text-[#64748B] font-medium">
-                ₹{property.pricePerSqFt.toLocaleString('en-IN')} / sq.ft • EMI approx ₹{calculatedEmi.toLocaleString('en-IN')}/mo
+                ₹{property.pricePerSqFt.toLocaleString('en-IN')} / sq.ft
               </div>
             )}
           </div>
@@ -326,7 +312,7 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
         {/* Content Layout: 2 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Left 2 Cols: Details, Specs, Amenities, Landmarks, EMI */}
+          {/* Left 2 Cols: Details, Specs, Amenities, Landmarks */}
           <div className="lg:col-span-2 space-y-8">
             
             {/* Quick Specs Highlight Box */}
@@ -431,91 +417,6 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
 
-            {/* Interactive Home Loan EMI Calculator */}
-            {property.listingType === 'buy' && (
-              <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] space-y-6 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calculator className="w-5 h-5 text-[#18A67D]" />
-                    <h2 className="text-lg font-bold text-[#0F2A43]">Home Loan EMI Calculator</h2>
-                  </div>
-                  <span className="text-xs text-[#64748B]">Rates starting @ 8.5% p.a.</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Sliders */}
-                  <div className="md:col-span-2 space-y-4">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-[#64748B]">Down Payment ({downPaymentPercent}%)</span>
-                        <span className="text-[#0F2A43]">₹{((propertyPrice * downPaymentPercent) / 100).toLocaleString('en-IN')}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="10"
-                        max="80"
-                        step="5"
-                        value={downPaymentPercent}
-                        onChange={(e) => setDownPaymentPercent(Number(e.target.value))}
-                        className="w-full accent-[#18A67D]"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-[#64748B]">Loan Tenure ({loanTenureYears} Years)</span>
-                        <span className="text-[#0F2A43]">{loanTenureYears * 12} Months</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="5"
-                        max="30"
-                        step="1"
-                        value={loanTenureYears}
-                        onChange={(e) => setLoanTenureYears(Number(e.target.value))}
-                        className="w-full accent-[#18A67D]"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-[#64748B]">Interest Rate</span>
-                        <span className="text-[#0F2A43]">{interestRatePercent}% p.a.</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="7"
-                        max="14"
-                        step="0.1"
-                        value={interestRatePercent}
-                        onChange={(e) => setInterestRatePercent(Number(e.target.value))}
-                        className="w-full accent-[#18A67D]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Result Card */}
-                  <div className="bg-[#E7F6F1] border border-[#18A67D]/30 p-5 rounded-2xl flex flex-col justify-between text-center space-y-3">
-                    <div>
-                      <span className="text-[11px] font-bold text-[#0E7C5D] uppercase tracking-wider block">Estimated Monthly EMI</span>
-                      <div className="text-2xl font-black text-[#0E7C5D] mt-1">
-                        ₹{calculatedEmi.toLocaleString('en-IN')}
-                      </div>
-                      <span className="text-[11px] text-[#64748B] block mt-1">
-                        Principal Loan: ₹{loanAmount.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-
-                    <a
-                      href="#contact-seller-card"
-                      className="w-full py-2 bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold rounded-xl transition-colors text-center"
-                    >
-                      Apply Instant Pre-Approval
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
 
           </div>
 

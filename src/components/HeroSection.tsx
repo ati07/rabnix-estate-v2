@@ -61,7 +61,7 @@ export function HeroSection({
         {/* Hero Title */}
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-8">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-white">
-            Find Your Dream Property in <span className="text-[#22C39A]">India</span> With Zero Brokerage
+            Find Your Dream Property in <span className="text-[#22C39A]">India</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
             Search 100% RERA verified flats, luxury villas, builder floors, and direct owner listings across top Indian metros.
@@ -189,7 +189,7 @@ export function HeroSection({
                 />
                 <span className="font-bold text-[#0F2A43] flex items-center gap-1">
                   <Key className="w-3.5 h-3.5 text-[#18A67D]" />
-                  Zero Brokerage (Direct Owner Only)
+                  Direct Owner Only
                 </span>
               </label>
 
@@ -226,8 +226,8 @@ export function HeroSection({
             <div className="text-[11px] sm:text-xs text-slate-300 font-medium">Verified Active Listings</div>
           </div>
           <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-            <div className="text-xl sm:text-2xl font-black text-[#22C39A]">₹0 Brokerage</div>
-            <div className="text-[11px] sm:text-xs text-slate-300 font-medium">On 60%+ Direct Flats</div>
+            <div className="text-xl sm:text-2xl font-black text-[#22C39A]">60%+</div>
+            <div className="text-[11px] sm:text-xs text-slate-300 font-medium">Direct Owner Flats</div>
           </div>
           <div className="p-3 bg-white/5 rounded-xl border border-white/10">
             <div className="text-xl sm:text-2xl font-black text-[#22C39A]">98.4%</div>

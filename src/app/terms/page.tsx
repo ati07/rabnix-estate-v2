@@ -115,10 +115,9 @@ export default function TermsPage() {
 
         <Section title="6. AI valuation and tools">
           <p>
-            Tools such as AI property valuation and the loan EMI calculator provide automated
-            estimates for general guidance only. They are not an appraisal, financial advice, or an
-            offer, and they may be inaccurate. You should obtain independent professional advice before
-            relying on them for any decision.
+            Tools such as AI property valuation provide automated estimates for general guidance only.
+            They are not an appraisal, financial advice, or an offer, and they may be inaccurate. You
+            should obtain independent professional advice before relying on them for any decision.
           </p>
         </Section>
 

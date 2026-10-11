@@ -307,7 +307,7 @@ model Locality {
 }
 
 model Collection {
-  id                String   @id // slug, e.g. "zero-brokerage"
+  id                String   @id // slug, e.g. "owner-direct"
   title             String
   subtitle          String
   tag               String

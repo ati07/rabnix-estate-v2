@@ -35,20 +35,20 @@ export interface CuratedCollection {
 
 export const CURATED_COLLECTIONS: CuratedCollection[] = [
   {
-    id: 'zero-brokerage',
-    title: 'Zero Brokerage Direct Homes',
-    subtitle: 'Verified listings posted directly by property owners. Save 100% on brokerage fees.',
-    tag: '0% Brokerage',
+    id: 'owner-direct',
+    title: 'Owner Direct Homes',
+    subtitle: 'Verified listings posted directly by property owners. Connect with them without middlemen.',
+    tag: 'Owner Direct',
     tagColor: 'bg-[#18A67D]',
     iconName: 'CheckCircle2',
     heroImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80',
     badge: '100% Owner Direct',
     actionText: 'View Owner Properties',
-    overview: 'Skip unnecessary broker fees and speak directly with genuine property owners across major Indian metros. Every listing in this collection has gone through owner identity verification, title document checks, and direct contact validation by our legal team.',
+    overview: 'Speak directly with genuine property owners across major Indian metros. Every listing in this collection has gone through owner identity verification, title document checks, and direct contact validation by our legal team.',
     keyHighlights: [
       {
-        title: 'Zero Commission Fees',
-        description: 'Connect directly with homeowners and landlords without paying 1 or 2 months of brokerage.'
+        title: 'Direct Owner Contact',
+        description: 'Connect directly with homeowners and landlords — no middlemen in between.'
       },
       {
         title: 'Direct Video & In-Person Walkthroughs',
@@ -70,8 +70,8 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
     recommendedCities: ['Bangalore', 'Mumbai', 'Delhi / NCR', 'Pune', 'Hyderabad'],
     faqs: [
       {
-        question: 'Are all properties in this collection really 100% zero brokerage?',
-        answer: 'Yes! Every property in this collection is listed directly by the individual owner or legal titleholder. BayBayt does not charge any brokerage from buyers or tenants.'
+        question: 'Are all properties in this collection posted directly by owners?',
+        answer: 'Yes! Every property in this collection is listed directly by the individual owner or legal titleholder.'
       },
       {
         question: 'How do I contact the property owner?',
@@ -198,8 +198,8 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
     recommendedCities: ['Pune', 'Bangalore', 'Ahmedabad', 'Chennai', 'Kolkata', 'Delhi / NCR'],
     faqs: [
       {
-        question: 'What are the EMI options available for homes under ₹50 Lakhs?',
-        answer: 'With standard 80% to 90% bank loan financing at 8.4% interest, EMIs typically range between ₹28,000 and ₹38,000 per month for a 20-year tenure.'
+        question: 'What financing options are available for homes under ₹50 Lakhs?',
+        answer: 'Most banks and housing finance companies offer home loans covering up to 80% to 90% of the property value, subject to your eligibility. We recommend speaking with your preferred lender for current interest rates and tenure options before you decide.'
       }
     ]
   },

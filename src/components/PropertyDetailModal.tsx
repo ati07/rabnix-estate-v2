@@ -15,9 +15,8 @@ import {
   Calendar, 
   CheckCircle2, 
   Phone, 
-  MessageSquare, 
-  Calculator, 
-  Sparkles, 
+  MessageSquare,
+  Sparkles,
   ChevronRight, 
   Layers, 
   Check, 
@@ -28,7 +27,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Property, AiValuationResult } from '@/lib/types';
-import { formatIndianCurrency, formatIndianNumber, calculateEmi } from '@/lib/formatters';
+import { formatIndianCurrency, formatIndianNumber } from '@/lib/formatters';
 
 interface PropertyDetailModalProps {
   property: Property;
@@ -36,7 +35,6 @@ interface PropertyDetailModalProps {
   onClose: () => void;
   isShortlisted: boolean;
   onToggleShortlist: (id: string) => void;
-  onOpenEmiCalculator: () => void;
   onOpenAiGenieWithContext: (property: Property) => void;
 }
 
@@ -46,7 +44,6 @@ export function PropertyDetailModal({
   onClose,
   isShortlisted,
   onToggleShortlist,
-  onOpenEmiCalculator,
   onOpenAiGenieWithContext,
 }: PropertyDetailModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -108,10 +105,6 @@ export function PropertyDetailModal({
       setAiLoading(false);
     }
   };
-
-  // Basic EMI estimation for this property
-  const loanPrincipal = property.listingType === 'buy' ? property.price * 0.8 : 0;
-  const emiData = calculateEmi(loanPrincipal, 8.5, 20);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-fade-in">
@@ -388,38 +381,6 @@ export function PropertyDetailModal({
                       {property.description}
                     </p>
                   </div>
-
-                  {/* Integrated Mini EMI Calculator (for buy) */}
-                  {property.listingType === 'buy' && (
-                    <div className="bg-[#E7F6F1] p-4 rounded-xl border border-[#18A67D]/30 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Calculator className="w-5 h-5 text-[#18A67D]" />
-                          <span className="font-bold text-[#0F2A43] text-sm">
-                            Estimated Monthly EMI
-                          </span>
-                        </div>
-                        <button
-                          onClick={onOpenEmiCalculator}
-                          className="text-xs font-bold text-[#0E7C5D] hover:underline"
-                        >
-                          Customize Loan & Rates →
-                        </button>
-                      </div>
-
-                      <div className="flex items-baseline justify-between">
-                        <div>
-                          <span className="text-2xl font-black text-[#0F2A43]">
-                            ₹{formatIndianNumber(emiData.monthlyEmi)}
-                          </span>
-                          <span className="text-xs text-[#64748B]"> / month</span>
-                        </div>
-                        <div className="text-xs text-[#64748B] text-right">
-                          <span>Based on 80% Loan ({formatIndianCurrency(loanPrincipal)}) @ 8.5% for 20 yrs</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                 </div>
               )}

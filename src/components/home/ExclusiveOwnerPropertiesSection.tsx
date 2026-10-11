@@ -140,7 +140,7 @@ export function ExclusiveOwnerPropertiesSection({
 
                   <div className="text-[11px] font-medium text-[#0E7C5D] mt-2.5 pt-2 border-t border-[#F1F5F9] flex items-center justify-between">
                     <span>{prop.constructionStatus || 'Ready to Move'}</span>
-                    <span className="text-[10px] text-[#0E7C5D] font-bold">0% Brokerage</span>
+                    <span className="text-[10px] text-[#0E7C5D] font-bold">Owner Direct</span>
                   </div>
                 </div>
               </div>

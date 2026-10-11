@@ -147,7 +147,7 @@ function CollectionsHubContent() {
                 Curated Property Collections
               </h1>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Explore specialized collections handpicked by BayBayt real estate analysts. From 0% brokerage owner homes to ready-to-move OC residences, signature penthouses, and high-yield commercial assets.
+                Explore specialized collections handpicked by BayBayt real estate analysts. From direct owner homes to ready-to-move OC residences, signature penthouses, and high-yield commercial assets.
               </p>
             </div>
 
@@ -162,8 +162,8 @@ function CollectionsHubContent() {
                 <span className="text-lg font-black text-[#22C39A]">{properties.length} Verified</span>
               </div>
               <div className="col-span-2 sm:col-span-1">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Brokerage Savings</span>
-                <span className="text-lg font-black text-amber-400">Up to 100%</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Owner Direct</span>
+                <span className="text-lg font-black text-amber-400">Verified Homes</span>
               </div>
             </div>
           </div>

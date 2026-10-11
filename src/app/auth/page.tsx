@@ -80,8 +80,8 @@ function AuthPageContent() {
                 },
                 {
                   icon: Key,
-                  title: 'Zero Brokerage Direct Owner Network',
-                  desc: 'Connect straight to verified landlords and individual flat sellers without middleman cuts.'
+                  title: 'Direct Owner Network',
+                  desc: 'Connect straight to verified landlords and individual flat sellers without middlemen.'
                 },
                 {
                   icon: TrendingUp,
@@ -115,7 +115,7 @@ function AuthPageContent() {
                 <span className="text-xs font-bold text-[#22C39A]">4.9 / 5 Rating</span>
               </div>
               <p className="text-xs text-slate-200 italic leading-relaxed">
-                &ldquo;Found our 3 BHK in Whitefield within 4 days. Contacted the owner directly with zero brokerage fee. The AI valuation gave us complete confidence during price negotiation!&rdquo;
+                &ldquo;Found our 3 BHK in Whitefield within 4 days. Contacted the owner directly. The AI valuation gave us complete confidence during price negotiation!&rdquo;
               </p>
               <div className="flex items-center justify-between pt-1 text-[11px] text-slate-300">
                 <span className="font-bold text-white">Ananya & Rohit Deshmukh</span>

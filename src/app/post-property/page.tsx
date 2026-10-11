@@ -375,7 +375,7 @@ export default function PostPropertyPage() {
             <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-left text-xs space-y-2 text-[#64748B]">
               <div className="flex items-center gap-2 text-[#0F2A43] font-bold">
                 <CheckCircle2 className="w-4 h-4 text-[#18A67D]" />
-                <span>Zero Brokerage direct seller inquiries</span>
+                <span>Direct seller inquiries</span>
               </div>
               <div className="flex items-center gap-2 text-[#0F2A43] font-bold">
                 <CheckCircle2 className="w-4 h-4 text-[#18A67D]" />
@@ -468,7 +468,7 @@ export default function PostPropertyPage() {
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E7F6F1] text-[#0E7C5D] text-xs font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5 text-[#18A67D]" />
-                <span>Zero Brokerage • 100% Free • Direct Buyer Reach</span>
+                <span>100% Free • Direct Buyer Reach</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F2A43] tracking-tight">
                 Post Property on <span className="text-[#18A67D]">BayBayt</span>
@@ -1149,7 +1149,7 @@ export default function PostPropertyPage() {
                               : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#172033]'
                           }`}
                         >
-                          I am {role === 'Owner' ? 'Direct Owner (0% Brok.)' : role}
+                          I am {role === 'Owner' ? 'Direct Owner' : role}
                         </button>
                       ))}
                     </div>

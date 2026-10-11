@@ -14,7 +14,6 @@ import { Navbar } from '@/components/Navbar';
 import { HeroSearch } from '@/components/HeroSearch';
 import { PropertyDetailModal } from '@/components/PropertyDetailModal';
 import { PostPropertyModal } from '@/components/PostPropertyModal';
-import { EmiCalculatorModal } from '@/components/EmiCalculatorModal';
 import { AiValuationModal } from '@/components/AiValuationModal';
 import { AiGenieChatDrawer } from '@/components/AiGenieChatDrawer';
 import { ShortlistDrawer } from '@/components/ShortlistDrawer';
@@ -73,11 +72,15 @@ export default function HomeView() {
     };
   });
 
+  // Navbar's active-menu highlight is independent of the Hero search tabs.
+  // Selecting a Hero tab only drives the search (filters.listingType); it must
+  // NOT light up the navbar menu. Navbar clicks navigate away, so this is just
+  // the transient highlight for the navbar's own buttons.
+  const [navListingType, setNavListingType] = useState<ListingType>('buy');
+
   // Modal & Drawer visibility
   const [isCitySelectorOpen, setIsCitySelectorOpen] = useState(false);
   const [isPostPropertyOpen, setIsPostPropertyOpen] = useState(false);
-  const [isEmiCalculatorOpen, setIsEmiCalculatorOpen] = useState(false);
-  const [emiInitialPrice, setEmiInitialPrice] = useState<number>(6500000);
   const [isAiValuationOpen, setIsAiValuationOpen] = useState(false);
   const [isGenieDrawerOpen, setIsGenieDrawerOpen] = useState(false);
   const [genieContextProperty, setGenieContextProperty] = useState<Property | null>(null);
@@ -223,10 +226,10 @@ export default function HomeView() {
         selectedCity={selectedCity}
         onOpenCitySelector={() => setIsCitySelectorOpen(true)}
         onSelectListingType={(type) => {
-          setFilters((prev) => ({ ...prev, listingType: type }));
+          setNavListingType(type);
           router.push(`/properties?city=${encodeURIComponent(selectedCity.name)}&listingType=${type}`);
         }}
-        currentListingType={filters.listingType}
+        currentListingType={navListingType}
         shortlistCount={shortlistIds.length}
         onOpenShortlist={() => setIsShortlistDrawerOpen(true)}
         onOpenPostProperty={() => setIsPostPropertyOpen(true)}
@@ -335,10 +338,6 @@ export default function HomeView() {
       {/* 7. FOOTER */}
       <Footer
         onSelectCity={handleSelectCity}
-        onOpenEmiCalculator={() => {
-          setEmiInitialPrice(5000000);
-          setIsEmiCalculatorOpen(true);
-        }}
         onOpenAiValuation={() => setIsAiValuationOpen(true)}
         onOpenPostProperty={() => setIsPostPropertyOpen(true)}
       />
@@ -375,10 +374,6 @@ export default function HomeView() {
           onClose={() => setSelectedPropertyForModal(null)}
           isShortlisted={shortlistIds.includes(selectedPropertyForModal.id)}
           onToggleShortlist={handleToggleShortlist}
-          onOpenEmiCalculator={() => {
-            setEmiInitialPrice(selectedPropertyForModal.price);
-            setIsEmiCalculatorOpen(true);
-          }}
           onOpenAiGenieWithContext={(p) => handleOpenGenieWithContext(p)}
         />
       )}
@@ -390,14 +385,7 @@ export default function HomeView() {
         onPropertyAdded={handlePropertyAdded}
       />
 
-      {/* 3. EMI Calculator Modal */}
-      <EmiCalculatorModal
-        isOpen={isEmiCalculatorOpen}
-        onClose={() => setIsEmiCalculatorOpen(false)}
-        initialPrincipal={emiInitialPrice}
-      />
-
-      {/* 4. AI Valuation Modal */}
+      {/* 3. AI Valuation Modal */}
       <AiValuationModal
         isOpen={isAiValuationOpen}
         onClose={() => setIsAiValuationOpen(false)}

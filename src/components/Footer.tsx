@@ -9,7 +9,6 @@ import { BrandLogo } from '@/components/BrandLogo';
 
 interface FooterProps {
   onSelectCity: (city: CityInfo) => void;
-  onOpenEmiCalculator: () => void;
   onOpenAiValuation: () => void;
   onOpenPostProperty: () => void;
 }
@@ -28,7 +27,7 @@ export function Footer(_props: FooterProps) {
               <BrandLogo variant="onDark" className="h-9 w-auto" />
             </div>
             <p className="text-slate-300 leading-relaxed max-w-sm text-xs">
-              A property portal for buying, selling, and renting residential flats, villas, commercial spaces, and land plots &mdash; with owner-direct, zero-brokerage listings.
+              A property portal for buying, selling, and renting residential flats, villas, commercial spaces, and land plots &mdash; with owner-direct, verified listings.
             </p>
             <div className="pt-2 text-slate-400 space-y-1 text-xs">
               <div>
@@ -123,7 +122,7 @@ export function Footer(_props: FooterProps) {
               </li>
               <li>
                 <Link href="/properties?owner=true" className="hover:text-white transition-colors">
-                  0% Brokerage Homes
+                  Owner Direct Homes
                 </Link>
               </li>
             </ul>

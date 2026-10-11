@@ -831,7 +831,7 @@ export const HOME_PREFERRED_AGENTS: PreferredAgentItem[] = [
     email: 'ashwini@vedaraproperties.in',
     reraId: 'UPRERAAGT44812',
     address: 'G-12, Cyber Heights, Vibhuti Khand, Gomti Nagar, Lucknow',
-    about: 'Ashwini Tiwari leads Vedara Properties, helping families and investors find verified residential flats, penthouses, and rental properties with zero brokerage on selected owner mandates.',
+    about: 'Ashwini Tiwari leads Vedara Properties, helping families and investors find verified residential flats, penthouses, and rental properties direct from owners on selected mandates.',
     specializations: ['Ready-to-Move Flats', 'Resale Portfolios', 'Rental Management', 'Plot Layouts'],
     areasServed: ['Gomti Nagar Ext', 'Indira Nagar', 'Faizabad Road', 'Jankipuram', 'Aliganj'],
     languages: ['Hindi', 'English'],
@@ -842,7 +842,7 @@ export const HOME_PREFERRED_AGENTS: PreferredAgentItem[] = [
         author: 'Pooja Agarwal',
         rating: 5,
         date: '3 weeks ago',
-        comment: 'Ashwini was extremely helpful in arranging quick site visits and finding a verified 2 BHK on Shaheed Path without brokerage hassle.',
+        comment: 'Ashwini was extremely helpful in arranging quick site visits and finding a verified 2 BHK on Shaheed Path directly from the owner.',
         propertyType: '2 BHK Apartment'
       }
     ]

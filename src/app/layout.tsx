@@ -16,7 +16,7 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: 'BayBayt - Buy, Rent, PG & AI Property Valuation',
-  description: 'India’s premier real estate platform by BayBayt for buying, selling, and renting properties with zero brokerage and AI valuation.',
+  description: 'India’s premier real estate platform by BayBayt for buying, selling, and renting properties with verified owner-direct listings and AI valuation.',
   icons: {
     icon: '/icon.png',
     apple: '/icon.png',

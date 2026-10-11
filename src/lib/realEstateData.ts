@@ -93,6 +93,86 @@ export const CITIES_DATA: CityInfo[] = [
   }
 ];
 
+// Comprehensive locality lists per city, used to power the Hero search
+// autocomplete (MagicBricks-style). The `popularLocalities` above are the small
+// curated set shown on tiles/sections; this is the full searchable set so that
+// typing any area name surfaces it. Keyed by the exact CityInfo.name. Real
+// area names only — kept broad but not exhaustive; live DB localities (from
+// approved listings) are merged in at runtime and take precedence.
+export const CITY_SEARCH_LOCALITIES: Record<string, string[]> = {
+  'Mumbai': [
+    'Andheri West', 'Andheri East', 'Bandra West', 'Bandra East', 'Powai', 'Worli', 'Juhu',
+    'Thane West', 'Thane East', 'Kandivali East', 'Kandivali West', 'Borivali West', 'Borivali East',
+    'Malad West', 'Malad East', 'Goregaon West', 'Goregaon East', 'Dadar', 'Lower Parel',
+    'Mulund West', 'Mulund East', 'Chembur', 'Ghatkopar East', 'Ghatkopar West', 'Kurla', 'Vikhroli',
+    'Santacruz West', 'Santacruz East', 'Vile Parle', 'Kharghar', 'Vashi', 'Nerul', 'Panvel',
+    'Mira Road', 'Bhayandar', 'Dahisar', 'Colaba', 'Marine Drive', 'Byculla', 'Wadala', 'Sion', 'Matunga',
+  ],
+  'Bangalore': [
+    'Whitefield', 'Indiranagar', 'HSR Layout', 'Sarjapur Road', 'Electronic City', 'Bellandur',
+    'Hebbal', 'Koramangala', 'Marathahalli', 'BTM Layout', 'JP Nagar', 'Jayanagar', 'Banashankari',
+    'Rajajinagar', 'Malleshwaram', 'Yelahanka', 'KR Puram', 'Mahadevapura', 'Varthur', 'Kadugodi',
+    'Hoodi', 'Brookefield', 'CV Raman Nagar', 'Domlur', 'Ulsoor', 'MG Road', 'Frazer Town', 'RT Nagar',
+    'Vijayanagar', 'Kengeri', 'Banaswadi', 'Horamavu', 'Kaggadasapura', 'Begur', 'Bommanahalli',
+    'Hennur', 'Thanisandra', 'Jakkur', 'Devanahalli', 'Nagawara', 'Kanakapura Road',
+    'Bannerghatta Road', 'Mysore Road', 'Tumkur Road',
+  ],
+  'Delhi / NCR': [
+    'Golf Course Extension Gurgaon', 'Golf Course Road Gurgaon', 'Sector 62 Noida', 'Dwarka Expressway',
+    'Vasant Kunj', 'Greater Noida West', 'Cyber City Gurgaon', 'South Extension', 'Dwarka', 'Rohini',
+    'Pitampura', 'Saket', 'Vasant Vihar', 'Hauz Khas', 'Lajpat Nagar', 'Karol Bagh', 'Janakpuri',
+    'Rajouri Garden', 'Mayur Vihar', 'Preet Vihar', 'Patparganj', 'Indirapuram', 'Vaishali', 'Vasundhara',
+    'Kaushambi', 'Raj Nagar Extension', 'Crossings Republik', 'Sector 150 Noida', 'Sector 137 Noida',
+    'Noida Extension', 'Sohna Road', 'MG Road Gurgaon', 'Sushant Lok', 'DLF Phase 1', 'DLF Phase 2',
+    'DLF Phase 3', 'Sector 56 Gurgaon', 'New Gurgaon', 'Manesar',
+  ],
+  'Hyderabad': [
+    'Gachibowli', 'Hitec City', 'Kondapur', 'Kokapet', 'Madhapur', 'Banjara Hills', 'Jubilee Hills',
+    'Financial District', 'Kukatpally', 'Miyapur', 'Nizampet', 'Manikonda', 'Narsingi', 'Tellapur',
+    'Nallagandla', 'KPHB', 'Begumpet', 'Ameerpet', 'Secunderabad', 'Uppal', 'LB Nagar', 'Dilsukhnagar',
+    'Kompally', 'Alwal', 'Shamshabad', 'Attapur', 'Mehdipatnam', 'Tolichowki', 'Gopanpally',
+    'Nanakramguda', 'Puppalaguda', 'Bachupally', 'Pragathi Nagar', 'Shamirpet', 'Adibatla',
+  ],
+  'Pune': [
+    'Hinjawadi', 'Kharadi', 'Baner', 'Wakad', 'Viman Nagar', 'Koregaon Park', 'Hadapsar', 'Bavdhan',
+    'Aundh', 'Balewadi', 'Wagholi', 'Kalyani Nagar', 'Magarpatta', 'Pimpri', 'Chinchwad', 'Ravet',
+    'Pimple Saudagar', 'Pimple Nilakh', 'Pimple Gurav', 'Kothrud', 'Warje', 'Katraj', 'Undri',
+    'Mohammadwadi', 'NIBM Road', 'Wanowrie', 'Dhanori', 'Lohegaon', 'Yerwada', 'Kondhwa',
+    'Sinhagad Road', 'Bibwewadi', 'Tathawade', 'Punawale', 'Moshi', 'Chakan', 'Talegaon',
+    'Shivaji Nagar', 'Deccan',
+  ],
+  'Chennai': [
+    'OMR', 'Anna Nagar', 'Velachery', 'Adyar', 'Porur', 'Sholinganallur', 'ECR', 'Guindy', 'T Nagar',
+    'Mylapore', 'Nungambakkam', 'Kilpauk', 'Perambur', 'Ambattur', 'Avadi', 'Tambaram', 'Chromepet',
+    'Pallavaram', 'Pallikaranai', 'Medavakkam', 'Madipakkam', 'Thoraipakkam', 'Perungudi', 'Navalur',
+    'Siruseri', 'Kelambakkam', 'Vadapalani', 'Ashok Nagar', 'KK Nagar', 'Saidapet', 'Thiruvanmiyur',
+    'Besant Nagar', 'Egmore', 'Royapettah', 'Mogappair', 'Korattur', 'Poonamallee', 'Red Hills',
+  ],
+  'Kolkata': [
+    'New Town', 'Salt Lake', 'Rajarhat', 'EM Bypass', 'Ballygunge', 'Alipore', 'Behala', 'Garia',
+    'Tollygunge', 'Jadavpur', 'Park Street', 'Howrah', 'Dum Dum', 'Baguiati', 'Kestopur', 'Lake Town',
+    'Barasat', 'Sonarpur', 'Narendrapur', 'Joka', 'Thakurpukur', 'Barrackpore', 'Shyambazar',
+    'Belgharia', 'Dunlop', 'Madhyamgram', 'Santoshpur', 'Kasba', 'Maniktala', 'Beliaghata',
+    'Ultadanga', 'Sinthee',
+  ],
+  'Ahmedabad': [
+    'SG Highway', 'Bopal', 'Satellite', 'Prahlad Nagar', 'Gota', 'Shela', 'Thaltej', 'GIFT City',
+    'Bodakdev', 'Vastrapur', 'Navrangpura', 'Chandkheda', 'Motera', 'Sabarmati', 'Naranpura',
+    'Maninagar', 'Nikol', 'Naroda', 'Vastral', 'Bapunagar', 'Vatva', 'Vejalpur', 'Jodhpur', 'Makarba',
+    'South Bopal', 'Science City', 'Sola', 'Ghatlodia', 'Ranip', 'Nava Vadaj', 'Paldi', 'Ellisbridge',
+    'Ambawadi', 'Isanpur', 'Vasna',
+  ],
+  'Lucknow': [
+    'Gomti Nagar', 'Gomti Nagar Extension', 'Amar Shaheed Path', 'Sushant Golf City', 'Hazratganj',
+    'Indira Nagar', 'Vibhuti Khand', 'Aliganj', 'Faizabad Road', 'Alambagh', 'Aminabad', 'Chowk',
+    'Rajajipuram', 'Jankipuram', 'Jankipuram Extension', 'Mahanagar', 'Vikas Nagar', 'Kalyanpur',
+    'Chinhat', 'Telibagh', 'Raebareli Road', 'Sultanpur Road', 'Jopling Road', 'Ashiyana', 'LDA Colony',
+    'Eldeco Udyan', 'Vrindavan Yojana', 'Hussainganj', 'Kapoorthala', 'Nirala Nagar', 'Munshi Pulia',
+    'Gudamba', 'IIM Road', 'Sitapur Road', 'Kursi Road', 'Khurram Nagar', 'Vinamra Khand',
+    'Vishwas Khand', 'Patrakarpuram', 'Vineet Khand', 'Vijay Khand', 'Viraj Khand',
+  ],
+};
+
 export const INITIAL_PROPERTIES: Property[] = [
   {
     id: 'mb-prop-101',
@@ -214,7 +294,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'Rohan Mehra (Owner)',
       type: 'Owner',
       phone: '+91 98200 98765',
-      responseTime: 'Direct Owner - Zero Brokerage',
+      responseTime: 'Direct Owner',
       rating: 5.0,
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
     },
@@ -697,7 +777,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'K. Balasubramanian (Owner)',
       type: 'Owner',
       phone: '+91 98400 33221',
-      responseTime: 'Direct Owner - Zero Brokerage',
+      responseTime: 'Direct Owner',
       rating: 5.0,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
     },
@@ -758,7 +838,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'Ashish Verma (Owner)',
       type: 'Owner',
       phone: '+91 94150 12345',
-      responseTime: 'Under 10 mins (Zero Brokerage)',
+      responseTime: 'Under 10 mins (Direct Owner)',
       rating: 4.9,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80'
     },
@@ -935,7 +1015,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'Suresh Kumar (Owner)',
       type: 'Owner',
       phone: '+91 98860 11223',
-      responseTime: 'Direct Owner - 0% Brokerage',
+      responseTime: 'Direct Owner',
       rating: 5.0,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
     },
@@ -1103,7 +1183,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'Pramod Kumar (Owner)',
       type: 'Owner',
       phone: '+91 94150 99881',
-      responseTime: 'Direct Owner - Zero Brokerage',
+      responseTime: 'Direct Owner',
       rating: 4.8,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
     },
@@ -1148,7 +1228,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'Vivek Sharma (Owner)',
       type: 'Owner',
       phone: '+91 94151 77665',
-      responseTime: 'Direct Owner - Zero Brokerage',
+      responseTime: 'Direct Owner',
       rating: 5.0,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80'
     },
@@ -1196,7 +1276,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'Rajeev Tandon (Owner)',
       type: 'Owner',
       phone: '+91 94150 44332',
-      responseTime: 'Direct Owner - Zero Brokerage',
+      responseTime: 'Direct Owner',
       rating: 4.9,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80'
     },
@@ -1243,7 +1323,7 @@ export const INITIAL_PROPERTIES: Property[] = [
       name: 'Sunita Saxena (Owner)',
       type: 'Owner',
       phone: '+91 94150 11229',
-      responseTime: 'Direct Owner - Zero Brokerage',
+      responseTime: 'Direct Owner',
       rating: 5.0,
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80'
     },

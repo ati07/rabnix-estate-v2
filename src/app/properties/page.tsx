@@ -233,7 +233,7 @@ function PropertiesCatalogContent() {
         if (verifiedOnly && !p.isVerified) {
           return false;
         }
-        // Owner Only (0% Brokerage)
+        // Owner Only (Direct Owner Postings)
         if (ownerOnly && !(p.postedBy.type === 'Owner' || p.isExclusiveOwner)) {
           return false;
         }
@@ -539,10 +539,10 @@ function PropertiesCatalogContent() {
         </div>
       )}
 
-      {/* Verified & Zero Brokerage Toggles */}
+      {/* Verified & Owner Direct Toggles */}
       <div className="space-y-2 pt-2 border-t border-[#E2E8F0]">
         <label className="text-xs font-bold text-[#0F2A43] uppercase tracking-wider block">
-          Verification & Brokerage
+          Verification & Owner Direct
         </label>
         
         {/* Verified Only */}
@@ -559,12 +559,12 @@ function PropertiesCatalogContent() {
           />
         </label>
 
-        {/* 0% Brokerage Direct Owner */}
+        {/* Direct Owner Postings */}
         <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] hover:bg-[#F1F5F9] cursor-pointer transition-colors">
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-amber-500" />
             <div>
-              <span className="text-xs font-bold text-[#0F2A43] block leading-tight">0% Brokerage</span>
+              <span className="text-xs font-bold text-[#0F2A43] block leading-tight">Owner Direct</span>
               <span className="text-[10px] text-[#64748B]">Direct Owner Postings</span>
             </div>
           </div>
@@ -695,7 +695,7 @@ function PropertiesCatalogContent() {
                 </span>
               </h1>
               <p className="text-xs text-[#64748B] mt-0.5">
-                Verified legal titles, price valuations, RERA compliance & 0% brokerage owner listings
+                Verified legal titles, price valuations, RERA compliance & direct owner listings
               </p>
             </div>
 
@@ -861,7 +861,7 @@ function PropertiesCatalogContent() {
 
                 {ownerOnly && (
                   <span className="bg-amber-50 border border-amber-300 text-amber-900 px-2.5 py-1 rounded-full font-bold flex items-center gap-1 shadow-2xs">
-                    0% Brokerage
+                    Owner Direct
                     <button onClick={() => setOwnerOnly(false)} className="hover:text-rose-600 ml-0.5 cursor-pointer">×</button>
                   </span>
                 )}
@@ -937,7 +937,7 @@ function PropertiesCatalogContent() {
                               )}
                               {prop.postedBy.type === 'Owner' && (
                                 <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
-                                  0% Brokerage
+                                  Owner Direct
                                 </span>
                               )}
                             </div>

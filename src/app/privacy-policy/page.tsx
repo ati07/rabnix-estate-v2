@@ -87,7 +87,7 @@ export default function PrivacyPolicyPage() {
             <li>To create and manage your account and authenticate you.</li>
             <li>To publish your listings and connect you with interested buyers, renters, or sellers.</li>
             <li>To route enquiries between users and enable direct contact.</li>
-            <li>To provide tools such as AI property valuation estimates and loan EMI calculations.</li>
+            <li>To provide tools such as AI property valuation estimates.</li>
             <li>To process payments for paid listing plans and enforce listing quotas.</li>
             <li>To detect, prevent, and investigate fraud, abuse, and policy violations.</li>
             <li>To improve the Services, measure usage, and personalise what you see (such as your city).</li>
