@@ -111,10 +111,11 @@ import { useProperties } from '@/lib/propertyContext';
 import { 
   UserRole, 
   UserProfile,
-  Property, 
-  PropertyInquiry, 
-  ListingType, 
-  PropertyCategory, 
+  Property,
+  PropertyInquiry,
+  ListingType,
+  CommercialListingType,
+  PropertyCategory,
   FurnishingStatus, 
   ConstructionStatus, 
   FacingDirection,
@@ -124,6 +125,19 @@ import {
 import { CITIES_DATA } from '@/lib/realEstateData';
 import { formatIndianCurrency } from '@/lib/formatters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
+
+// Commercial listings use their own category set (not BHK/residential) and a
+// minimum floor area. Kept in sync with the /post-property page and the modal.
+const COMMERCIAL_CATEGORIES: { label: string; value: PropertyCategory }[] = [
+  { label: 'Office', value: 'Commercial Office' },
+  { label: 'Shop', value: 'Retail Shop' },
+  { label: 'Warehouse', value: 'Warehouse' },
+  { label: 'Land', value: 'Commercial Land' },
+];
+const RESIDENTIAL_CATEGORIES: PropertyCategory[] = [
+  'Apartment', 'Villa', 'Builder Floor', 'Penthouse', 'Residential Plot',
+];
+const MIN_COMMERCIAL_SIZE_SQFT = 80;
 
 // --- Billing (listing plans) ---
 interface BillingPlan {
@@ -289,6 +303,7 @@ export default function UserDashboardPage() {
   // Inline Upload Form States
   const [uploadStep, setUploadStep] = useState<number>(1);
   const [uploadListingType, setUploadListingType] = useState<ListingType>('buy');
+  const [uploadCommercialListingType, setUploadCommercialListingType] = useState<CommercialListingType>('sale');
   const [uploadCategory, setUploadCategory] = useState<PropertyCategory>('Apartment');
   const [uploadCity, setUploadCity] = useState<string>(user?.city || 'Bangalore');
   const [uploadLocality, setUploadLocality] = useState<string>('');
@@ -807,6 +822,18 @@ export default function UserDashboardPage() {
     setUploadImages(uploadImages.filter((_, i) => i !== idx));
   };
 
+  const isCommercialUpload = uploadListingType === 'commercial';
+
+  // Switching the listing purpose keeps the selected category valid for it.
+  const handleUploadListingTypeChange = (next: ListingType) => {
+    setUploadListingType(next);
+    if (next === 'commercial') {
+      if (!COMMERCIAL_CATEGORIES.some((c) => c.value === uploadCategory)) setUploadCategory('Commercial Office');
+    } else if (COMMERCIAL_CATEGORIES.some((c) => c.value === uploadCategory)) {
+      setUploadCategory('Apartment');
+    }
+  };
+
   const handleInlineUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setUploadError(null);
@@ -824,6 +851,10 @@ export default function UserDashboardPage() {
       setUploadError('Please enter a valid locality / neighborhood');
       return;
     }
+    if (isCommercialUpload && uploadCarpetArea < MIN_COMMERCIAL_SIZE_SQFT) {
+      setUploadError(`Commercial size must be at least ${MIN_COMMERCIAL_SIZE_SQFT} sq.ft`);
+      return;
+    }
     if (uploadPrice <= 0) {
       setUploadError('Please enter a valid price / rent amount');
       return;
@@ -833,7 +864,11 @@ export default function UserDashboardPage() {
       return;
     }
 
-    const finalTitle = uploadTitle.trim() || `${uploadBhk} BHK ${uploadCategory} in ${uploadLocality}, ${uploadCity}`;
+    const commercialCategoryLabel = COMMERCIAL_CATEGORIES.find((c) => c.value === uploadCategory)?.label ?? 'Commercial';
+    const autoTitle = isCommercialUpload
+      ? `${commercialCategoryLabel} for ${uploadCommercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${uploadLocality}, ${uploadCity}`
+      : `${uploadBhk} BHK ${uploadCategory} in ${uploadLocality}, ${uploadCity}`;
+    const finalTitle = uploadTitle.trim() || autoTitle;
     const docs: string[] = [];
     if (hasEncumbranceDoc) docs.push('Encumbrance Certificate (EC)');
     if (hasPlanDoc) docs.push('Approved Sanction Plan');
@@ -841,8 +876,11 @@ export default function UserDashboardPage() {
 
     const newProp = addProperty({
       title: finalTitle,
-      tagline: `${uploadBhk} BHK • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`,
+      tagline: isCommercialUpload
+        ? `${commercialCategoryLabel} • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`
+        : `${uploadBhk} BHK • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`,
       listingType: uploadListingType,
+      commercialListingType: isCommercialUpload ? uploadCommercialListingType : undefined,
       category: uploadCategory,
       city: uploadCity,
       locality: uploadLocality,
@@ -850,9 +888,9 @@ export default function UserDashboardPage() {
       price: uploadPrice,
       carpetAreaSqFt: uploadCarpetArea,
       superBuiltUpAreaSqFt: uploadSuperArea || Math.round(uploadCarpetArea * 1.25),
-      bhk: uploadBhk,
+      bhk: isCommercialUpload ? undefined : uploadBhk,
       bathrooms: uploadBathrooms,
-      balconies: uploadBalconies,
+      balconies: isCommercialUpload ? undefined : uploadBalconies,
       furnishing: uploadFurnishing,
       floor: uploadFloor,
       totalFloors: uploadTotalFloors,
@@ -1700,7 +1738,7 @@ export default function UserDashboardPage() {
                           <button
                             key={item.id}
                             type="button"
-                            onClick={() => setUploadListingType(item.id as ListingType)}
+                            onClick={() => handleUploadListingTypeChange(item.id as ListingType)}
                             className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                               uploadListingType === item.id
                                 ? 'border-[#18A67D] bg-[#E7F6F1] text-[#0E7C5D]'
@@ -1713,23 +1751,54 @@ export default function UserDashboardPage() {
                       </div>
                     </div>
 
+                    {/* Commercial Rent / Sale deal type */}
+                    {isCommercialUpload && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-[#172033] uppercase tracking-wider">
+                          Commercial Deal Type:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2 max-w-xs">
+                          {([
+                            { id: 'sale', label: 'For Sale' },
+                            { id: 'rent', label: 'For Rent' },
+                          ] as { id: CommercialListingType; label: string }[]).map((d) => (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => setUploadCommercialListingType(d.id)}
+                              className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                uploadCommercialListingType === d.id
+                                  ? 'border-[#18A67D] bg-[#E7F6F1] text-[#0E7C5D]'
+                                  : 'border-[#E2E8F0] bg-[#F8FAFC] text-[#172033] hover:bg-white'
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-[#172033] uppercase tracking-wider">
-                        2. Property Category:
+                        2. {isCommercialUpload ? 'Commercial Type:' : 'Property Category:'}
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                        {['Apartment', 'Villa', 'Builder Floor', 'Penthouse', 'Residential Plot', 'Commercial Office'].map((cat) => (
+                        {(isCommercialUpload
+                          ? COMMERCIAL_CATEGORIES
+                          : RESIDENTIAL_CATEGORIES.map((c) => ({ label: c, value: c }))
+                        ).map((cat) => (
                           <button
-                            key={cat}
+                            key={cat.value}
                             type="button"
-                            onClick={() => setUploadCategory(cat as PropertyCategory)}
+                            onClick={() => setUploadCategory(cat.value as PropertyCategory)}
                             className={`p-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
-                              uploadCategory === cat
+                              uploadCategory === cat.value
                                 ? 'border-[#0F2A43] bg-[#0F2A43] text-white font-bold'
                                 : 'border-[#E2E8F0] bg-white text-[#172033] hover:bg-[#F8FAFC]'
                             }`}
                           >
-                            {cat}
+                            {cat.label}
                           </button>
                         ))}
                       </div>
@@ -1771,7 +1840,12 @@ export default function UserDashboardPage() {
                           type="button"
                           onClick={() => {
                             if (uploadLocality) {
-                              setUploadTitle(`${uploadBhk} BHK ${uploadCategory} in ${uploadLocality}, ${uploadCity}`);
+                              if (isCommercialUpload) {
+                                const label = COMMERCIAL_CATEGORIES.find((c) => c.value === uploadCategory)?.label ?? 'Commercial';
+                                setUploadTitle(`${label} for ${uploadCommercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${uploadLocality}, ${uploadCity}`);
+                              } else {
+                                setUploadTitle(`${uploadBhk} BHK ${uploadCategory} in ${uploadLocality}, ${uploadCity}`);
+                              }
                             }
                           }}
                           className="text-[11px] font-bold text-[#18A67D] hover:underline"
@@ -1796,6 +1870,7 @@ export default function UserDashboardPage() {
                     </h3>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {!isCommercialUpload && (
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-[#172033]">BHK</label>
                         <select
@@ -1810,7 +1885,9 @@ export default function UserDashboardPage() {
                           <option value={5}>5+ BHK</option>
                         </select>
                       </div>
+                      )}
 
+                      {!isCommercialUpload && (
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-[#172033]">Bathrooms</label>
                         <select
@@ -1824,9 +1901,12 @@ export default function UserDashboardPage() {
                           <option value={4}>4 Baths</option>
                         </select>
                       </div>
+                      )}
 
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-[#172033]">Carpet Area (sq.ft)</label>
+                        <label className="text-xs font-bold text-[#172033]">
+                          {isCommercialUpload ? `Size (sq.ft) — min ${MIN_COMMERCIAL_SIZE_SQFT}` : 'Carpet Area (sq.ft)'}
+                        </label>
                         <input
                           type="number"
                           required
@@ -1853,7 +1933,7 @@ export default function UserDashboardPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-[#172033]">
-                          {uploadListingType === 'rent' || uploadListingType === 'pg' ? 'Expected Monthly Rent (₹)' : 'Expected Total Price (₹)'}
+                          {uploadListingType === 'rent' || uploadListingType === 'pg' || (isCommercialUpload && uploadCommercialListingType === 'rent') ? 'Expected Monthly Rent (₹)' : 'Expected Total Price (₹)'}
                         </label>
                         <input
                           type="number"
