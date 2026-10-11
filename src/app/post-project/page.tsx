@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/BrandLogo';
 import Image from 'next/image';
@@ -48,7 +49,15 @@ const STATUS_OPTIONS: FeaturedProjectItem['status'][] = ['New Launch', 'Under Co
 const NEARBY_TYPES: ProjectNearby['type'][] = ['metro', 'airport', 'school', 'hospital', 'tech_park', 'mall', 'highway'];
 
 export default function PostProjectPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAuthReady } = useAuth();
+  const router = useRouter();
+
+  // Protected page: once the session resolves, send signed-out users (including
+  // someone who just logged out) to sign-in. The loader guard below renders
+  // meanwhile so the page never flashes a signed-out gatekeeper.
+  useEffect(() => {
+    if (isAuthReady && !user) router.replace('/auth');
+  }, [isAuthReady, user, router]);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -298,6 +307,20 @@ export default function PostProjectPage() {
       setIsSubmitting(false);
     }
   };
+
+  // While the session resolves, or while redirecting a signed-out user (incl.
+  // just after logout) to sign-in, render a loader instead of the post form or
+  // a gatekeeper flash.
+  if (!isAuthReady || !user) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-[#64748B] text-sm font-bold">
+          <Loader2 className="w-5 h-5 animate-spin text-[#18A67D]" />
+          <span>Loading…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between">

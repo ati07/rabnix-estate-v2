@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { serializeProperty } from '@/lib/serialize';
+import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
 import { getEntitlement, consumeListingCredit } from '@/lib/billing';
 import type { Property } from '@/lib/types';
@@ -43,14 +43,25 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Contact numbers are only exposed to an admin or to the listing's own owner.
+    // Everyone else gets the listing WITHOUT a phone — they must use the gated
+    // reveal endpoint (POST /api/properties/[id]/contact) to obtain it.
+    const isAdmin = user?.role === 'admin';
+    const canSeeContact = (row: { postedByUserId: string | null }) =>
+      isAdmin || (!!user && row.postedByUserId === user.id);
+
     if (!rows || rows.length === 0) {
-      return NextResponse.json({ success: true, properties: INITIAL_PROPERTIES });
+      const fallback = isAdmin ? INITIAL_PROPERTIES : INITIAL_PROPERTIES.map(stripPropertyContact);
+      return NextResponse.json({ success: true, properties: fallback });
     }
 
-    return NextResponse.json({ success: true, properties: rows.map(serializeProperty) });
+    return NextResponse.json({
+      success: true,
+      properties: rows.map((r) => serializeProperty(r, canSeeContact(r))),
+    });
   } catch (err: any) {
     console.warn('Prisma DB query fallback to INITIAL_PROPERTIES:', err?.message || err);
-    return NextResponse.json({ success: true, properties: INITIAL_PROPERTIES });
+    return NextResponse.json({ success: true, properties: INITIAL_PROPERTIES.map(stripPropertyContact) });
   }
 }
 
@@ -165,7 +176,8 @@ export async function POST(req: NextRequest) {
       return property;
     });
 
-    return NextResponse.json({ success: true, property: serializeProperty(created) });
+    // Creator owns this listing, so it's safe to echo back their own contact.
+    return NextResponse.json({ success: true, property: serializeProperty(created, true) });
   } catch (err: any) {
     if (err?.message === 'listing-quota-exceeded') {
       return NextResponse.json(

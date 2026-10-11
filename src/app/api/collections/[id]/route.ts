@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { serializeCollection, serializeProperty } from '@/lib/serialize';
+import { serializeCollection, serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { getCollectionById } from '@/lib/collectionsData';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
 import type { CuratedCollection } from '@/lib/collectionsData';
@@ -64,9 +64,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       where: whereFromFilters(collection.filters),
       orderBy: { createdAt: 'desc' },
     });
-    properties = rows.length > 0 ? rows.map(serializeProperty) : filterStatic(collection.filters);
+    // Public collection — contact numbers are withheld (gated reveal only).
+    properties = rows.length > 0
+      ? rows.map((p) => serializeProperty(p))
+      : filterStatic(collection.filters).map(stripPropertyContact);
   } catch {
-    properties = filterStatic(collection.filters);
+    properties = filterStatic(collection.filters).map(stripPropertyContact);
   }
 
   return NextResponse.json({ success: true, collection, properties, matchedCount: properties.length });

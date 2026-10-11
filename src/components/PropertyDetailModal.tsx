@@ -54,6 +54,9 @@ export function PropertyDetailModal({
   const [buyerPhone, setBuyerPhone] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
   const [leadSubmitted, setLeadSubmitted] = useState(false);
+  // Seller phone is withheld from the public payload; fetched from the gated
+  // reveal endpoint only after a lead is submitted.
+  const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
 
   // AI Property Analysis state
   const [aiLoading, setAiLoading] = useState(false);
@@ -67,10 +70,24 @@ export function PropertyDetailModal({
     ? property.images
     : ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80'];
 
+  const revealContact = () => {
+    fetch(`/api/properties/${property.id}/contact`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data.contact?.phone) setRevealedPhone(data.contact.phone);
+      })
+      .catch(() => { /* leave revealedPhone null */ });
+  };
+
   const handleLeadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyerName || !buyerPhone) return;
     setLeadSubmitted(true);
+    // Reveal the seller contact via the gated endpoint (never shipped inline).
+    revealContact();
   };
 
   const handleGenerateAiInsights = async () => {
@@ -691,7 +708,9 @@ export function PropertyDetailModal({
                       <span>WhatsApp Link Ready</span>
                     </div>
                     <p className="text-[11px] text-[#64748B]">
-                      Connected to {property.postedBy.name} ({property.postedBy.phone}).
+                      {revealedPhone
+                        ? `Connected to ${property.postedBy.name} (${revealedPhone}).`
+                        : `Connecting you to ${property.postedBy.name}…`}
                     </p>
                   </div>
                 ) : (
@@ -699,6 +718,7 @@ export function PropertyDetailModal({
                     id="direct-whatsapp-btn"
                     onClick={() => {
                       setIsWhatsAppInitiated(true);
+                      if (!revealedPhone) revealContact();
                     }}
                     className="w-full bg-[#0E7C5D] hover:bg-[#095741] text-white font-bold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >

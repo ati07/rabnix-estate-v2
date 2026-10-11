@@ -63,8 +63,15 @@ const SAMPLE_PHOTO_PRESETS = [
 
 export default function PostPropertyPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAuthReady } = useAuth();
   const { addProperty } = useProperties();
+
+  // Protected page: once the session resolves, send signed-out users (including
+  // someone who just logged out) to sign-in. The loader guard below renders
+  // meanwhile so the page never flashes a signed-out gatekeeper.
+  useEffect(() => {
+    if (isAuthReady && !user) router.replace('/auth');
+  }, [isAuthReady, user, router]);
 
   // Multi-step progression
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -317,9 +324,23 @@ export default function PostPropertyPage() {
     }
   };
 
+  // While the session resolves, or while redirecting a signed-out user (incl.
+  // just after logout) to sign-in, render a loader instead of the post form or
+  // a gatekeeper flash.
+  if (!isAuthReady || !user) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-[#64748B] text-sm font-bold">
+          <Loader2 className="w-5 h-5 animate-spin text-[#18A67D]" />
+          <span>Loading…</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between">
-      
+
       {/* Top Header Bar */}
       <header className="w-full bg-white border-b border-[#E2E8F0] py-4 px-4 sm:px-8 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

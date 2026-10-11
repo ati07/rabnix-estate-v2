@@ -481,13 +481,13 @@ export default function SingleCollectionPage({ params }: { params: Promise<{ id:
                         <span>View Details</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
-                      <a
-                        href={`tel:${prop.postedBy.phone}`}
+                      <Link
+                        href={`/properties/${prop.id}`}
                         className="p-2.5 bg-[#E7F6F1] hover:bg-[#d0f0e6] text-[#0E7C5D] rounded-xl border border-[#18A67D]/20 transition-colors"
-                        title="Call Seller"
+                        title="Contact Seller"
                       >
                         <Phone className="w-4 h-4" />
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 );

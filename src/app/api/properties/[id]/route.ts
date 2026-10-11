@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { serializeProperty } from '@/lib/serialize';
+import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
 import type { Property, VerificationStatus } from '@/lib/types';
 
@@ -11,14 +11,20 @@ export const runtime = 'nodejs';
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
+    const user = await getCurrentUser();
     const p = await prisma.property.findUnique({ where: { id } });
-    if (p) return NextResponse.json({ success: true, property: serializeProperty(p) });
+    if (p) {
+      // Withhold the phone from the public detail payload; only the owner or an
+      // admin receive it inline. Everyone else reveals it via the gated endpoint.
+      const includeContact = !!user && (user.role === 'admin' || p.postedByUserId === user.id);
+      return NextResponse.json({ success: true, property: serializeProperty(p, includeContact) });
+    }
   } catch (err: any) {
     console.warn('Prisma DB query fallback to INITIAL_PROPERTIES for id', id, err?.message);
   }
 
   const fallback = INITIAL_PROPERTIES.find((prop) => prop.id === id);
-  if (fallback) return NextResponse.json({ success: true, property: fallback });
+  if (fallback) return NextResponse.json({ success: true, property: stripPropertyContact(fallback) });
 
   return NextResponse.json({ success: false, error: 'Property not found' }, { status: 404 });
 }
@@ -110,7 +116,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const updated = await prisma.property.update({ where: { id }, data });
-    return NextResponse.json({ success: true, property: serializeProperty(updated) });
+    // Caller is the owner or an admin (guarded above), so include their contact.
+    return NextResponse.json({ success: true, property: serializeProperty(updated, true) });
   } catch (err: any) {
     console.error('PATCH /api/properties/[id] error', err);
     return NextResponse.json({ success: false, error: 'Failed to update listing' }, { status: 500 });

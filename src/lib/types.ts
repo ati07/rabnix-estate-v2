@@ -66,7 +66,10 @@ export interface Property {
   postedBy: {
     name: string;
     type: PostedByType;
-    phone: string;
+    // Contact number is intentionally OMITTED from public list/detail payloads to
+    // prevent bulk scraping. It is only returned by the gated reveal endpoint
+    // (POST /api/properties/[id]/contact) or to the listing's owner/an admin.
+    phone?: string;
     companyName?: string;
     responseTime?: string;
     rating?: number;
@@ -182,7 +185,7 @@ export interface PropertyInquiry {
 export interface SystemActivityLog {
   id: string;
   timestamp: string;
-  action: 'property_created' | 'property_verified' | 'property_rejected' | 'property_promoted' | 'user_registered' | 'user_blocked' | 'user_unblocked' | 'inquiry_received' | 'property_deleted';
+  action: 'property_created' | 'property_verified' | 'property_rejected' | 'property_promoted' | 'user_registered' | 'user_blocked' | 'user_unblocked' | 'inquiry_received' | 'property_deleted' | 'contact_revealed';
   actorName: string;
   actorRole: string;
   details: string;

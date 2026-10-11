@@ -12,9 +12,23 @@ import type { Builder, BuilderProject } from '@/lib/buildersData';
 import type { FeaturedProjectItem, PreferredAgentItem, ProjectFloorPlan, ProjectNearby } from '@/lib/homeSectionsData';
 import type { CuratedCollection } from '@/lib/collectionsData';
 
-/** Convert a DB Property row into the Property shape the UI components expect. */
-export function serializeProperty(p: DbProperty): Property {
+/** Remove the owner/agent phone from a Property's contact block. Used for public
+ * payloads (list/detail) so contact numbers can't be harvested in bulk. */
+export function stripPropertyContact(p: Property): Property {
+  return { ...p, postedBy: { ...p.postedBy, phone: undefined } };
+}
+
+/**
+ * Convert a DB Property row into the Property shape the UI expects.
+ * `includeContact` defaults to FALSE: the phone is withheld from public
+ * responses and only included for the listing's owner, an admin, or the gated
+ * contact-reveal endpoint. See POST /api/properties/[id]/contact.
+ */
+export function serializeProperty(p: DbProperty, includeContact = false): Property {
+  const rawPostedBy = p.postedBy as Property['postedBy'];
+  const postedBy = includeContact ? rawPostedBy : { ...rawPostedBy, phone: undefined };
   return {
+    postedBy,
     id: p.id,
     title: p.title,
     tagline: p.tagline ?? undefined,
@@ -56,7 +70,6 @@ export function serializeProperty(p: DbProperty): Property {
     floorPlanImage: p.floorPlanImage ?? undefined,
     description: p.description,
     amenities: p.amenities,
-    postedBy: p.postedBy as Property['postedBy'],
     nearbyLandmarks: (p.nearbyLandmarks as Property['nearbyLandmarks']) ?? undefined,
     coordinates: (p.coordinates as Property['coordinates']) ?? undefined,
     createdAt: p.createdAt.toISOString().split('T')[0],

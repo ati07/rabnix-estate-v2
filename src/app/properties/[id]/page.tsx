@@ -38,10 +38,10 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
   const propertyId = resolvedParams.id;
   const router = useRouter();
 
-  const { properties, getPropertyById, isShortlisted, toggleShortlist, addInquiry } = useProperties();
+  const { properties, isLoading, getPropertyById, isShortlisted, toggleShortlist, addInquiry } = useProperties();
   const { user } = useAuth();
 
-  const property = getPropertyById(propertyId) || properties[0];
+  const property = getPropertyById(propertyId);
 
   // Active image gallery index
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -54,6 +54,9 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
   const [preferredVisitTime, setPreferredVisitTime] = useState('This Weekend (11:00 AM - 1:00 PM)');
   const [isInquirySubmitted, setIsInquirySubmitted] = useState(false);
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
+  // Seller phone is withheld from the public payload; it's fetched here from the
+  // gated reveal endpoint only after the customer submits an inquiry.
+  const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
 
   const [isCopied, setIsCopied] = useState(false);
 
@@ -80,6 +83,20 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
       keepalive: true,
     }).catch(() => {});
   }, [property?.id, propertyId]);
+
+  // Listings load client-side, so on a fresh refresh `properties` is briefly
+  // empty. Show a loader until the fetch resolves — otherwise the "Not Found"
+  // screen flashes before the data arrives.
+  if (!property && isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-[3px] border-[#18A67D]/25 border-t-[#18A67D] rounded-full animate-spin" />
+          <p className="text-sm font-semibold text-[#64748B]">Loading property details…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!property) {
     return (
@@ -108,21 +125,33 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
     if (!inquiryPhone.trim() || !inquiryName.trim()) return;
 
     setIsSubmittingInquiry(true);
-    setTimeout(() => {
-      addInquiry({
-        propertyId: property.id,
-        propertyTitle: property.title,
-        buyerName: inquiryName,
-        buyerPhone: inquiryPhone,
-        buyerEmail: inquiryEmail,
-        message: inquiryMessage,
-        preferredTime: preferredVisitTime,
-        sellerUserId: property.postedByUserId,
-        buyerUserId: user?.id
+    addInquiry({
+      propertyId: property.id,
+      propertyTitle: property.title,
+      buyerName: inquiryName,
+      buyerPhone: inquiryPhone,
+      buyerEmail: inquiryEmail,
+      message: inquiryMessage,
+      preferredTime: preferredVisitTime,
+      sellerUserId: property.postedByUserId,
+      buyerUserId: user?.id
+    });
+
+    // Reveal the seller's contact only now, via the gated endpoint — the number
+    // is never shipped in the public listing payload.
+    fetch(`/api/properties/${property.id}/contact`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data.contact?.phone) setRevealedPhone(data.contact.phone);
+      })
+      .catch(() => { /* leave revealedPhone null; UI shows a fallback */ })
+      .finally(() => {
+        setIsSubmittingInquiry(false);
+        setIsInquirySubmitted(true);
       });
-      setIsSubmittingInquiry(false);
-      setIsInquirySubmitted(true);
-    }, 400);
   };
 
   const handleShare = () => {
@@ -467,28 +496,36 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
                         {property.postedBy.companyName ? ` · ${property.postedBy.companyName}` : ''}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#0F2A43]">
-                      <Phone className="w-3.5 h-3.5 text-[#18A67D]" />
-                      <a href={`tel:${property.postedBy.phone}`} className="hover:underline">{property.postedBy.phone}</a>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <a
-                        href={`tel:${property.postedBy.phone}`}
-                        className="py-2 px-3 bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>Call</span>
-                      </a>
-                      <a
-                        href={`https://wa.me/${property.postedBy.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi, I am interested in ${property.title}`)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="py-2 px-3 bg-[#25D366] hover:bg-[#1ebd59] text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>WhatsApp</span>
-                      </a>
-                    </div>
+                    {revealedPhone ? (
+                      <>
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[#0F2A43]">
+                          <Phone className="w-3.5 h-3.5 text-[#18A67D]" />
+                          <a href={`tel:${revealedPhone}`} className="hover:underline">{revealedPhone}</a>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <a
+                            href={`tel:${revealedPhone}`}
+                            className="py-2 px-3 bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>Call</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/${revealedPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi, I am interested in ${property.title}`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="py-2 px-3 bg-[#25D366] hover:bg-[#1ebd59] text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-xs text-[#64748B]">
+                        The seller&apos;s phone number will appear here shortly. Our team will also reach out to connect you directly.
+                      </div>
+                    )}
                   </div>
 
                   <button

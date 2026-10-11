@@ -216,7 +216,7 @@ export default function UserDashboardPage() {
   const router = useRouter();
   const { 
     user,
-    isAuthenticated,
+    isAuthReady,
     logout,
     updateProfile,
     users,
@@ -238,6 +238,13 @@ export default function UserDashboardPage() {
     updateProperty,
     updateVerificationStatus
   } = useProperties();
+
+  // Protected page: once the session resolves, send signed-out users (including
+  // someone who just logged out) to sign-in. The loader guard below renders
+  // meanwhile so no dashboard content or gatekeeper flashes.
+  useEffect(() => {
+    if (isAuthReady && !user) router.replace('/auth');
+  }, [isAuthReady, user, router]);
 
   // Sidebar navigation tabs
   const [activeTab, setActiveTab] = useState<
@@ -973,58 +980,16 @@ export default function UserDashboardPage() {
     }
   };
 
-  // If user is not authenticated, show sign-in gatekeeper with 1-click test logins
-  if (!isAuthenticated) {
+  // While the session resolves, or while redirecting a signed-out user (incl.
+  // just after logout) to sign-in, render a loader instead of the dashboard
+  // shell or a gatekeeper flash.
+  if (!isAuthReady || !user) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between">
-        <header className="w-full bg-white border-b border-[#E2E8F0] py-4 px-4 sm:px-8">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 group select-none">
-              <BrandLogo variant="onLight" className="h-8 w-auto" />
-            </Link>
-            <Link href="/" className="text-xs font-bold text-[#64748B] hover:text-[#0F2A43]">
-              &larr; Return to Home
-            </Link>
-          </div>
-        </header>
-
-        <main className="max-w-xl mx-auto w-full px-4 py-12">
-          <div className="bg-white rounded-3xl shadow-xl border border-[#E2E8F0] p-8 sm:p-10 space-y-6 text-center animate-in zoom-in-95">
-            <div className="w-16 h-16 rounded-full bg-[#E7F6F1] text-[#18A67D] flex items-center justify-center mx-auto border-2 border-[#18A67D]/20 shadow-xs">
-              <ShieldCheck className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-2">
-              <span className="bg-[#E7F6F1] text-[#0E7C5D] text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                Seller & Buyer Dashboard
-              </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-[#0F2A43]">
-                Access Your Property Dashboard
-              </h1>
-              <p className="text-xs sm:text-sm text-[#64748B] max-w-md mx-auto leading-relaxed">
-                Manage your posted listings, upload new properties, review performance graphs, and respond to verified buyer inquiries.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <Link
-                href="/auth?mode=signin"
-                className="w-full py-3 px-4 bg-[#0F2A43] hover:bg-[#163b5c] text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
-              >
-                <Key className="w-4 h-4" />
-                <span>Sign In</span>
-              </Link>
-              <Link
-                href="/auth?mode=signup"
-                className="w-full py-3 px-4 bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Register Free</span>
-              </Link>
-            </div>
-
-          </div>
-        </main>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-[#64748B] text-sm font-bold">
+          <Loader2 className="w-5 h-5 animate-spin text-[#18A67D]" />
+          <span>Loading your dashboard…</span>
+        </div>
       </div>
     );
   }
@@ -1077,10 +1042,7 @@ export default function UserDashboardPage() {
             </Link>
 
             <button
-              onClick={() => {
-                logout();
-                router.push('/');
-              }}
+              onClick={() => logout()}
               className="p-2 text-[#64748B] hover:text-rose-600 rounded-lg hover:bg-[#F1F5F9] transition-colors cursor-pointer"
               title="Sign Out"
             >

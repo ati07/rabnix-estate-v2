@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { serializeAgentUser, serializeProperty } from '@/lib/serialize';
+import { serializeAgentUser, serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { getAgentById, getAgentProperties, HOME_PREFERRED_AGENTS } from '@/lib/homeSectionsData';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
 import type { PreferredAgentItem } from '@/lib/homeSectionsData';
@@ -38,7 +38,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         else forSale++;
       }
       agent = serializeAgentUser(row, { forSale, forRent });
-      const properties = ownRows.map(serializeProperty);
+      // Public agent profile — contact numbers are withheld (gated reveal only).
+      const properties = ownRows.map((p) => serializeProperty(p));
       return NextResponse.json({ success: true, agent, properties });
     }
   } catch (err: any) {
@@ -55,9 +56,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       where: { verificationStatus: 'approved' },
       orderBy: { createdAt: 'desc' },
     });
-    allProperties = rows.length > 0 ? rows.map(serializeProperty) : INITIAL_PROPERTIES;
+    allProperties = rows.length > 0
+      ? rows.map((p) => serializeProperty(p))
+      : INITIAL_PROPERTIES.map(stripPropertyContact);
   } catch {
-    allProperties = INITIAL_PROPERTIES;
+    allProperties = INITIAL_PROPERTIES.map(stripPropertyContact);
   }
 
   const properties = getAgentProperties(agent, allProperties);
