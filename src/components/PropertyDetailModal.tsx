@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Property, AiValuationResult } from '@/lib/types';
 import { formatIndianCurrency, formatIndianNumber } from '@/lib/formatters';
+import { OtpVerifyModal } from '@/components/OtpVerifyModal';
 
 interface PropertyDetailModalProps {
   property: Property;
@@ -57,6 +58,11 @@ export function PropertyDetailModal({
   // Seller phone is withheld from the public payload; fetched from the gated
   // reveal endpoint only after a lead is submitted.
   const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
+  // The customer verifies their own mobile (OTP popup) before any reveal. Once
+  // verified this session we skip the popup for further reveals.
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [pendingReveal, setPendingReveal] = useState<'lead' | 'whatsapp' | null>(null);
 
   // AI Property Analysis state
   const [aiLoading, setAiLoading] = useState(false);
@@ -82,12 +88,30 @@ export function PropertyDetailModal({
       .catch(() => { /* leave revealedPhone null */ });
   };
 
+  const runReveal = (action: 'lead' | 'whatsapp') => {
+    if (action === 'lead') {
+      setLeadSubmitted(true);
+    } else {
+      setIsWhatsAppInitiated(true);
+    }
+    // Reveal the seller contact via the gated endpoint (never shipped inline).
+    revealContact();
+  };
+
+  // Gate any reveal on mobile verification; the OTP popup resumes the action.
+  const requestReveal = (action: 'lead' | 'whatsapp') => {
+    if (isPhoneVerified) {
+      runReveal(action);
+      return;
+    }
+    setPendingReveal(action);
+    setShowOtpModal(true);
+  };
+
   const handleLeadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyerName || !buyerPhone) return;
-    setLeadSubmitted(true);
-    // Reveal the seller contact via the gated endpoint (never shipped inline).
-    revealContact();
+    requestReveal('lead');
   };
 
   const handleGenerateAiInsights = async () => {
@@ -125,6 +149,20 @@ export function PropertyDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-fade-in">
+
+      {/* Mobile verification before revealing the seller's contact */}
+      <OtpVerifyModal
+        isOpen={showOtpModal}
+        phone={buyerPhone}
+        onClose={() => { setShowOtpModal(false); setPendingReveal(null); }}
+        onVerified={() => {
+          setIsPhoneVerified(true);
+          setShowOtpModal(false);
+          if (pendingReveal) runReveal(pendingReveal);
+          setPendingReveal(null);
+        }}
+      />
+
       <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-neutral-200">
         
         {/* Modal Top Header Bar */}
@@ -717,8 +755,11 @@ export function PropertyDetailModal({
                   <button
                     id="direct-whatsapp-btn"
                     onClick={() => {
-                      setIsWhatsAppInitiated(true);
-                      if (!revealedPhone) revealContact();
+                      if (revealedPhone) {
+                        setIsWhatsAppInitiated(true);
+                      } else {
+                        requestReveal('whatsapp');
+                      }
                     }}
                     className="w-full bg-[#0E7C5D] hover:bg-[#095741] text-white font-bold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >

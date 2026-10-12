@@ -58,6 +58,45 @@ export async function clearSessionCookie() {
   store.delete(COOKIE_NAME);
 }
 
+// --- Contact-reveal phone verification ---------------------------------------
+// A short-lived proof that the current visitor verified control of a mobile
+// number via OTP. The gated contact-reveal endpoint requires this before it
+// hands a seller's number to a non-owner, so contacts can't be harvested
+// without a traceable, verified phone. One verification unlocks reveals for the
+// cookie's lifetime (visitors shouldn't be re-prompted for every listing).
+const CONTACT_COOKIE = 'baybayt_contact_verify';
+const CONTACT_TTL_SECONDS = 60 * 30; // 30 minutes
+
+export async function setContactVerifyCookie(phone: string) {
+  const token = await new SignJWT({ phone, purpose: 'contact' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(`${CONTACT_TTL_SECONDS}s`)
+    .sign(secret);
+  const store = await cookies();
+  store.set(CONTACT_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: CONTACT_TTL_SECONDS,
+  });
+}
+
+/** Returns the verified phone from the contact-verify cookie, or null. */
+export async function getContactVerifiedPhone(): Promise<string | null> {
+  const store = await cookies();
+  const token = store.get(CONTACT_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    if (payload.purpose !== 'contact') return null;
+    return typeof payload.phone === 'string' ? payload.phone : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Returns the currently authenticated user (public profile) or null. */
 export async function getCurrentUser(): Promise<UserProfile | null> {
   const store = await cookies();

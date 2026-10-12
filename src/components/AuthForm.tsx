@@ -32,7 +32,7 @@ interface AuthFormProps {
 }
 
 export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }: AuthFormProps) {
-  const { loginWithPassword, loginWithOtp, signup, isLoading } = useAuth();
+  const { loginWithPassword, sendOtp, loginWithOtp, signup, isLoading } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [signInMethod, setSignInMethod] = useState<'password' | 'otp'>('password');
@@ -75,15 +75,28 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
     return () => clearInterval(interval);
   }, [otpSent, otpTimer]);
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (!signInPhone || signInPhone.length < 10) {
       setErrorMessage('Please enter a valid 10-digit mobile number');
       return;
     }
     setErrorMessage(null);
+    setSuccessMessage(null);
+    const res = await sendOtp(signInPhone);
+    if (!res.success) {
+      setErrorMessage(res.error || 'Could not send the verification code. Please try again.');
+      return;
+    }
     setOtpSent(true);
     setOtpTimer(30);
-    setSuccessMessage('OTP sent successfully to +91 ' + signInPhone);
+    // In dev (no SMS provider), the server returns the code so the flow is
+    // testable without a phone; prefill it for convenience.
+    if (res.devCode) {
+      setOtpCode(res.devCode);
+      setSuccessMessage(`OTP sent to +91 ${signInPhone}. Dev code: ${res.devCode}`);
+    } else {
+      setSuccessMessage('OTP sent successfully to +91 ' + signInPhone);
+    }
   };
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
@@ -103,7 +116,7 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
       }
     } else {
       if (!otpSent) {
-        handleSendOtp();
+        await handleSendOtp();
         return;
       }
       const res = await loginWithOtp(signInPhone, otpCode);
@@ -359,7 +372,7 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
                   {otpSent && (
                     <div className="space-y-1.5 p-3.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl animate-in fade-in space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-[#0F2A43]">Enter 4-Digit OTP</span>
+                        <span className="font-bold text-[#0F2A43]">Enter 6-Digit OTP</span>
                         <span className="text-[#64748B]">Code sent to +91 {signInPhone}</span>
                       </div>
                       <div className="relative">

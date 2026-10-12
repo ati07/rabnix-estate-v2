@@ -20,6 +20,7 @@ interface AuthContextType {
   users: UserProfile[];
   activityLogs: SystemActivityLog[];
   loginWithPassword: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  sendOtp: (phone: string) => Promise<{ success: boolean; error?: string; devCode?: string }>;
   loginWithOtp: (phone: string, otp: string) => Promise<{ success: boolean; error?: string }>;
   signup: (userData: {
     name: string;
@@ -144,9 +145,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: data?.error || 'Login failed.' };
   };
 
-  const loginWithOtp = async (_phone: string, _otp: string) => {
-    // Phone OTP is not wired to an SMS provider yet — planned for a later pass.
-    return { success: false, error: 'Phone OTP sign-in is coming soon. Please use email & password for now.' };
+  const sendOtp = async (phone: string) => {
+    const { ok, data } = await api('/api/auth/otp/send', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+    if (ok && data?.success) return { success: true, devCode: data.devCode };
+    return { success: false, error: data?.error || 'Could not send the verification code.' };
+  };
+
+  const loginWithOtp = async (phone: string, otp: string) => {
+    setIsLoading(true);
+    const { ok, data } = await api('/api/auth/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone, otp }),
+    });
+    setIsLoading(false);
+    if (ok && data?.success) { setUser(data.user); return { success: true }; }
+    return { success: false, error: data?.error || 'Invalid code. Please try again.' };
   };
 
   const signup: AuthContextType['signup'] = async (userData) => {
@@ -161,8 +177,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    setUser(null);
-    api('/api/auth/logout', { method: 'POST' });
+    // Clear the server session, then hard-navigate home. `keepalive` lets the
+    // logout request finish (and apply its Set-Cookie clear) even though we
+    // immediately leave the page. A full navigation — rather than router.push —
+    // is deliberate: it lands reliably on home and sidesteps the protected-page
+    // guards (dashboard/post-*) that bounce a now-null user to /auth, so an
+    // explicit sign-out goes home while passive gatekeeping still routes to /auth.
+    void api('/api/auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
+    if (typeof window !== 'undefined') {
+      window.location.assign('/');
+    } else {
+      setUser(null);
+    }
   };
 
   const updateProfile = (patch: Partial<UserProfile>) => {
@@ -230,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         users,
         activityLogs,
         loginWithPassword,
+        sendOtp,
         loginWithOtp,
         signup,
         logout,

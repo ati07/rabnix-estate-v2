@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
+import { OtpVerifyModal } from '@/components/OtpVerifyModal';
 
 export default function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -57,6 +58,10 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
   // Seller phone is withheld from the public payload; it's fetched here from the
   // gated reveal endpoint only after the customer submits an inquiry.
   const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
+  // Before the seller's contact is revealed, the customer must verify their own
+  // mobile via OTP. Once verified (cookie set for ~30 min) we skip the popup.
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
   const [isCopied, setIsCopied] = useState(false);
 
@@ -124,6 +129,20 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
     e.preventDefault();
     if (!inquiryPhone.trim() || !inquiryName.trim()) return;
 
+    // Customer must verify their own number first (unless already verified this
+    // session). The OTP popup drives the verification; completeInquiry runs after.
+    if (!isPhoneVerified) {
+      setShowOtpModal(true);
+      return;
+    }
+    completeInquiry();
+  };
+
+  // Records the lead and reveals the seller's contact via the gated endpoint —
+  // the number is never shipped in the public listing payload. Runs only once
+  // the customer's mobile is verified.
+  const completeInquiry = () => {
+    if (!property) return;
     setIsSubmittingInquiry(true);
     addInquiry({
       propertyId: property.id,
@@ -137,8 +156,6 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
       buyerUserId: user?.id
     });
 
-    // Reveal the seller's contact only now, via the gated endpoint — the number
-    // is never shipped in the public listing payload.
     fetch(`/api/properties/${property.id}/contact`, {
       method: 'POST',
       credentials: 'same-origin',
@@ -169,7 +186,19 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between">
-      
+
+      {/* Mobile verification before revealing the seller's contact */}
+      <OtpVerifyModal
+        isOpen={showOtpModal}
+        phone={inquiryPhone}
+        onClose={() => setShowOtpModal(false)}
+        onVerified={() => {
+          setIsPhoneVerified(true);
+          setShowOtpModal(false);
+          completeInquiry();
+        }}
+      />
+
       {/* Top Header */}
       <header className="w-full bg-white border-b border-[#E2E8F0] py-3.5 px-4 sm:px-8 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
