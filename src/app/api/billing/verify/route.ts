@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { getPlan, verifyRazorpaySignature, devBypassEnabled } from '@/lib/billing';
+import { getPack, verifyRazorpaySignature, devBypassEnabled } from '@/lib/billing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,9 +36,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, alreadyActive: true });
     }
 
-    const plan = getPlan(subscription.planId);
-    if (!plan) {
-      return NextResponse.json({ success: false, error: 'Unknown plan.' }, { status: 400 });
+    const pack = getPack(subscription.planId);
+    if (!pack) {
+      return NextResponse.json({ success: false, error: 'Unknown pack.' }, { status: 400 });
     }
 
     const bypass = devBypassEnabled();
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + plan.validityDays * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(now.getTime() + pack.durationDays * 24 * 60 * 60 * 1000);
 
     const activated = await prisma.subscription.update({
       where: { id: subscription.id },
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         action: 'plan_purchased',
         actorName: user.name,
         actorRole: user.role.toUpperCase(),
-        details: `Purchased ${plan.name} plan (${plan.listings} listings) for ₹${plan.priceRupees}.`,
+        details: `Purchased ${pack.name} (${pack.listings} listings${activated.city ? ` in ${activated.city}` : ''}) for ₹${(activated.amount / 100).toLocaleString('en-IN')}.`,
         targetId: activated.id,
         severity: 'success',
       },

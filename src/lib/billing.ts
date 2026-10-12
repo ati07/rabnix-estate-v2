@@ -4,60 +4,139 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
-// Plans & free-tier
+// Listing packs & city-based pricing
 // ---------------------------------------------------------------------------
+//
+// Pricing comes from the "Price Listing" sheet: a listing is sold in PACKS
+// (a fixed quantity + validity), and the price of a pack depends on the CITY
+// it is bought for. Quota is city-scoped — a pack bought for Mumbai only lets
+// the seller post Mumbai listings (the one free listing is global).
 
-// Free listings every new account gets before a paid plan is required.
+// Free listings every new account gets before a paid pack is required.
 export const FREE_LISTINGS = 1;
 
-export type PlanId = 'plan_100' | 'plan_365';
+export type PackId =
+  | 'silver_100'
+  | 'silver_200'
+  | 'silver_250'
+  | 'silver_350'
+  | 'silver_400'
+  | 'silver_600'
+  | 'silver_800'
+  | 'silver_1000';
 
-export interface Plan {
-  id: PlanId;
+// Price columns from the sheet. NCR sub-cities (Noida, Gurgaon, Ghaziabad, …)
+// all share one price, so they collapse into `delhiNcr`. `cat2`/`cat3` are the
+// catch-all tiers for cities not named individually in the sheet.
+export type PriceColumn =
+  | 'mumbai'
+  | 'bangalore'
+  | 'delhiNcr'
+  | 'hyderabad'
+  | 'pune'
+  | 'chennai'
+  | 'naviMumbai'
+  | 'thane'
+  | 'kolkata'
+  | 'ahmedabad'
+  | 'cat2'
+  | 'cat3';
+
+export interface ListingPack {
+  id: PackId;
   name: string;
+  /** Number of listings the pack grants. */
   listings: number;
-  /** Price in rupees (display). */
-  priceRupees: number;
-  /** Price in paise (Razorpay charge amount). */
-  amount: number;
-  /** Plan validity in days from activation. */
-  validityDays: number;
+  /** Validity in days from activation. */
+  durationDays: number;
   tagline: string;
 }
 
-export const PLANS: Record<PlanId, Plan> = {
-  plan_100: {
-    id: 'plan_100',
-    name: 'Starter',
-    listings: 100,
-    priceRupees: 500,
-    amount: 500 * 100,
-    validityDays: 365,
-    tagline: 'Great for individual owners & small agents',
-  },
-  plan_365: {
-    id: 'plan_365',
-    name: 'Professional',
-    listings: 365,
-    priceRupees: 1500,
-    amount: 1500 * 100,
-    validityDays: 365,
-    tagline: 'Best value for busy agents & builders',
-  },
+export const LISTING_PACKS: ListingPack[] = [
+  { id: 'silver_100', name: '100 Silver Listings', listings: 100, durationDays: 90, tagline: 'Entry pack for individual owners' },
+  { id: 'silver_200', name: '200 Silver Listings', listings: 200, durationDays: 90, tagline: 'For active owners & small agents' },
+  { id: 'silver_250', name: '250 Silver Listings', listings: 250, durationDays: 180, tagline: 'Six months of steady posting' },
+  { id: 'silver_350', name: '350 Silver Listings', listings: 350, durationDays: 180, tagline: 'Popular with growing agencies' },
+  { id: 'silver_400', name: '400 Silver Listings', listings: 400, durationDays: 365, tagline: 'A full year of listings' },
+  { id: 'silver_600', name: '600 Silver Listings', listings: 600, durationDays: 365, tagline: 'Best value for busy agents' },
+  { id: 'silver_800', name: '800 Silver Listings', listings: 800, durationDays: 365, tagline: 'High-volume agencies & builders' },
+  { id: 'silver_1000', name: '1000 Silver Listings', listings: 1000, durationDays: 365, tagline: 'Maximum reach for large teams' },
+];
+
+const PACKS_BY_ID: Record<PackId, ListingPack> = Object.fromEntries(
+  LISTING_PACKS.map((p) => [p.id, p]),
+) as Record<PackId, ListingPack>;
+
+export function getPack(packId: string): ListingPack | null {
+  return PACKS_BY_ID[packId as PackId] ?? null;
+}
+
+// Prices in rupees, taken verbatim from the sheet (incl. the rows where
+// Hyderabad / Navi Mumbai diverge from their usual band — nothing is tiered
+// away, the full matrix is stored). Navi Mumbai / Thane have their own columns
+// but are not yet app cities, so they stay dormant until added.
+export const CITY_PRICE_MATRIX: Record<PackId, Record<PriceColumn, number>> = {
+  silver_100:  { mumbai: 10000, bangalore: 10000, delhiNcr: 8000,  hyderabad: 10000, pune: 8000,  chennai: 8000,  naviMumbai: 7500,  thane: 7500,  kolkata: 5000,  ahmedabad: 5000,  cat2: 4000,  cat3: 2000 },
+  silver_200:  { mumbai: 16000, bangalore: 16000, delhiNcr: 12000, hyderabad: 16000, pune: 12000, chennai: 12000, naviMumbai: 10500, thane: 10500, kolkata: 8000,  ahmedabad: 8000,  cat2: 6500,  cat3: 3200 },
+  silver_250:  { mumbai: 20000, bangalore: 20000, delhiNcr: 14000, hyderabad: 20000, pune: 14000, chennai: 14000, naviMumbai: 14000, thane: 14000, kolkata: 10000, ahmedabad: 10000, cat2: 8000,  cat3: 4000 },
+  silver_350:  { mumbai: 28500, bangalore: 28500, delhiNcr: 20000, hyderabad: 20000, pune: 20000, chennai: 20000, naviMumbai: 20000, thane: 20000, kolkata: 15000, ahmedabad: 15000, cat2: 10500, cat3: 6000 },
+  silver_400:  { mumbai: 35000, bangalore: 35000, delhiNcr: 25000, hyderabad: 35000, pune: 25000, chennai: 25000, naviMumbai: 25000, thane: 25000, kolkata: 18000, ahmedabad: 18000, cat2: 13500, cat3: 7000 },
+  silver_600:  { mumbai: 45000, bangalore: 45000, delhiNcr: 33000, hyderabad: 45000, pune: 33000, chennai: 33000, naviMumbai: 30000, thane: 30000, kolkata: 25000, ahmedabad: 25000, cat2: 18000, cat3: 10500 },
+  silver_800:  { mumbai: 65000, bangalore: 65000, delhiNcr: 60000, hyderabad: 65000, pune: 60000, chennai: 60000, naviMumbai: 42500, thane: 42500, kolkata: 34000, ahmedabad: 34000, cat2: 25000, cat3: 12500 },
+  silver_1000: { mumbai: 75000, bangalore: 75000, delhiNcr: 70000, hyderabad: 70000, pune: 70000, chennai: 70000, naviMumbai: 50000, thane: 50000, kolkata: 40000, ahmedabad: 40000, cat2: 34000, cat3: 15000 },
 };
 
-export function getPlan(planId: string): Plan | null {
-  return (PLANS as Record<string, Plan>)[planId] ?? null;
+// Maps each app city (CITIES_DATA names) to its price column. Any city not
+// listed here is billed at `cat3` (see columnForCity) — current policy.
+export const CITY_TO_COLUMN: Record<string, PriceColumn> = {
+  'Mumbai': 'mumbai',
+  'Bangalore': 'bangalore',
+  'Delhi / NCR': 'delhiNcr',
+  'Hyderabad': 'hyderabad',
+  'Pune': 'pune',
+  'Chennai': 'chennai',
+  'Kolkata': 'kolkata',
+  'Ahmedabad': 'ahmedabad',
+  'Lucknow': 'cat3',
+};
+
+/** The app cities a pack can be purchased for (price-matrix aware). */
+export const SELLABLE_CITIES: string[] = Object.keys(CITY_TO_COLUMN);
+
+export function columnForCity(city: string): PriceColumn {
+  return CITY_TO_COLUMN[city] ?? 'cat3';
+}
+
+export interface ResolvedPrice {
+  packId: PackId;
+  city: string;
+  column: PriceColumn;
+  /** Price in rupees (display). */
+  rupees: number;
+  /** Price in paise (Razorpay charge amount). */
+  amount: number;
+}
+
+/** Resolves the price of a pack for a given city, or null if either is unknown. */
+export function resolvePrice(packId: string, city: string): ResolvedPrice | null {
+  const pack = getPack(packId);
+  if (!pack || !city) return null;
+  const column = columnForCity(city);
+  const rupees = CITY_PRICE_MATRIX[pack.id][column];
+  if (rupees == null) return null;
+  return { packId: pack.id, city, column, rupees, amount: rupees * 100 };
 }
 
 // ---------------------------------------------------------------------------
-// Entitlement
+// Entitlement (city-scoped)
 // ---------------------------------------------------------------------------
 
 export interface ActivePack {
   id: string;
-  planId: string;
-  planName: string;
+  packId: string;
+  packName: string;
+  /** City the pack was bought for; its quota only applies to this city. */
+  city: string | null;
   listingsQuota: number;
   listingsUsed: number;
   remaining: number;
@@ -71,17 +150,19 @@ export interface Entitlement {
   freeLimit: number;
   freeUsed: number;
   freeRemaining: number;
-  /** Total listings remaining across free tier + active packs. */
+  /** Total listings remaining across the free tier + all active packs. Quota is
+   *  city-scoped, so this is informational — use remainingForCity to gate a post. */
   totalRemaining: number;
-  /** True if the user may create at least one more listing. */
+  /** True if the user may create at least one more listing in some city. */
   canCreate: boolean;
   activePacks: ActivePack[];
 }
 
 /**
  * Computes the current listing entitlement for a user. Admins are unlimited and
- * never consume quota. Everyone else gets FREE_LISTINGS free, then must hold an
- * active (non-expired) pack with remaining quota. Active packs stack.
+ * never consume quota. Everyone else gets FREE_LISTINGS free (usable in any
+ * city), then must hold an active (non-expired) pack bought for the city they
+ * post in. Active packs stack per city.
  */
 export async function getEntitlement(userId: string, role: string): Promise<Entitlement> {
   const isAdmin = role === 'admin';
@@ -112,8 +193,9 @@ export async function getEntitlement(userId: string, role: string): Promise<Enti
 
   const activePacks: ActivePack[] = packs.map((p) => ({
     id: p.id,
-    planId: p.planId,
-    planName: getPlan(p.planId)?.name ?? p.planId,
+    packId: p.planId,
+    packName: getPack(p.planId)?.name ?? p.planId,
+    city: p.city ?? null,
     listingsQuota: p.listingsQuota,
     listingsUsed: p.listingsUsed,
     remaining: Math.max(0, p.listingsQuota - p.listingsUsed),
@@ -136,16 +218,32 @@ export async function getEntitlement(userId: string, role: string): Promise<Enti
   };
 }
 
+/** Listings the user can still post in a given city: the global free tier plus
+ *  any active pack bought for that exact city. */
+export function remainingForCity(ent: Entitlement, city: string): number {
+  if (ent.unlimited) return Infinity;
+  const packRemaining = ent.activePacks
+    .filter((p) => p.city === city)
+    .reduce((sum, p) => sum + p.remaining, 0);
+  return ent.freeRemaining + packRemaining;
+}
+
+/** True if the user may post at least one more listing in the given city. */
+export function canCreateInCity(ent: Entitlement, city: string): boolean {
+  return ent.unlimited || remainingForCity(ent, city) > 0;
+}
+
 /**
- * Consumes exactly one listing credit inside an existing transaction. Draws from
- * the free tier first, then from the oldest active pack with remaining quota.
- * Returns the source used, or null if no credit was available (caller should
- * have checked `canCreate` first; this is the atomic guard against races).
- * Admins should never call this — they don't consume quota.
+ * Consumes exactly one listing credit for a city inside an existing transaction.
+ * Draws from the free tier first (global), then from the oldest active pack
+ * bought for that city with remaining quota. Returns the source used, or null if
+ * no credit was available (caller should have checked canCreateInCity first;
+ * this is the atomic guard against races). Admins should never call this.
  */
 export async function consumeListingCredit(
   tx: Prisma.TransactionClient,
   userId: string,
+  city: string,
 ): Promise<{ source: 'free' | 'pack'; packId?: string } | null> {
   const now = new Date();
 
@@ -162,11 +260,12 @@ export async function consumeListingCredit(
     return { source: 'free' };
   }
 
-  // Oldest active pack that still has quota.
+  // Oldest active pack bought for THIS city that still has quota.
   const pack = await tx.subscription.findFirst({
     where: {
       userId,
       status: 'active',
+      city,
       expiresAt: { gt: now },
       listingsUsed: { lt: prisma.subscription.fields.listingsQuota },
     },

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeFeaturedProject } from '@/lib/serialize';
-import { getEntitlement, consumeListingCredit } from '@/lib/billing';
+import { getEntitlement, canCreateInCity, consumeListingCredit } from '@/lib/billing';
 import { HOME_FEATURED_PROJECTS, HOME_TOP_PROJECTS, getAllProjects, type FeaturedProjectItem } from '@/lib/homeSectionsData';
 
 export const runtime = 'nodejs';
@@ -107,14 +107,15 @@ export async function POST(req: NextRequest) {
     const locality = b.locality;
     const minPrice = b.minPrice;
 
-    // Listing quota: admins unlimited; builders draw from free tier + active packs.
+    // Listing quota: admins unlimited; builders draw from the global free tier +
+    // active packs bought for THIS city.
     const entitlement = await getEntitlement(user.id, user.role);
-    if (!entitlement.unlimited && !entitlement.canCreate) {
+    if (!entitlement.unlimited && !canCreateInCity(entitlement, city)) {
       return NextResponse.json(
         {
           success: false,
           error: 'listing-quota-exceeded',
-          message: 'You have used all your listings. Buy a plan from your dashboard to submit more projects.',
+          message: `You have no listings left for ${city}. Buy a ${city} pack from your dashboard to submit projects here.`,
         },
         { status: 402 },
       );
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
 
     const created = await prisma.$transaction(async (tx) => {
       if (!entitlement.unlimited) {
-        const consumed = await consumeListingCredit(tx, user.id);
+        const consumed = await consumeListingCredit(tx, user.id, city);
         if (!consumed) throw new Error('listing-quota-exceeded');
       }
 

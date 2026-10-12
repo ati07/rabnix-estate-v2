@@ -139,19 +139,24 @@ const RESIDENTIAL_CATEGORIES: PropertyCategory[] = [
 ];
 const MIN_COMMERCIAL_SIZE_SQFT = 80;
 
-// --- Billing (listing plans) ---
-interface BillingPlan {
+// --- Billing (listing packs, city-based pricing) ---
+interface BillingPack {
   id: string;
   name: string;
   listings: number;
-  priceRupees: number;
-  validityDays: number;
+  durationDays: number;
   tagline: string;
+}
+interface BillingPricing {
+  cities: string[];
+  cityToColumn: Record<string, string>;
+  priceMatrix: Record<string, Record<string, number>>;
 }
 interface BillingActivePack {
   id: string;
-  planId: string;
-  planName: string;
+  packId: string;
+  packName: string;
+  city: string | null;
   listingsQuota: number;
   listingsUsed: number;
   remaining: number;
@@ -170,7 +175,8 @@ interface BillingEntitlement {
 }
 interface BillingData {
   authenticated: boolean;
-  plans: BillingPlan[];
+  packs: BillingPack[];
+  pricing: BillingPricing;
   entitlement?: BillingEntitlement;
   payment?: { devBypass: boolean; configured: boolean };
 }
@@ -405,9 +411,10 @@ export default function UserDashboardPage() {
   // Current user role
   const currentRole: UserRole = user?.role || 'owner';
 
-  // --- Billing / listing plans ---
+  // --- Billing / listing packs (city-based pricing) ---
   const [billing, setBilling] = useState<BillingData | null>(null);
-  const [buyingPlanId, setBuyingPlanId] = useState<string | null>(null);
+  const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
+  const [billingCity, setBillingCity] = useState<string>('');
   const [billingNotice, setBillingNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const refreshBilling = React.useCallback(async () => {
@@ -425,15 +432,28 @@ export default function UserDashboardPage() {
     refreshBilling();
   }, [refreshBilling]);
 
-  const handleBuyPlan = async (planId: string) => {
-    if (!user?.id || buyingPlanId) return;
-    setBuyingPlanId(planId);
+  // Default the billing city to the user's own city (if it's sellable), else the
+  // first sellable city, once pricing loads.
+  useEffect(() => {
+    const cities = billing?.pricing?.cities;
+    if (!cities || cities.length === 0 || billingCity) return;
+    const preferred = user?.city && cities.includes(user.city) ? user.city : cities[0];
+    setBillingCity(preferred);
+  }, [billing?.pricing?.cities, user?.city, billingCity]);
+
+  const handleBuyPack = async (packId: string) => {
+    if (!user?.id || buyingPackId) return;
+    if (!billingCity) {
+      setBillingNotice({ type: 'error', text: 'Please choose a city first.' });
+      return;
+    }
+    setBuyingPackId(packId);
     setBillingNotice(null);
     try {
       const orderRes = await fetch('/api/billing/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({ packId, city: billingCity }),
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok || !orderData?.success) {
@@ -451,7 +471,7 @@ export default function UserDashboardPage() {
         if (verifyRes.ok && verifyData?.success) {
           setBillingNotice({
             type: 'success',
-            text: `${orderData.plan?.name || 'Your'} plan is active — ${orderData.plan?.listings ?? ''} listings added.`,
+            text: `${orderData.plan?.name || 'Your pack'} is active for ${orderData.plan?.city || billingCity} — ${orderData.plan?.listings ?? ''} listings added.`,
           });
           await refreshBilling();
         } else {
@@ -496,12 +516,36 @@ export default function UserDashboardPage() {
     } catch {
       setBillingNotice({ type: 'error', text: 'Something went wrong. Please try again.' });
     } finally {
-      setBuyingPlanId(null);
+      setBuyingPackId(null);
     }
   };
 
   const entitlement = billing?.entitlement;
   const listingsRemaining = entitlement?.unlimited ? Infinity : entitlement?.totalRemaining ?? 0;
+
+  // Price of a pack for a given city, resolved from the city matrix (cat3 fallback).
+  const priceForPack = React.useCallback(
+    (packId: string, city: string): number | null => {
+      const pricing = billing?.pricing;
+      if (!pricing || !city) return null;
+      const column = pricing.cityToColumn[city] ?? 'cat3';
+      return pricing.priceMatrix[packId]?.[column] ?? null;
+    },
+    [billing?.pricing],
+  );
+
+  // Listings the user can still post in a city: global free tier + packs for that city.
+  const remainingInCity = React.useCallback(
+    (city: string): number => {
+      if (!entitlement || entitlement.unlimited) return Infinity;
+      const free = entitlement.freeRemaining ?? 0;
+      const packs = entitlement.activePacks
+        .filter((p) => p.city === city)
+        .reduce((sum, p) => sum + p.remaining, 0);
+      return free + packs;
+    },
+    [entitlement],
+  );
 
   // Shortlisted properties
   const shortlistedProperties = useMemo(() => {
@@ -845,11 +889,12 @@ export default function UserDashboardPage() {
     e.preventDefault();
     setUploadError(null);
 
-    // Listing quota: block before posting if the user is out of listings.
-    // Admins (unlimited) and not-yet-loaded billing skip this client guard;
-    // the server enforces the limit either way.
-    if (entitlement && !entitlement.unlimited && (entitlement.totalRemaining ?? 0) <= 0) {
-      setUploadError('You have used all your listings. Open Plans & Billing to buy a pack and post more.');
+    // Listing quota: block before posting if the user is out of listings FOR THIS
+    // CITY (quota is city-scoped). Admins (unlimited) and not-yet-loaded billing
+    // skip this client guard; the server enforces the limit either way.
+    if (entitlement && !entitlement.unlimited && remainingInCity(uploadCity) <= 0) {
+      setUploadError(`You have no listings left for ${uploadCity}. Open Plans & Billing to buy a ${uploadCity} pack.`);
+      setBillingCity(uploadCity);
       setActiveTab('billing');
       return;
     }
@@ -2958,8 +3003,8 @@ export default function UserDashboardPage() {
                       <Zap className="w-5 h-5 text-[#18A67D]" /> Listing Plans &amp; Balance
                     </h2>
                     <p className="text-xs text-[#64748B] mt-1">
-                      Every new account gets {entitlement?.freeLimit ?? 1} free listing. Buy a pack to post more —
-                      packs stack and each is valid for 1 year.
+                      Every new account gets {entitlement?.freeLimit ?? 1} free listing. Pack prices and quota are
+                      per city — a pack bought for a city lets you post listings in that city only.
                     </p>
                   </div>
                   {entitlement?.unlimited ? (
@@ -2969,10 +3014,13 @@ export default function UserDashboardPage() {
                     </div>
                   ) : (
                     <div className={`px-4 py-3 rounded-xl text-center ${
-                      (entitlement?.totalRemaining ?? 0) > 0 ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'bg-rose-50 text-rose-600'
+                      remainingInCity(billingCity) > 0 ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'bg-rose-50 text-rose-600'
                     }`}>
-                      <div className="text-[10px] uppercase tracking-wider font-bold opacity-70">Listings left</div>
-                      <div className="text-2xl font-black">{entitlement?.totalRemaining ?? 0}</div>
+                      <div className="text-[10px] uppercase tracking-wider font-bold opacity-70">
+                        Left in {billingCity || 'city'}
+                      </div>
+                      <div className="text-2xl font-black">{billingCity ? remainingInCity(billingCity) : 0}</div>
+                      <div className="text-[10px] font-semibold opacity-70">{entitlement?.totalRemaining ?? 0} total</div>
                     </div>
                   )}
                 </div>
@@ -3011,7 +3059,14 @@ export default function UserDashboardPage() {
                     {entitlement!.activePacks.map((pack) => (
                       <div key={pack.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[#E2E8F0]">
                         <div>
-                          <div className="text-sm font-extrabold text-[#0F2A43]">{pack.planName} pack</div>
+                          <div className="text-sm font-extrabold text-[#0F2A43]">
+                            {pack.packName}
+                            {pack.city && (
+                              <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-[#18A67D] bg-[#E7F6F1] px-2 py-0.5 rounded-full">
+                                {pack.city}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[11px] text-[#64748B] flex items-center gap-1 mt-0.5">
                             <Calendar className="w-3 h-3" />
                             {pack.expiresAt
@@ -3035,64 +3090,90 @@ export default function UserDashboardPage() {
                 )}
               </div>
 
-              {/* Plan cards */}
+              {/* Pack catalog (city-priced) */}
               {!entitlement?.unlimited && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(billing?.plans ?? []).map((plan) => {
-                    const isBest = plan.id === 'plan_365';
-                    return (
-                      <div
-                        key={plan.id}
-                        className={`relative bg-white rounded-2xl p-6 border shadow-xs flex flex-col ${
-                          isBest ? 'border-[#18A67D] ring-1 ring-[#18A67D]/30' : 'border-[#E2E8F0]'
-                        }`}
-                      >
-                        {isBest && (
-                          <span className="absolute -top-2.5 right-4 bg-[#18A67D] text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
-                            Best value
-                          </span>
-                        )}
-                        <div className="text-sm font-black text-[#0F2A43] uppercase tracking-wide">{plan.name}</div>
-                        <div className="mt-2 flex items-end gap-1">
-                          <span className="text-3xl font-black text-[#0F2A43] flex items-center">
-                            <IndianRupee className="w-6 h-6" />{plan.priceRupees.toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#64748B] mt-1">{plan.tagline}</p>
+                <div className="space-y-4">
+                  {/* City selector — pricing & quota are per city */}
+                  <div className="bg-white rounded-2xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
+                    <label htmlFor="billing-city" className="text-sm font-extrabold text-[#0F2A43] flex items-center gap-2 shrink-0">
+                      <MapPin className="w-4 h-4 text-[#18A67D]" /> Pricing for city
+                    </label>
+                    <select
+                      id="billing-city"
+                      value={billingCity}
+                      onChange={(e) => setBillingCity(e.target.value)}
+                      className="flex-1 sm:max-w-xs px-3 py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-sm font-bold text-[#172033] outline-none focus:bg-white focus:border-[#18A67D] cursor-pointer"
+                    >
+                      {(billing?.pricing?.cities ?? []).map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-[#64748B]">Prices and listing quota apply to this city only.</p>
+                  </div>
 
-                        <ul className="mt-4 space-y-2 flex-1">
-                          <li className="flex items-center gap-2 text-sm text-[#0F2A43]">
-                            <CheckCircle2 className="w-4 h-4 text-[#18A67D]" />
-                            <span className="font-bold">{plan.listings.toLocaleString('en-IN')} listings</span>
-                          </li>
-                          <li className="flex items-center gap-2 text-sm text-[#0F2A43]">
-                            <CheckCircle2 className="w-4 h-4 text-[#18A67D]" />
-                            Valid for 1 year
-                          </li>
-                          <li className="flex items-center gap-2 text-sm text-[#0F2A43]">
-                            <CheckCircle2 className="w-4 h-4 text-[#18A67D]" />
-                            Stacks with your existing balance
-                          </li>
-                        </ul>
-
-                        <button
-                          onClick={() => handleBuyPlan(plan.id)}
-                          disabled={buyingPlanId !== null}
-                          className={`mt-5 w-full py-3 rounded-xl font-black text-sm transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-                            isBest
-                              ? 'bg-[#18A67D] text-white hover:bg-[#0E7C5D]'
-                              : 'bg-[#0F2A43] text-white hover:bg-[#18A67D]'
+                  {/* Pack cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {(billing?.packs ?? []).map((pack) => {
+                      const isBest = pack.id === 'silver_600';
+                      const price = billingCity ? priceForPack(pack.id, billingCity) : null;
+                      const durationLabel =
+                        pack.durationDays % 365 === 0
+                          ? `${pack.durationDays / 365} year${pack.durationDays === 365 ? '' : 's'}`
+                          : `${pack.durationDays} days`;
+                      return (
+                        <div
+                          key={pack.id}
+                          className={`relative bg-white rounded-2xl p-5 border shadow-xs flex flex-col ${
+                            isBest ? 'border-[#18A67D] ring-1 ring-[#18A67D]/30' : 'border-[#E2E8F0]'
                           }`}
                         >
-                          {buyingPlanId === plan.id ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
-                          ) : (
-                            <>Buy {plan.listings} listings</>
+                          {isBest && (
+                            <span className="absolute -top-2.5 right-4 bg-[#18A67D] text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
+                              Best value
+                            </span>
                           )}
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <div className="text-sm font-black text-[#0F2A43] uppercase tracking-wide">{pack.name}</div>
+                          <div className="mt-2 flex items-end gap-1">
+                            <span className="text-3xl font-black text-[#0F2A43] flex items-center">
+                              <IndianRupee className="w-6 h-6" />{price != null ? price.toLocaleString('en-IN') : '—'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#64748B] mt-1">{pack.tagline}</p>
+
+                          <ul className="mt-4 space-y-2 flex-1">
+                            <li className="flex items-center gap-2 text-sm text-[#0F2A43]">
+                              <CheckCircle2 className="w-4 h-4 text-[#18A67D] shrink-0" />
+                              <span className="font-bold">{pack.listings.toLocaleString('en-IN')} listings</span>
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-[#0F2A43]">
+                              <CheckCircle2 className="w-4 h-4 text-[#18A67D] shrink-0" />
+                              Valid for {durationLabel}
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-[#0F2A43]">
+                              <CheckCircle2 className="w-4 h-4 text-[#18A67D] shrink-0" />
+                              {billingCity || 'City'} only · stacks with city balance
+                            </li>
+                          </ul>
+
+                          <button
+                            onClick={() => handleBuyPack(pack.id)}
+                            disabled={buyingPackId !== null || price == null}
+                            className={`mt-5 w-full py-3 rounded-xl font-black text-sm transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                              isBest
+                                ? 'bg-[#18A67D] text-white hover:bg-[#0E7C5D]'
+                                : 'bg-[#0F2A43] text-white hover:bg-[#18A67D]'
+                            }`}
+                          >
+                            {buyingPackId === pack.id ? (
+                              <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
+                            ) : (
+                              <>Buy for {billingCity || 'city'}</>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

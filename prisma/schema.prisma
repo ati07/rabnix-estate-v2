@@ -68,7 +68,11 @@ model Subscription {
   id                String    @id @default(cuid())
   userId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId            String    // plan_100 | plan_365
+  planId            String    // pack id, e.g. silver_100 … silver_1000
+  // City the pack was bought for. Quota is city-scoped: a pack only grants
+  // listings in this city (the one free listing is global). Nullable for legacy
+  // rows created before city-based pricing; new rows always set it.
+  city              String?
   listingsQuota     Int
   listingsUsed      Int       @default(0)
   amount            Int       // amount charged, in paise
@@ -82,6 +86,25 @@ model Subscription {
 
   @@index([userId])
   @@index([status])
+  @@index([city])
+}
+
+// One-time passwords for mobile (phone) OTP sign-in. Codes are stored hashed
+// (never plaintext), expire quickly, and are single-use. Requesting a new code
+// for a phone supersedes that phone's prior unconsumed codes. Rows are cleaned
+// up lazily; stale rows are harmless. This is where SMS/phone verification is
+// anchored — see src/lib/sms.ts for delivery and src/lib/otp.ts for the flow.
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String   // normalized to last-10 digits
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([expiresAt])
 }
 
 model Property {

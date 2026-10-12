@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
-import { getEntitlement, consumeListingCredit } from '@/lib/billing';
+import { getEntitlement, canCreateInCity, consumeListingCredit } from '@/lib/billing';
 import type { Property } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -87,17 +87,17 @@ export async function POST(req: NextRequest) {
     const city = b.city;
     const locality = b.locality;
 
-    // Listing quota: admins are unlimited; everyone else gets FREE_LISTINGS free,
-    // then needs an active plan with remaining quota. (Race-safe consume happens
-    // inside the transaction below; this is the fast, friendly pre-check.)
+    // Listing quota: admins are unlimited; everyone else gets FREE_LISTINGS free
+    // (usable in any city), then needs an active pack bought for THIS city with
+    // remaining quota. (Race-safe consume happens inside the transaction below;
+    // this is the fast, friendly pre-check.)
     const entitlement = await getEntitlement(user.id, user.role);
-    if (!entitlement.unlimited && !entitlement.canCreate) {
+    if (!entitlement.unlimited && !canCreateInCity(entitlement, city)) {
       return NextResponse.json(
         {
           success: false,
           error: 'listing-quota-exceeded',
-          message:
-            'You have used all your listings. Buy a plan from your dashboard to post more properties.',
+          message: `You have no listings left for ${city}. Buy a ${city} pack from your dashboard to post here.`,
         },
         { status: 402 },
       );
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       // Atomically consume one credit unless the user is an admin. If nothing is
       // available (e.g. a race emptied the quota), abort the whole transaction.
       if (!entitlement.unlimited) {
-        const consumed = await consumeListingCredit(tx, user.id);
+        const consumed = await consumeListingCredit(tx, user.id, city);
         if (!consumed) {
           throw new Error('listing-quota-exceeded');
         }

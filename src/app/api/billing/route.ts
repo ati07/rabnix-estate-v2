@@ -1,25 +1,40 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { getEntitlement, PLANS, razorpayConfigured, devBypassEnabled } from '@/lib/billing';
+import {
+  getEntitlement,
+  LISTING_PACKS,
+  CITY_PRICE_MATRIX,
+  CITY_TO_COLUMN,
+  SELLABLE_CITIES,
+  razorpayConfigured,
+  devBypassEnabled,
+} from '@/lib/billing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// GET /api/billing — plans catalog + the current user's listing entitlement.
+// GET /api/billing — pack catalog + city pricing + the user's listing entitlement.
 export async function GET() {
   const user = await getCurrentUser();
 
-  const plans = Object.values(PLANS).map((p) => ({
+  const packs = LISTING_PACKS.map((p) => ({
     id: p.id,
     name: p.name,
     listings: p.listings,
-    priceRupees: p.priceRupees,
-    validityDays: p.validityDays,
+    durationDays: p.durationDays,
     tagline: p.tagline,
   }));
 
+  // Pricing is a function of pack × city; the client resolves a price via
+  // priceMatrix[packId][cityToColumn[city] ?? 'cat3'].
+  const pricing = {
+    cities: SELLABLE_CITIES,
+    cityToColumn: CITY_TO_COLUMN,
+    priceMatrix: CITY_PRICE_MATRIX,
+  };
+
   if (!user) {
-    return NextResponse.json({ success: true, authenticated: false, plans });
+    return NextResponse.json({ success: true, authenticated: false, packs, pricing });
   }
 
   const entitlement = await getEntitlement(user.id, user.role);
@@ -27,7 +42,8 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     authenticated: true,
-    plans,
+    packs,
+    pricing,
     entitlement: {
       ...entitlement,
       // JSON can't carry Infinity — send null for unlimited (admin).
