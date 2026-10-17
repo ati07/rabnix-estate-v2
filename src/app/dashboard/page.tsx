@@ -123,6 +123,7 @@ import {
   SystemActivityLog
 } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
+import LocationPicker, { type LatLng } from '@/components/LocationPicker';
 import { formatIndianCurrency } from '@/lib/formatters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
 
@@ -321,6 +322,8 @@ export default function UserDashboardPage() {
   const [uploadCity, setUploadCity] = useState<string>(user?.city || 'Bangalore');
   const [uploadLocality, setUploadLocality] = useState<string>('');
   const [uploadSubLocality, setUploadSubLocality] = useState<string>('');
+  const [uploadAddress, setUploadAddress] = useState<string>('');
+  const [uploadCoordinates, setUploadCoordinates] = useState<LatLng | undefined>(undefined);
   const [uploadTitle, setUploadTitle] = useState<string>('');
   const [uploadBhk, setUploadBhk] = useState<number>(2);
   const [uploadBathrooms, setUploadBathrooms] = useState<number>(2);
@@ -937,6 +940,8 @@ export default function UserDashboardPage() {
       city: uploadCity,
       locality: uploadLocality,
       subLocality: uploadSubLocality,
+      address: uploadAddress || undefined,
+      coordinates: uploadCoordinates,
       price: uploadPrice,
       carpetAreaSqFt: uploadCarpetArea,
       superBuiltUpAreaSqFt: uploadSuperArea || Math.round(uploadCarpetArea * 1.25),
@@ -1670,6 +1675,8 @@ export default function UserDashboardPage() {
                         setUploadStep(1);
                         setUploadTitle('');
                         setUploadLocality('');
+                        setUploadAddress('');
+                        setUploadCoordinates(undefined);
                       }}
                       className="px-5 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
                     >
@@ -1837,6 +1844,23 @@ export default function UserDashboardPage() {
                           className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
                         />
                       </div>
+                    </div>
+
+                    {/* Pin exact location on the map (OpenStreetMap, no Google) */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-[#172033]">Pin Location on Map (Optional)</label>
+                      <p className="text-[11px] text-[#64748B]">
+                        Search, tap the map, or drag the pin. The full address fills in automatically.
+                      </p>
+                      <LocationPicker
+                        city={uploadCity}
+                        heightClass="h-56"
+                        value={{ address: uploadAddress, coordinates: uploadCoordinates }}
+                        onChange={({ address: a, coordinates: c }) => {
+                          setUploadAddress(a ?? '');
+                          setUploadCoordinates(c);
+                        }}
+                      />
                     </div>
 
                     {/* Listing Title */}

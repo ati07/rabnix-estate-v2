@@ -11,48 +11,48 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  name            String
-  email           String   @unique
-  phone           String
-  passwordHash    String
-  role            String   @default("buyer") // buyer | owner | agent | builder | admin
-  city            String?
-  avatar          String?
-  companyName     String?
-  reraNumber      String?
+  id               String   @id @default(cuid())
+  name             String
+  email            String   @unique
+  phone            String
+  passwordHash     String
+  role             String   @default("buyer") // buyer | owner | agent | builder | admin
+  city             String?
+  avatar           String?
+  companyName      String?
+  reraNumber       String?
   // --- Preferred Agent directory profile (only meaningful for role='agent') ---
   // isPreferredAgent is admin-curated: it decides who appears in the public
   // "BayBayt Preferred Agents" directory. The rest are the agent's marketing
   // profile — most self-editable by the agent, except the editorial ones
   // (agentBadge, agentRating) which stay admin-controlled.
-  isPreferredAgent Boolean @default(false)
-  agencyLogo      String?
-  agentBadge      String?  // editorial, admin-set (e.g. "BayBayt Preferred")
-  agentRating     Float?   // editorial, admin-set
-  operatingSince  Int?
-  experienceYears Int?
-  buyersServed    String?
-  specializations String[] @default([])
-  areasServed     String[] @default([])
-  languages       String[] @default([])
-  agentAbout      String?
-  isPhoneVerified Boolean  @default(false)
-  isEmailVerified Boolean  @default(false)
-  isBlocked       Boolean  @default(false)
-  blockedReason   String?
-  blockedAt       String?
-  lastActive      String?
+  isPreferredAgent Boolean  @default(false)
+  agencyLogo       String?
+  agentBadge       String? // editorial, admin-set (e.g. "BayBayt Preferred")
+  agentRating      Float? // editorial, admin-set
+  operatingSince   Int?
+  experienceYears  Int?
+  buyersServed     String?
+  specializations  String[] @default([])
+  areasServed      String[] @default([])
+  languages        String[] @default([])
+  agentAbout       String?
+  isPhoneVerified  Boolean  @default(false)
+  isEmailVerified  Boolean  @default(false)
+  isBlocked        Boolean  @default(false)
+  blockedReason    String?
+  blockedAt        String?
+  lastActive       String?
   // Free-tier listing allowance consumed. New accounts get FREE_LISTINGS (1)
   // free listings before an active paid plan is required. Admins are exempt.
-  freeListingsUsed Int     @default(0)
-  createdAt       DateTime @default(now())
+  freeListingsUsed Int      @default(0)
+  createdAt        DateTime @default(now())
 
-  properties       Property[]         @relation("PostedProperties")
+  properties        Property[]        @relation("PostedProperties")
   submittedProjects FeaturedProject[] @relation("SubmittedProjects")
-  inquiriesSent    Inquiry[]          @relation("BuyerInquiries")
-  inquiriesRecv    Inquiry[]          @relation("SellerInquiries")
-  subscriptions    Subscription[]
+  inquiriesSent     Inquiry[]         @relation("BuyerInquiries")
+  inquiriesRecv     Inquiry[]         @relation("SellerInquiries")
+  subscriptions     Subscription[]
 
   @@index([role])
   @@index([isPreferredAgent])
@@ -68,14 +68,14 @@ model Subscription {
   id                String    @id @default(cuid())
   userId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId            String    // pack id, e.g. silver_100 … silver_1000
+  planId            String // pack id, e.g. silver_100 … silver_1000
   // City the pack was bought for. Quota is city-scoped: a pack only grants
   // listings in this city (the one free listing is global). Nullable for legacy
   // rows created before city-based pricing; new rows always set it.
   city              String?
   listingsQuota     Int
   listingsUsed      Int       @default(0)
-  amount            Int       // amount charged, in paise
+  amount            Int // amount charged, in paise
   currency          String    @default("INR")
   status            String    @default("created") // created | active | failed
   razorpayOrderId   String?
@@ -96,7 +96,7 @@ model Subscription {
 // anchored — see src/lib/sms.ts for delivery and src/lib/otp.ts for the flow.
 model OtpCode {
   id        String   @id @default(cuid())
-  phone     String   // normalized to last-10 digits
+  phone     String // normalized to last-10 digits
   codeHash  String
   expiresAt DateTime
   attempts  Int      @default(0)
@@ -108,56 +108,57 @@ model OtpCode {
 }
 
 model Property {
-  id                   String   @id @default(cuid())
-  title                String
-  tagline              String?
-  listingType          String   // buy | rent | pg | plot | commercial
+  id                    String   @id @default(cuid())
+  title                 String
+  tagline               String?
+  listingType           String // buy | rent | pg | plot | commercial
   commercialListingType String? // commercial only: rent | sale
-  category             String
-  city                 String
-  locality             String
-  subLocality          String?
-  price                Int
-  priceFormatted       String
-  pricePerSqFt         Int?
-  maintenance          Int?
-  bhk                  Int?
-  bathrooms            Int      @default(1)
-  balconies            Int?
-  carpetAreaSqFt       Int      @default(0)
-  superBuiltUpAreaSqFt Int?
-  furnishing           String   @default("Unfurnished")
-  floor                Int?
-  totalFloors          Int?
-  facing               String?
-  constructionStatus   String   @default("Ready to Move")
-  possessionDate       String?
-  ageOfProperty        String?
-  reraId               String?
-  reraApproved         Boolean  @default(false)
-  isVerified           Boolean  @default(false)
-  verificationStatus   String   @default("pending") // approved | pending | rejected | under_review
-  rejectionReason      String?
-  inquiriesCount       Int      @default(0)
-  viewsCount           Int      @default(0)
-  documentsSubmitted   String[]
-  isFeatured           Boolean  @default(false)
-  isExclusiveOwner     Boolean  @default(false)
-  priceDrop            Boolean  @default(false)
-  images               String[]
-  floorPlanImage       String?
-  description          String
-  amenities            String[]
-  postedBy             Json     // embedded contact { name, type, phone, ... }
-  nearbyLandmarks      Json?
-  coordinates          Json?
-  createdAt            DateTime @default(now())
+  category              String
+  city                  String
+  locality              String
+  subLocality           String?
+  address               String? // full street address (free text; map-assisted)
+  price                 Int
+  priceFormatted        String
+  pricePerSqFt          Int?
+  maintenance           Int?
+  bhk                   Int?
+  bathrooms             Int      @default(1)
+  balconies             Int?
+  carpetAreaSqFt        Int      @default(0)
+  superBuiltUpAreaSqFt  Int?
+  furnishing            String   @default("Unfurnished")
+  floor                 Int?
+  totalFloors           Int?
+  facing                String?
+  constructionStatus    String   @default("Ready to Move")
+  possessionDate        String?
+  ageOfProperty         String?
+  reraId                String?
+  reraApproved          Boolean  @default(false)
+  isVerified            Boolean  @default(false)
+  verificationStatus    String   @default("pending") // approved | pending | rejected | under_review
+  rejectionReason       String?
+  inquiriesCount        Int      @default(0)
+  viewsCount            Int      @default(0)
+  documentsSubmitted    String[]
+  isFeatured            Boolean  @default(false)
+  isExclusiveOwner      Boolean  @default(false)
+  priceDrop             Boolean  @default(false)
+  images                String[]
+  floorPlanImage        String?
+  description           String
+  amenities             String[]
+  postedBy              Json // embedded contact { name, type, phone, ... }
+  nearbyLandmarks       Json?
+  coordinates           Json?
+  createdAt             DateTime @default(now())
 
-  postedByUserId       String?
-  postedByUser         User?    @relation("PostedProperties", fields: [postedByUserId], references: [id], onDelete: SetNull)
+  postedByUserId String?
+  postedByUser   User?   @relation("PostedProperties", fields: [postedByUserId], references: [id], onDelete: SetNull)
 
-  inquiries            Inquiry[]
-  views                PropertyView[]
+  inquiries Inquiry[]
+  views     PropertyView[]
 
   @@index([city])
   @@index([listingType])
@@ -177,7 +178,7 @@ model PropertyView {
   visitorKey   String
   createdAt    DateTime @default(now())
 
-  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@index([propertyId])
   @@index([ownerUserId])
@@ -198,9 +199,9 @@ model Inquiry {
   status        String   @default("new") // new | contacted | scheduled | closed
   createdAt     DateTime @default(now())
 
-  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  buyer         User?    @relation("BuyerInquiries", fields: [buyerUserId], references: [id], onDelete: SetNull)
-  seller        User?    @relation("SellerInquiries", fields: [sellerUserId], references: [id], onDelete: SetNull)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyer    User?    @relation("BuyerInquiries", fields: [buyerUserId], references: [id], onDelete: SetNull)
+  seller   User?    @relation("SellerInquiries", fields: [sellerUserId], references: [id], onDelete: SetNull)
 
   @@index([sellerUserId])
   @@index([buyerUserId])
@@ -252,7 +253,7 @@ model Builder {
   contactPhone           String
   contactEmail           String
   website                String
-  projects               Json     // BuilderProject[] (nested, incl. associatedPropertyIds)
+  projects               Json // BuilderProject[] (nested, incl. associatedPropertyIds)
   createdAt              DateTime @default(now())
 }
 
@@ -286,8 +287,8 @@ model FeaturedProject {
   description              String?
   highlights               String[]
   amenities                String[]
-  floorPlans               Json?    // ProjectFloorPlan[]
-  nearbyLandmarks          Json?    // ProjectNearby[]
+  floorPlans               Json? // ProjectFloorPlan[]
+  nearbyLandmarks          Json? // ProjectNearby[]
   builderExperience        String?
   builderDeliveredProjects Int?
   // --- Submission & moderation (Option C: builders submit, admins approve) ---
@@ -329,6 +330,31 @@ model Locality {
   @@index([city])
 }
 
+// GeoPlace — the MagicBricks-style locality/area master that powers search
+// autosuggest. Self-referential: a top-level `locality` (e.g. "Khurram Nagar")
+// has many child `area` rows (its sub-localities / societies) via parentId —
+// the same shape as MB's `localityId` back-reference. Seeded for free from
+// OpenStreetMap (see scripts/seed-geoplaces-osm.mjs); no paid geocoding API.
+// Distinct from `Locality` above, which is the admin-curated home-page tiles.
+model GeoPlace {
+  id        String     @id @default(cuid())
+  city      String // app city name, e.g. "Lucknow"
+  name      String // "Khurram Nagar" / "Arjun Enclave"
+  kind      String     @default("locality") // locality | area
+  parentId  String?
+  parent    GeoPlace?  @relation("GeoPlaceParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children  GeoPlace[] @relation("GeoPlaceParent")
+  latitude  Float?
+  longitude Float?
+  source    String     @default("osm") // osm | manual | inventory
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([city, name, kind])
+  @@index([city, kind])
+  @@index([parentId])
+}
+
 model Collection {
   id                String   @id // slug, e.g. "owner-direct"
   title             String
@@ -340,9 +366,9 @@ model Collection {
   badge             String
   actionText        String
   overview          String
-  keyHighlights     Json     // { title, description }[]
-  filters           Json     // CuratedCollection["filters"]
+  keyHighlights     Json // { title, description }[]
+  filters           Json // CuratedCollection["filters"]
   recommendedCities String[]
-  faqs              Json     // { question, answer }[]
+  faqs              Json // { question, answer }[]
   createdAt         DateTime @default(now())
 }

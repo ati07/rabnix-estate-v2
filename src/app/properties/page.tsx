@@ -195,6 +195,31 @@ function PropertiesCatalogContent() {
     router.replace('/properties');
   };
 
+  // Build a query string from the CURRENT in-page filters so the map view opens
+  // with exactly what the user is looking at (the catalog keeps filters in local
+  // state, not the URL). Param names match parseFiltersFromParams in propertyFilters.
+  const mapHref = useMemo(() => {
+    const q = new URLSearchParams();
+    if (selectedCity !== 'All') q.set('city', selectedCity);
+    if (listingType !== 'all') q.set('listingType', listingType);
+    if (isCommercial && commercialDealType !== 'all') q.set('commercialType', commercialDealType);
+    if (selectedCategory !== 'All') q.set('category', selectedCategory);
+    if (!isCommercial && selectedBhk.length === 1) q.set('bhk', String(selectedBhk[0]));
+    if (isCommercial && minSize > MIN_SIZE_SQFT) q.set('minSize', String(minSize));
+    if (isCommercial && maxSize > 0) q.set('maxSize', String(maxSize));
+    if (minPrice > 0) q.set('minPrice', String(minPrice));
+    if (maxPrice < 100000000) q.set('maxPrice', String(maxPrice));
+    if (verifiedOnly) q.set('verified', 'true');
+    if (ownerOnly) q.set('owner', 'true');
+    if (reraOnly) q.set('rera', 'true');
+    if (furnishing !== 'All') q.set('furnishing', furnishing);
+    if (constructionStatus !== 'All') q.set('construction', constructionStatus);
+    if (searchQuery.trim()) q.set('q', searchQuery.trim());
+    if (sortBy !== 'recommended') q.set('sort', sortBy);
+    const s = q.toString();
+    return `/properties/map${s ? `?${s}` : ''}`;
+  }, [selectedCity, listingType, isCommercial, commercialDealType, selectedCategory, selectedBhk, minSize, maxSize, minPrice, maxPrice, verifiedOnly, ownerOnly, reraOnly, furnishing, constructionStatus, searchQuery, sortBy]);
+
   // Filter and Sort Logic
   const filteredProperties = useMemo(() => {
     return properties
@@ -798,6 +823,16 @@ function PropertiesCatalogContent() {
                   <option value="area_desc">Largest Carpet Area</option>
                 </select>
               </div>
+
+              {/* Map view toggle */}
+              <Link
+                href={mapHref}
+                className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#0F2A43] hover:bg-[#18A67D] text-white text-xs font-bold rounded-xl transition-colors"
+                title="View matching listings on a map"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Map view</span>
+              </Link>
 
             </div>
 

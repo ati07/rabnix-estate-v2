@@ -33,6 +33,7 @@ import {
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
 import { OtpVerifyModal } from '@/components/OtpVerifyModal';
+import PropertyLocationMap from '@/components/map/PropertyLocationMap';
 
 export default function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -475,6 +476,14 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
 
+            {/* Location & Nearby (Google Maps) */}
+            <PropertyLocationMap
+              coordinates={property.coordinates}
+              address={property.address}
+              title={property.title}
+              locality={property.locality}
+              city={property.city}
+            />
 
           </div>
 

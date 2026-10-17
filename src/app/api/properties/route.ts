@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
         city: city,
         locality: locality,
         subLocality: b.subLocality,
+        address: b.address,
         price: price,
         priceFormatted: b.priceFormatted || `₹${price.toLocaleString('en-IN')}`,
         pricePerSqFt: b.pricePerSqFt ?? (b.carpetAreaSqFt ? Math.round(price / b.carpetAreaSqFt) : undefined),

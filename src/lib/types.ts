@@ -31,6 +31,7 @@ export interface Property {
   city: string;
   locality: string;
   subLocality?: string;
+  address?: string; // full street address (free text; captured via the map picker)
   price: number; // in INR (total for buy, monthly for rent/pg)
   priceFormatted: string; // e.g. "₹1.45 Cr" or "₹45,000 / mo"
   pricePerSqFt?: number;

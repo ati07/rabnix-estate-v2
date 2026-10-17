@@ -38,6 +38,7 @@ export function serializeProperty(p: DbProperty, includeContact = false): Proper
     city: p.city,
     locality: p.locality,
     subLocality: p.subLocality ?? undefined,
+    address: p.address ?? undefined,
     price: p.price,
     priceFormatted: p.priceFormatted,
     pricePerSqFt: p.pricePerSqFt ?? undefined,

@@ -24,6 +24,14 @@ import { CITY_SEARCH_LOCALITIES } from '@/lib/realEstateData';
 
 const MIN_SIZE_SQFT = 80;
 
+// Shape of the MagicBricks-style grouped autosuggest (served by
+// /api/places/suggest from our own GeoPlace master; see that route).
+type SuggestLocality = { id: string; name: string; areaCount: number };
+type SuggestArea = { id: string; name: string; parentName: string | null };
+type SuggestProject = { id: string; name: string; locality: string };
+type SuggestResult = { localities: SuggestLocality[]; areas: SuggestArea[]; projects: SuggestProject[] };
+const EMPTY_SUGGEST: SuggestResult = { localities: [], areas: [], projects: [] };
+
 const CATEGORY_DISPLAY_LABELS: Partial<Record<PropertyCategory, string>> = {
   'Commercial Office': 'Office',
   'Retail Shop': 'Shop',
@@ -70,6 +78,11 @@ export function HeroSearch({
   // that appear on approved listings for the selected city (ranked by count).
   // These merge with — and rank above — the city's static locality set.
   const [dbLocalities, setDbLocalities] = useState<string[]>([]);
+  // MagicBricks-style grouped suggestions from the GeoPlace master, plus the
+  // "drill-down" state: once a user picks a locality we load its sub-areas so
+  // they can refine to a specific area within it.
+  const [suggest, setSuggest] = useState<SuggestResult>(EMPTY_SUGGEST);
+  const [drill, setDrill] = useState<{ locality: SuggestLocality; areas: SuggestArea[]; loading: boolean } | null>(null);
 
   useEffect(() => {
     const city = selectedCity?.name;
@@ -87,6 +100,47 @@ export function HeroSearch({
       .catch(() => { if (active) setDbLocalities([]); });
     return () => { active = false; };
   }, [selectedCity?.name]);
+
+  // Debounced live autosuggest against the GeoPlace master. Fires as the user
+  // types and whenever the city changes; the drill-down is reset so stale
+  // sub-areas never show against a new query.
+  useEffect(() => {
+    const city = selectedCity?.name;
+    if (!city || city === 'All Cities') { setSuggest(EMPTY_SUGGEST); return; }
+    let active = true;
+    const handle = setTimeout(() => {
+      fetch(`/api/places/suggest?city=${encodeURIComponent(city)}&q=${encodeURIComponent(localityQuery.trim())}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (!active) return;
+          if (d?.success) {
+            setSuggest({
+              localities: Array.isArray(d.localities) ? d.localities : [],
+              areas: Array.isArray(d.areas) ? d.areas : [],
+              projects: Array.isArray(d.projects) ? d.projects : [],
+            });
+          } else {
+            setSuggest(EMPTY_SUGGEST);
+          }
+        })
+        .catch(() => { if (active) setSuggest(EMPTY_SUGGEST); });
+    }, 220);
+    return () => { active = false; clearTimeout(handle); };
+  }, [selectedCity?.name, localityQuery]);
+
+  // Load the sub-areas of a chosen locality (drill-down). A locality with no
+  // known sub-areas is selected directly instead.
+  const openAreas = async (loc: SuggestLocality) => {
+    if (!loc.areaCount) { handleLocalitySelect(loc.name); return; }
+    setDrill({ locality: loc, areas: [], loading: true });
+    try {
+      const r = await fetch(`/api/places/suggest?parentId=${encodeURIComponent(loc.id)}`);
+      const d = await r.json();
+      setDrill({ locality: loc, areas: Array.isArray(d?.areas) ? d.areas : [], loading: false });
+    } catch {
+      setDrill({ locality: loc, areas: [], loading: false });
+    }
+  };
 
   // Suggestion source = live DB localities (approved listings) + the city's full
   // static locality list + popular tiles, merged and de-duplicated (DB first so
@@ -121,6 +175,7 @@ export function HeroSearch({
     onFilterChange({ localities: updated, locality: loc });
     setLocalityQuery(loc);
     setShowLocalitySuggestions(false);
+    setDrill(null);
   };
 
   const handleBhkToggle = (bhk: number) => {
@@ -207,6 +262,11 @@ export function HeroSearch({
       ? localitySource.filter((l) => l.toLowerCase().includes(trimmedQuery))
       : localitySource
   ).slice(0, 80);
+
+  // Prefer the live GeoPlace suggestions when the master is seeded; otherwise
+  // fall back to the static locality list so autocomplete still works pre-seed.
+  const hasLiveSuggest =
+    suggest.localities.length > 0 || suggest.areas.length > 0 || suggest.projects.length > 0;
 
   return (
     <section className="relative z-20 w-full bg-[#0F2A43] text-white border-b border-[#163b5c]">
@@ -324,6 +384,7 @@ export function HeroSearch({
                         setLocalityQuery(e.target.value);
                         onFilterChange({ locality: e.target.value });
                         setShowLocalitySuggestions(true);
+                        setDrill(null);
                       }}
                       onFocus={() => setShowLocalitySuggestions(true)}
                       onKeyDown={(e) => {
@@ -352,55 +413,189 @@ export function HeroSearch({
                 {/* Locality Autocomplete Dropdown */}
                 {showLocalitySuggestions && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-[#E2E8F0] p-2.5 z-40 space-y-1 animate-in fade-in">
-                    <div className="text-[11px] font-bold text-[#64748B] px-2 py-1 uppercase tracking-wider flex justify-between items-center">
-                      <span>{trimmedQuery ? `Localities in ${selectedCity.name}` : `Popular Localities in ${selectedCity.name}`}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowLocalitySuggestions(false);
-                        }}
-                        className="text-slate-400 hover:text-slate-700 text-xs"
-                      >
-                        Close
-                      </button>
-                    </div>
-                    <div className="max-h-56 overflow-y-auto space-y-0.5">
-                      {matchingLocalities.map((loc) => {
-                        const isSelected = (filters.localities || []).includes(loc) || filters.locality === loc;
-                        return (
-                          <div
-                            key={loc}
-                            onClick={() => handleLocalitySelect(loc)}
-                            className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold transition-colors ${
-                              isSelected
-                                ? 'bg-[#E7F6F1] text-[#0E7C5D]'
-                                : 'hover:bg-[#F8FAFC] text-[#172033]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-3.5 h-3.5 text-[#18A67D]" />
-                              <span>{loc}</span>
-                            </div>
-                            {isSelected && <Check className="w-4 h-4 text-[#18A67D]" />}
-                          </div>
-                        );
-                      })}
 
-                      {/* No preset match — let the user search their typed text as-is. */}
-                      {matchingLocalities.length === 0 && trimmedQuery && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowLocalitySuggestions(false);
-                            onExecuteSearch();
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer text-xs font-semibold text-[#172033] hover:bg-[#F8FAFC] text-left"
-                        >
-                          <Search className="w-3.5 h-3.5 text-[#18A67D]" />
-                          <span>Search “{localityQuery.trim()}” in {selectedCity.name}</span>
-                        </button>
-                      )}
-                    </div>
+                    {drill ? (
+                      /* ---- Drill-down: sub-areas of the chosen locality ---- */
+                      <>
+                        <div className="flex items-center justify-between px-2 py-1">
+                          <button
+                            onClick={() => setDrill(null)}
+                            className="flex items-center gap-1.5 text-[11px] font-bold text-[#0E7C5D] hover:text-[#18A67D]"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 rotate-90" />
+                            <span>Areas in {drill.locality.name}</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowLocalitySuggestions(false); }}
+                            className="text-slate-400 hover:text-slate-700 text-xs"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <div className="max-h-56 overflow-y-auto space-y-0.5">
+                          {/* Pick the whole locality (no specific sub-area) */}
+                          <div
+                            onClick={() => handleLocalitySelect(drill.locality.name)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold text-[#0E7C5D] bg-[#E7F6F1] hover:bg-[#d6efe7]"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                            <span>Search all of {drill.locality.name}</span>
+                          </div>
+                          {drill.loading && (
+                            <div className="px-3 py-3 text-xs text-[#64748B]">Loading areas…</div>
+                          )}
+                          {!drill.loading && drill.areas.length === 0 && (
+                            <div className="px-3 py-3 text-xs text-[#64748B]">No sub-areas listed for this locality.</div>
+                          )}
+                          {drill.areas.map((a) => {
+                            const isSelected = (filters.localities || []).includes(a.name) || filters.locality === a.name;
+                            return (
+                              <div
+                                key={a.id}
+                                onClick={() => handleLocalitySelect(a.name)}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold transition-colors ${
+                                  isSelected ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'hover:bg-[#F8FAFC] text-[#172033]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-3.5 h-3.5 text-[#18A67D]" />
+                                  <span>{a.name}</span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-[#18A67D]" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : hasLiveSuggest ? (
+                      /* ---- Live GeoPlace suggestions, grouped like MagicBricks ---- */
+                      <>
+                        <div className="flex items-center justify-between px-2 py-1">
+                          <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+                            {trimmedQuery ? `Matches in ${selectedCity.name}` : `Popular localities in ${selectedCity.name}`}
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowLocalitySuggestions(false); }}
+                            className="text-slate-400 hover:text-slate-700 text-xs"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto space-y-0.5">
+                          {suggest.localities.length > 0 && (
+                            <div className="text-[10px] font-bold text-[#94A3B8] px-3 pt-1.5 pb-0.5 uppercase tracking-wider">Localities</div>
+                          )}
+                          {suggest.localities.map((loc) => {
+                            const isSelected = (filters.localities || []).includes(loc.name) || filters.locality === loc.name;
+                            return (
+                              <div
+                                key={loc.id}
+                                onClick={() => openAreas(loc)}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold transition-colors ${
+                                  isSelected ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'hover:bg-[#F8FAFC] text-[#172033]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-3.5 h-3.5 text-[#18A67D]" />
+                                  <span>{loc.name}</span>
+                                </div>
+                                {loc.areaCount > 0 ? (
+                                  <span className="flex items-center gap-1 text-[10px] font-bold text-[#64748B]">
+                                    {loc.areaCount} areas <ChevronDown className="w-3.5 h-3.5 -rotate-90" />
+                                  </span>
+                                ) : (
+                                  isSelected && <Check className="w-4 h-4 text-[#18A67D]" />
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {suggest.areas.length > 0 && (
+                            <div className="text-[10px] font-bold text-[#94A3B8] px-3 pt-2 pb-0.5 uppercase tracking-wider">Areas</div>
+                          )}
+                          {suggest.areas.map((a) => {
+                            const isSelected = (filters.localities || []).includes(a.name) || filters.locality === a.name;
+                            return (
+                              <div
+                                key={a.id}
+                                onClick={() => handleLocalitySelect(a.name)}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold transition-colors ${
+                                  isSelected ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'hover:bg-[#F8FAFC] text-[#172033]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-3.5 h-3.5 text-[#CBD5E1]" />
+                                  <span>{a.name}{a.parentName ? <span className="text-[#94A3B8] font-medium">, {a.parentName}</span> : null}</span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-[#18A67D]" />}
+                              </div>
+                            );
+                          })}
+
+                          {suggest.projects.length > 0 && (
+                            <div className="text-[10px] font-bold text-[#94A3B8] px-3 pt-2 pb-0.5 uppercase tracking-wider">Projects</div>
+                          )}
+                          {suggest.projects.map((p) => (
+                            <div
+                              key={p.id}
+                              onClick={() => handleLocalitySelect(p.locality || p.name)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold hover:bg-[#F8FAFC] text-[#172033]"
+                            >
+                              <Building className="w-3.5 h-3.5 text-[#18A67D]" />
+                              <span>{p.name}{p.locality ? <span className="text-[#94A3B8] font-medium">, {p.locality}</span> : null}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      /* ---- Static fallback (GeoPlace not seeded for this city) ---- */
+                      <>
+                        <div className="text-[11px] font-bold text-[#64748B] px-2 py-1 uppercase tracking-wider flex justify-between items-center">
+                          <span>{trimmedQuery ? `Localities in ${selectedCity.name}` : `Popular Localities in ${selectedCity.name}`}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowLocalitySuggestions(false); }}
+                            className="text-slate-400 hover:text-slate-700 text-xs"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <div className="max-h-56 overflow-y-auto space-y-0.5">
+                          {matchingLocalities.map((loc) => {
+                            const isSelected = (filters.localities || []).includes(loc) || filters.locality === loc;
+                            return (
+                              <div
+                                key={loc}
+                                onClick={() => handleLocalitySelect(loc)}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold transition-colors ${
+                                  isSelected ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'hover:bg-[#F8FAFC] text-[#172033]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-3.5 h-3.5 text-[#18A67D]" />
+                                  <span>{loc}</span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-[#18A67D]" />}
+                              </div>
+                            );
+                          })}
+
+                          {/* No preset match — let the user search their typed text as-is. */}
+                          {matchingLocalities.length === 0 && trimmedQuery && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowLocalitySuggestions(false);
+                                onExecuteSearch();
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer text-xs font-semibold text-[#172033] hover:bg-[#F8FAFC] text-left"
+                            >
+                              <Search className="w-3.5 h-3.5 text-[#18A67D]" />
+                              <span>Search “{localityQuery.trim()}” in {selectedCity.name}</span>
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

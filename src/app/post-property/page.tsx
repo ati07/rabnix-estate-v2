@@ -30,6 +30,7 @@ import { useAuth } from '@/lib/authContext';
 import { useProperties } from '@/lib/propertyContext';
 import { ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, ConstructionStatus, FacingDirection } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
+import LocationPicker, { type LatLng } from '@/components/LocationPicker';
 
 // Commercial listings use a dedicated set of property types (Office / Shop /
 // Warehouse / Land) and a rent-or-sale deal type instead of residential BHK.
@@ -107,6 +108,8 @@ export default function PostPropertyPage() {
   const [city, setCity] = useState<string>(user?.city || 'Bangalore');
   const [locality, setLocality] = useState<string>('');
   const [subLocality, setSubLocality] = useState<string>('');
+  const [address, setAddress] = useState<string>('');
+  const [coordinates, setCoordinates] = useState<LatLng | undefined>(undefined);
   const [title, setTitle] = useState<string>('');
   const [bhk, setBhk] = useState<number>(2);
   const [bathrooms, setBathrooms] = useState<number>(2);
@@ -286,6 +289,8 @@ export default function PostPropertyPage() {
         city,
         locality: locality || selectedCityData.popularLocalities[0],
         subLocality,
+        address: address || undefined,
+        coordinates,
         price,
         carpetAreaSqFt,
         superBuiltUpAreaSqFt: superBuiltUpAreaSqFt || Math.round(carpetAreaSqFt * 1.2),
@@ -723,6 +728,24 @@ export default function PostPropertyPage() {
                       onChange={(e) => setSubLocality(e.target.value)}
                       placeholder="e.g. Prestige Falcon City / Godrej Woods"
                       className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-medium text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
+                    />
+                  </div>
+
+                  {/* Pin exact location on the map (OpenStreetMap, no Google) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#172033] uppercase">
+                      Pin Location on Map (Optional)
+                    </label>
+                    <p className="text-[11px] text-[#64748B]">
+                      Search, tap the map, or drag the pin to set the exact spot. The address fills in automatically.
+                    </p>
+                    <LocationPicker
+                      city={city}
+                      value={{ address, coordinates }}
+                      onChange={({ address: a, coordinates: c }) => {
+                        setAddress(a ?? '');
+                        setCoordinates(c);
+                      }}
                     />
                   </div>
 
