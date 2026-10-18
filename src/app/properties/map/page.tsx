@@ -152,7 +152,9 @@ function MapPageContent() {
       {/* Top bar */}
       <header className="bg-white border-b border-[#E2E8F0] px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <BrandLogo />
+          <Link href="/" className="flex items-center gap-2 group select-none" aria-label="BayBayt home">
+            <BrandLogo />
+          </Link>
           <div className="hidden sm:block h-5 w-px bg-[#E2E8F0]" />
           <p className="hidden sm:block text-xs text-[#64748B] truncate">
             <span className="font-bold text-[#0F2A43]">
