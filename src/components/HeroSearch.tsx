@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -97,6 +97,33 @@ export function HeroSearch({
   // they can refine to a specific area within it.
   const [suggest, setSuggest] = useState<SuggestResult>(EMPTY_SUGGEST);
   const [drill, setDrill] = useState<{ locality: SuggestLocality; areas: SuggestArea[]; loading: boolean } | null>(null);
+
+  // One wrapper ref per dropdown so a document-level listener can tell whether a
+  // click landed inside its trigger+popover (keep open) or outside (close it).
+  const localityRef = useRef<HTMLDivElement>(null);
+  const typeRef = useRef<HTMLDivElement>(null);
+  const budgetRef = useRef<HTMLDivElement>(null);
+  const bhkRef = useRef<HTMLDivElement>(null);
+  const sizeRef = useRef<HTMLDivElement>(null);
+
+  // Close any open dropdown when the user clicks/taps outside of it. The listener
+  // is only attached while something is open, and each popover is dismissed
+  // independently based on its own wrapper.
+  useEffect(() => {
+    const anyOpen =
+      showLocalitySuggestions || showTypeDropdown || showBudgetDropdown || showBhkDropdown || showSizeDropdown;
+    if (!anyOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (localityRef.current && !localityRef.current.contains(target)) setShowLocalitySuggestions(false);
+      if (typeRef.current && !typeRef.current.contains(target)) setShowTypeDropdown(false);
+      if (budgetRef.current && !budgetRef.current.contains(target)) setShowBudgetDropdown(false);
+      if (bhkRef.current && !bhkRef.current.contains(target)) setShowBhkDropdown(false);
+      if (sizeRef.current && !sizeRef.current.contains(target)) setShowSizeDropdown(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [showLocalitySuggestions, showTypeDropdown, showBudgetDropdown, showBhkDropdown, showSizeDropdown]);
 
   useEffect(() => {
     const city = selectedCity?.name;
@@ -396,7 +423,7 @@ export function HeroSearch({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
               
               {/* 1. Location & Locality Search Input */}
-              <div className="md:col-span-4 relative">
+              <div ref={localityRef} className="md:col-span-4 relative">
                 <div className="flex items-center border border-[#CBD5E1] rounded-xl px-3 py-2.5 bg-white focus-within:border-[#18A67D] focus-within:ring-2 focus-within:ring-[#18A67D]/20 transition-all">
                   <MapPin className="w-4 h-4 text-[#18A67D] shrink-0 mr-2" />
                   <div className="flex-1 min-w-0">
@@ -627,7 +654,7 @@ export function HeroSearch({
               </div>
 
               {/* 2. Property Type Selector Dropdown */}
-              <div className="md:col-span-2 relative">
+              <div ref={typeRef} className="md:col-span-2 relative">
                 <div 
                   id="hero-prop-type-trigger"
                   onClick={() => {
@@ -689,7 +716,7 @@ export function HeroSearch({
               </div>
 
               {/* 3. Budget Filter Dropdown */}
-              <div className="md:col-span-2 relative">
+              <div ref={budgetRef} className="md:col-span-2 relative">
                 <div 
                   id="hero-budget-trigger"
                   onClick={() => {
@@ -740,7 +767,7 @@ export function HeroSearch({
 
               {/* 4. Bedrooms (BHK) Filter — or Size for Commercial */}
               {!isCommercial ? (
-              <div className="md:col-span-2 relative">
+              <div ref={bhkRef} className="md:col-span-2 relative">
                 <div
                   id="hero-bhk-trigger"
                   onClick={() => {
@@ -802,7 +829,7 @@ export function HeroSearch({
                 )}
               </div>
               ) : (
-              <div className="md:col-span-2 relative">
+              <div ref={sizeRef} className="md:col-span-2 relative">
                 <div
                   id="hero-size-trigger"
                   onClick={() => {
