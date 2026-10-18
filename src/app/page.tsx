@@ -238,6 +238,20 @@ export default function HomeView() {
     }).length;
   }, [properties, selectedCity]);
 
+  // Verified-listing count per city (keyed by lowercased name) for the city
+  // selector cards. Same "verified" predicate as the hero so the numbers agree;
+  // matched by exact city name (listings stored under e.g. "Gurgaon" won't roll
+  // up into "Delhi / NCR").
+  const cityVerifiedCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of properties) {
+      if (!(p.isVerified || p.verificationStatus === 'approved')) continue;
+      const key = p.city.toLowerCase();
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [properties]);
+
   const shortlistedProperties = useMemo(() => {
     return properties.filter((p) => shortlistIds.includes(p.id));
   }, [properties, shortlistIds]);
@@ -440,6 +454,7 @@ export default function HomeView() {
         onClose={() => setIsCitySelectorOpen(false)}
         selectedCity={selectedCity}
         onSelectCity={handleSelectCity}
+        cityCounts={cityVerifiedCounts}
       />
 
       {/* 8. Authentication & Registration Modal */}

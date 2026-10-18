@@ -13,6 +13,8 @@ interface CitySelectorModalProps {
   onClose: () => void;
   selectedCity: CityInfo;
   onSelectCity: (city: CityInfo) => void;
+  /** Real verified-listing count per city, keyed by lowercased city name. */
+  cityCounts?: Record<string, number>;
 }
 
 export function CitySelectorModal({
@@ -20,6 +22,7 @@ export function CitySelectorModal({
   onClose,
   selectedCity,
   onSelectCity,
+  cityCounts,
 }: CitySelectorModalProps) {
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
@@ -86,6 +89,7 @@ export function CitySelectorModal({
         <div className="px-6 pb-6 pt-3 grid grid-cols-2 sm:grid-cols-4 gap-3.5 max-h-[75vh] overflow-y-auto">
           {CITIES_DATA.map((city) => {
             const isSelected = selectedCity.name === city.name;
+            const verifiedCount = cityCounts?.[city.name.toLowerCase()] ?? 0;
             return (
               <div
                 key={city.name}
@@ -136,7 +140,9 @@ export function CitySelectorModal({
                   </div>
 
                   <div className="text-[10px] text-[#64748B] pt-0.5 border-t border-[#E2E8F0]">
-                    {formatIndianNumber(city.totalListingsCount)}+ Properties
+                    {verifiedCount > 0
+                      ? `${formatIndianNumber(verifiedCount)} verified ${verifiedCount === 1 ? 'property' : 'properties'}`
+                      : 'No listings yet'}
                   </div>
                 </div>
               </div>
