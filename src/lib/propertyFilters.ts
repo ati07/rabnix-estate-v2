@@ -91,6 +91,33 @@ export function parseFiltersFromParams(sp: ParamsLike): PropertyFilterState {
   };
 }
 
+/**
+ * Inverse of parseFiltersFromParams: serialize a filter state back to URL params
+ * (only non-default values, so shared links stay short and `parse` round-trips).
+ * Radius/map params (lat/lng/radius) are NOT handled here — the map page owns those.
+ */
+export function filtersToParams(f: PropertyFilterState): URLSearchParams {
+  const q = new URLSearchParams();
+  const isCommercial = f.listingType === 'commercial';
+  if (f.city && f.city !== 'All') q.set('city', f.city);
+  if (f.listingType !== 'all') q.set('listingType', f.listingType);
+  if (isCommercial && f.commercialDealType !== 'all') q.set('commercialType', f.commercialDealType);
+  if (f.category && f.category !== 'All') q.set('category', f.category);
+  if (!isCommercial && f.bhk.length > 0) q.set('bhk', String(f.bhk[0]));
+  if (isCommercial && f.minSize > MIN_SIZE_SQFT) q.set('minSize', String(f.minSize));
+  if (isCommercial && f.maxSize > 0) q.set('maxSize', String(f.maxSize));
+  if (f.minPrice > 0) q.set('minPrice', String(f.minPrice));
+  if (f.maxPrice > 0 && f.maxPrice < DEFAULT_MAX_PRICE) q.set('maxPrice', String(f.maxPrice));
+  if (f.verifiedOnly) q.set('verified', 'true');
+  if (f.ownerOnly) q.set('owner', 'true');
+  if (f.reraOnly) q.set('rera', 'true');
+  if (f.furnishing && f.furnishing !== 'All') q.set('furnishing', f.furnishing);
+  if (f.constructionStatus && f.constructionStatus !== 'All') q.set('construction', f.constructionStatus);
+  if (f.searchQuery.trim()) q.set('q', f.searchQuery.trim());
+  if (f.sortBy !== 'recommended') q.set('sort', f.sortBy);
+  return q;
+}
+
 /** Does a property satisfy every active filter? */
 export function matchesFilters(p: Property, f: PropertyFilterState): boolean {
   const isCommercial = f.listingType === 'commercial';
