@@ -151,7 +151,11 @@ model Property {
   amenities             String[]
   postedBy              Json // embedded contact { name, type, phone, ... }
   nearbyLandmarks       Json?
-  coordinates           Json?
+  coordinates           Json? // canonical client shape { lat, lng }
+  // Denormalized from `coordinates` for indexed geo queries (radius / nearby).
+  // Kept in sync on write; see /api/properties and /api/properties/[id].
+  latitude              Float?
+  longitude             Float?
   createdAt             DateTime @default(now())
 
   postedByUserId String?
@@ -164,6 +168,7 @@ model Property {
   @@index([listingType])
   @@index([verificationStatus])
   @@index([postedByUserId])
+  @@index([latitude, longitude])
 }
 
 // One row per real property-page view. Powers the dashboard trend charts

@@ -121,7 +121,14 @@ async function main() {
           `✓ ${tag}  ${p.id}  → ${r.coords.lat.toFixed(5)},${r.coords.lng.toFixed(5)}  (${query})`,
         );
         if (COMMIT) {
-          await prisma.property.update({ where: { id: p.id }, data: { coordinates: r.coords } });
+          // Keep the denormalized, indexed lat/lng columns in sync with the
+          // canonical `coordinates` JSON (same contract as coordinateColumns()
+          // used by POST/PATCH /api/properties and the seed) — otherwise
+          // /api/properties/nearby and the radius search can't see this row.
+          await prisma.property.update({
+            where: { id: p.id },
+            data: { coordinates: r.coords, latitude: r.coords.lat, longitude: r.coords.lng },
+          });
           report.written++;
         }
       }

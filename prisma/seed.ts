@@ -5,6 +5,7 @@ import type { Property } from '../src/lib/types';
 import { BUILDERS_DATA } from '../src/lib/buildersData';
 import { HOME_FEATURED_PROJECTS, HOME_TOP_PROJECTS, HOME_PREFERRED_AGENTS } from '../src/lib/homeSectionsData';
 import { CURATED_COLLECTIONS } from '../src/lib/collectionsData';
+import { coordinateColumns } from '../src/lib/maps/config';
 
 const prisma = new PrismaClient();
 
@@ -122,6 +123,7 @@ async function main() {
         postedBy: p.postedBy as object,
         nearbyLandmarks: (p.nearbyLandmarks ?? undefined) as object | undefined,
         coordinates: (p.coordinates ?? undefined) as object | undefined,
+        ...coordinateColumns(p.coordinates),
         postedByUserId: ownerFor(p),
         createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
       },

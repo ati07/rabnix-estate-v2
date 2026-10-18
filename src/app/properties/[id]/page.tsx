@@ -34,6 +34,7 @@ import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
 import { OtpVerifyModal } from '@/components/OtpVerifyModal';
 import PropertyLocationMap from '@/components/map/PropertyLocationMap';
+import NearbyProperties from '@/components/map/NearbyProperties';
 
 export default function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -484,6 +485,9 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
               locality={property.locality}
               city={property.city}
             />
+
+            {/* Nearby listings (server-side radius search) */}
+            <NearbyProperties propertyId={property.id} coordinates={property.coordinates} />
 
           </div>
 

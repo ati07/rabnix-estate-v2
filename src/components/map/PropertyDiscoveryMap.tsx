@@ -20,6 +20,7 @@ import {
   useMap,
   useMapsLibrary,
   type MapEvent,
+  type MapMouseEvent,
 } from '@vis.gl/react-google-maps';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { MapPinned } from 'lucide-react';
@@ -48,6 +49,15 @@ interface DiscoveryMapProps {
   onSelect: (id: string | null) => void;
   onBoundsChange: (bounds: MapBounds | null) => void;
   fallbackCity?: string;
+  /** When set, draws a draggable center pin + radius circle ("area distance"
+   *  search). Tapping the map or dragging the pin calls onCenterChange. */
+  radiusCenter?: LatLngLiteral | null;
+  /** Radius of the search circle in metres (only meaningful with radiusCenter). */
+  radiusMeters?: number;
+  onCenterChange?: (c: LatLngLiteral) => void;
+  /** Map gesture mode. 'greedy' (default) for full-page maps; 'cooperative'
+   *  for embedded maps so page scroll isn't trapped. */
+  gestureHandling?: 'greedy' | 'cooperative' | 'none' | 'auto';
 }
 
 export default function PropertyDiscoveryMap(props: DiscoveryMapProps) {
@@ -73,8 +83,19 @@ export default function PropertyDiscoveryMap(props: DiscoveryMapProps) {
   );
 }
 
-function MapShell({ markers, selectedId, onSelect, onBoundsChange, fallbackCity }: DiscoveryMapProps) {
+function MapShell({
+  markers,
+  selectedId,
+  onSelect,
+  onBoundsChange,
+  fallbackCity,
+  radiusCenter,
+  radiusMeters,
+  onCenterChange,
+  gestureHandling = 'greedy',
+}: DiscoveryMapProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const radiusActive = !!radiusCenter;
 
   const emitBounds = (ev: MapEvent) => {
     const b = ev.map.getBounds();
@@ -86,6 +107,13 @@ function MapShell({ markers, selectedId, onSelect, onBoundsChange, fallbackCity 
     debounceRef.current = setTimeout(() => onBoundsChange(next), 250);
   };
 
+  // In radius mode a tap on the map relocates the search center.
+  const handleClick = (ev: MapMouseEvent) => {
+    if (!radiusActive || !onCenterChange) return;
+    const ll = ev.detail.latLng;
+    if (ll) onCenterChange({ lat: ll.lat, lng: ll.lng });
+  };
+
   const selected = markers.find((m) => m.id === selectedId) || null;
 
   return (
@@ -93,16 +121,24 @@ function MapShell({ markers, selectedId, onSelect, onBoundsChange, fallbackCity 
       defaultCenter={cityCenter(fallbackCity)}
       defaultZoom={11}
       mapId={GOOGLE_MAPS_MAP_ID}
-      gestureHandling="greedy"
+      gestureHandling={gestureHandling}
       disableDefaultUI={false}
       mapTypeControl={false}
       streetViewControl={false}
       fullscreenControl
       className="w-full h-full"
       onIdle={emitBounds}
+      onClick={handleClick}
     >
       <ClusteredMarkers markers={markers} selectedId={selectedId} onSelect={onSelect} />
-      <FitBounds markers={markers} fallbackCity={fallbackCity} />
+      {radiusActive && radiusCenter ? (
+        <>
+          <RadiusOverlay center={radiusCenter} radius={radiusMeters ?? 3000} onCenterChange={onCenterChange} />
+          <RadiusFit center={radiusCenter} radius={radiusMeters ?? 3000} />
+        </>
+      ) : (
+        <FitBounds markers={markers} fallbackCity={fallbackCity} />
+      )}
       <PanToSelected selected={selected} />
       {selected && (
         <InfoWindow
@@ -230,6 +266,109 @@ function FitBounds({ markers, fallbackCity }: { markers: PropertyMarker[]; fallb
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, signature, fallbackCity]);
 
+  return null;
+}
+
+/* ------------------------- radius (area) overlay ------------------------- */
+
+/**
+ * Draws the shaded search circle and a draggable center pin for radius search.
+ * Uses google.maps.Circle + an AdvancedMarker (gmpDraggable) directly, mirroring
+ * the ClusteredMarkers pattern, since @vis.gl has no Circle component.
+ */
+function RadiusOverlay({
+  center,
+  radius,
+  onCenterChange,
+}: {
+  center: LatLngLiteral;
+  radius: number;
+  onCenterChange?: (c: LatLngLiteral) => void;
+}) {
+  const map = useMap();
+  const markerLib = useMapsLibrary('marker');
+  const circleRef = useRef<google.maps.Circle | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+
+  // Create the circle + draggable pin once the map and marker lib are ready.
+  useEffect(() => {
+    if (!map || !markerLib) return;
+
+    const circle = new google.maps.Circle({
+      map,
+      center,
+      radius,
+      strokeColor: '#18A67D',
+      strokeOpacity: 0.9,
+      strokeWeight: 2,
+      fillColor: '#18A67D',
+      fillOpacity: 0.12,
+      clickable: false,
+    });
+    circleRef.current = circle;
+
+    const dot = document.createElement('div');
+    dot.style.cssText = [
+      'width:18px',
+      'height:18px',
+      'border-radius:9999px',
+      'background:#0F2A43',
+      'border:3px solid #ffffff',
+      'box-shadow:0 1px 4px rgba(0,0,0,0.4)',
+      'cursor:grab',
+    ].join(';');
+
+    const marker = new markerLib.AdvancedMarkerElement({
+      map,
+      position: center,
+      content: dot,
+      gmpDraggable: true,
+      title: 'Drag to move the search center',
+    });
+    marker.addListener('dragend', () => {
+      const pos = marker.position as
+        | google.maps.LatLng
+        | google.maps.LatLngLiteral
+        | null;
+      if (!pos) return;
+      const lat = typeof pos.lat === 'function' ? pos.lat() : pos.lat;
+      const lng = typeof pos.lng === 'function' ? pos.lng() : pos.lng;
+      onCenterChange?.({ lat, lng });
+    });
+    markerRef.current = marker;
+
+    return () => {
+      circle.setMap(null);
+      marker.map = null;
+      circleRef.current = null;
+      markerRef.current = null;
+    };
+  }, [map, markerLib]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reflect center/radius changes without rebuilding the objects.
+  useEffect(() => {
+    circleRef.current?.setCenter(center);
+    circleRef.current?.setRadius(radius);
+    if (markerRef.current) markerRef.current.position = center;
+  }, [center.lat, center.lng, radius]);
+
+  return null;
+}
+
+/** Fits the viewport to the radius circle whenever the center/radius changes. */
+function RadiusFit({ center, radius }: { center: LatLngLiteral; radius: number }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const latDelta = radius / 111320;
+    const cosLat = Math.max(Math.cos((center.lat * Math.PI) / 180), 0.01);
+    const lngDelta = radius / (111320 * cosLat);
+    const bounds = new google.maps.LatLngBounds(
+      { lat: center.lat - latDelta, lng: center.lng - lngDelta },
+      { lat: center.lat + latDelta, lng: center.lng + lngDelta },
+    );
+    map.fitBounds(bounds, 48);
+  }, [map, center.lat, center.lng, radius]);
   return null;
 }
 

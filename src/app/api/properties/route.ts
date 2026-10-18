@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
 import { getEntitlement, canCreateInCity, consumeListingCredit } from '@/lib/billing';
+import { coordinateColumns } from '@/lib/maps/config';
 import type { Property } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -158,6 +159,8 @@ export async function POST(req: NextRequest) {
         },
         nearbyLandmarks: (b.nearbyLandmarks as object) ?? undefined,
         coordinates: (b.coordinates as object) ?? undefined,
+        // Keep the indexed geo columns in sync with the canonical coordinates.
+        ...coordinateColumns(b.coordinates),
         postedByUserId: user.id,
         },
       });

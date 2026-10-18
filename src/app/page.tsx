@@ -147,9 +147,10 @@ export default function HomeView() {
     setIsGenieDrawerOpen(true);
   };
 
-  // Execute Search & Route to Dedicated Filter Page
-  const handleExecuteSearch = (overrideFilters?: Partial<SearchFilters>) => {
-    const current = { ...filters, ...overrideFilters };
+  // Serialize the active filters into URL params. Shared by the catalog search
+  // (/properties) and the "Explore on map" action (/properties/map) so both
+  // pages read exactly the same filter scheme.
+  const buildSearchParams = (current: SearchFilters): URLSearchParams => {
     const params = new URLSearchParams();
 
     if (selectedCity?.name && selectedCity.name !== 'All Cities') {
@@ -196,13 +197,32 @@ export default function HomeView() {
       params.set('rera', 'true');
     }
     if (current.constructionStatus) {
-      const statusStr = Array.isArray(current.constructionStatus) 
-        ? current.constructionStatus.join(',') 
+      const statusStr = Array.isArray(current.constructionStatus)
+        ? current.constructionStatus.join(',')
         : current.constructionStatus;
       params.set('constructionStatus', statusStr);
     }
 
-    router.push(`/properties?${params.toString()}`);
+    return params;
+  };
+
+  // Execute Search & Route to Dedicated Filter Page
+  const handleExecuteSearch = (overrideFilters?: Partial<SearchFilters>) => {
+    const current = { ...filters, ...overrideFilters };
+    router.push(`/properties?${buildSearchParams(current).toString()}`);
+  };
+
+  // Explore on map — carry the current filters into the interactive discovery
+  // map. When a locality/area with real coordinates was picked, deep-link
+  // straight into radius ("area distance") mode centered on it.
+  const handleExploreMap = (geo?: { lat: number; lng: number; radius?: number }) => {
+    const params = buildSearchParams(filters);
+    if (geo) {
+      params.set('lat', geo.lat.toFixed(6));
+      params.set('lng', geo.lng.toFixed(6));
+      params.set('radius', String(geo.radius ?? 3000));
+    }
+    router.push(`/properties/map?${params.toString()}`);
   };
 
   const cityMatchingCount = useMemo(() => {
@@ -252,6 +272,7 @@ export default function HomeView() {
         filters={filters}
         onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters }))}
         onExecuteSearch={() => handleExecuteSearch()}
+        onExploreMap={handleExploreMap}
         matchingCount={cityMatchingCount}
         onOpenPostProperty={() => setIsPostPropertyOpen(true)}
       />

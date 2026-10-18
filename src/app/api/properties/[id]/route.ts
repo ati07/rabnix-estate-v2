@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
+import { coordinateColumns } from '@/lib/maps/config';
 import type { Property, VerificationStatus } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -114,6 +115,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ];
     for (const key of editable) {
       if (b[key] !== undefined) data[key] = b[key];
+    }
+
+    // When coordinates change, re-derive the indexed geo columns so radius /
+    // nearby queries stay consistent with the canonical coordinates JSON.
+    if (b.coordinates !== undefined) {
+      Object.assign(data, coordinateColumns(b.coordinates));
     }
 
     const updated = await prisma.property.update({ where: { id }, data });

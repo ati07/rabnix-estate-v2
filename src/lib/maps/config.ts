@@ -113,6 +113,17 @@ export function normalizeCoordinates(input: unknown): LatLngLiteral | null {
   return { lat, lng };
 }
 
+/**
+ * Derive the denormalized {latitude, longitude} columns from a coordinates
+ * input for a Property write. Returns nulls when the input is missing/invalid so
+ * the indexed columns stay consistent with the canonical `coordinates` JSON
+ * (used by /api/properties on create and /api/properties/[id] on edit).
+ */
+export function coordinateColumns(input: unknown): { latitude: number | null; longitude: number | null } {
+  const loc = normalizeCoordinates(input);
+  return loc ? { latitude: loc.lat, longitude: loc.lng } : { latitude: null, longitude: null };
+}
+
 /** Build a Google Maps "directions to" URL (works without any API key). */
 export function directionsUrl(dest: LatLngLiteral, label?: string): string {
   const q = `${dest.lat},${dest.lng}`;

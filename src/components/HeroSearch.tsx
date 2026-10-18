@@ -17,17 +17,23 @@ import {
   CheckCircle2,
   SlidersHorizontal,
   Ruler,
-  X
+  X,
+  Map as MapIcon,
+  Maximize2
 } from 'lucide-react';
 import { CityInfo, CommercialListingType, ListingType, PropertyCategory, SearchFilters } from '@/lib/types';
 import { CITY_SEARCH_LOCALITIES } from '@/lib/realEstateData';
+import { isMapsEnabled, type LatLngLiteral } from '@/lib/maps/config';
+import { HeroMiniMap } from '@/components/map/HeroMiniMap';
 
 const MIN_SIZE_SQFT = 80;
 
 // Shape of the MagicBricks-style grouped autosuggest (served by
-// /api/places/suggest from our own GeoPlace master; see that route).
-type SuggestLocality = { id: string; name: string; areaCount: number };
-type SuggestArea = { id: string; name: string; parentName: string | null };
+// /api/places/suggest from our own GeoPlace master; see that route). Localities
+// and areas carry coordinates so picking one can deep-link the map into radius
+// ("search near here") mode.
+type SuggestLocality = { id: string; name: string; areaCount: number; lat?: number | null; lng?: number | null };
+type SuggestArea = { id: string; name: string; parentName: string | null; lat?: number | null; lng?: number | null };
 type SuggestProject = { id: string; name: string; locality: string };
 type SuggestResult = { localities: SuggestLocality[]; areas: SuggestArea[]; projects: SuggestProject[] };
 const EMPTY_SUGGEST: SuggestResult = { localities: [], areas: [], projects: [] };
@@ -46,6 +52,7 @@ interface HeroSearchProps {
   filters: SearchFilters;
   onFilterChange: (newFilters: Partial<SearchFilters>) => void;
   onExecuteSearch: () => void;
+  onExploreMap: (geo?: { lat: number; lng: number; radius?: number }) => void;
   matchingCount: number;
   onOpenPostProperty: () => void;
 }
@@ -65,10 +72,16 @@ export function HeroSearch({
   filters,
   onFilterChange,
   onExecuteSearch,
+  onExploreMap,
   matchingCount,
   onOpenPostProperty
 }: HeroSearchProps) {
   const [localityQuery, setLocalityQuery] = useState('');
+  // Coordinates of the last locality/area picked from autosuggest (when it has
+  // them). Lets "Explore on map" open centered on that spot in radius mode, and
+  // drives the embedded mini-map's focus circle.
+  const [selectedGeo, setSelectedGeo] = useState<LatLngLiteral | null>(null);
+  const [showMiniMap, setShowMiniMap] = useState(true);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
   const [showBhkDropdown, setShowBhkDropdown] = useState(false);
@@ -86,6 +99,7 @@ export function HeroSearch({
 
   useEffect(() => {
     const city = selectedCity?.name;
+    setSelectedGeo(null); // a picked locality's coords don't carry across cities
     if (!city || city === 'All Cities') { setDbLocalities([]); return; }
     let active = true;
     fetch(`/api/localities/distinct?city=${encodeURIComponent(city)}`)
@@ -131,7 +145,7 @@ export function HeroSearch({
   // Load the sub-areas of a chosen locality (drill-down). A locality with no
   // known sub-areas is selected directly instead.
   const openAreas = async (loc: SuggestLocality) => {
-    if (!loc.areaCount) { handleLocalitySelect(loc.name); return; }
+    if (!loc.areaCount) { handleLocalitySelect(loc.name, geoFrom(loc.lat, loc.lng)); return; }
     setDrill({ locality: loc, areas: [], loading: true });
     try {
       const r = await fetch(`/api/places/suggest?parentId=${encodeURIComponent(loc.id)}`);
@@ -165,7 +179,13 @@ export function HeroSearch({
   const isCommercial = currentListingType === 'commercial';
   const commercialDealType: CommercialListingType | undefined = filters.commercialListingType;
 
-  const handleLocalitySelect = (loc: string) => {
+  // Build a clean {lat,lng} from a suggestion's optional coordinates, or null.
+  const geoFrom = (lat?: number | null, lng?: number | null): LatLngLiteral | null =>
+    typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng }
+      : null;
+
+  const handleLocalitySelect = (loc: string, geo?: LatLngLiteral | null) => {
     let updated = [...(filters.localities || [])];
     if (updated.includes(loc)) {
       updated = updated.filter(l => l !== loc);
@@ -174,6 +194,7 @@ export function HeroSearch({
     }
     onFilterChange({ localities: updated, locality: loc });
     setLocalityQuery(loc);
+    setSelectedGeo(geo ?? null);
     setShowLocalitySuggestions(false);
     setDrill(null);
   };
@@ -372,7 +393,7 @@ export function HeroSearch({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
               
               {/* 1. Location & Locality Search Input */}
-              <div className="md:col-span-5 relative">
+              <div className="md:col-span-4 relative">
                 <div className="flex items-center border border-[#CBD5E1] rounded-xl px-3 py-2.5 bg-white focus-within:border-[#18A67D] focus-within:ring-2 focus-within:ring-[#18A67D]/20 transition-all">
                   <MapPin className="w-4 h-4 text-[#18A67D] shrink-0 mr-2" />
                   <div className="flex-1 min-w-0">
@@ -383,6 +404,7 @@ export function HeroSearch({
                       onChange={(e) => {
                         setLocalityQuery(e.target.value);
                         onFilterChange({ locality: e.target.value });
+                        setSelectedGeo(null); // free-typed text has no pinned coordinates
                         setShowLocalitySuggestions(true);
                         setDrill(null);
                       }}
@@ -402,6 +424,7 @@ export function HeroSearch({
                       onClick={() => {
                         setLocalityQuery('');
                         onFilterChange({ locality: '', localities: [] });
+                        setSelectedGeo(null);
                       }}
                       className="text-slate-400 hover:text-slate-600 p-0.5"
                     >
@@ -435,7 +458,7 @@ export function HeroSearch({
                         <div className="max-h-56 overflow-y-auto space-y-0.5">
                           {/* Pick the whole locality (no specific sub-area) */}
                           <div
-                            onClick={() => handleLocalitySelect(drill.locality.name)}
+                            onClick={() => handleLocalitySelect(drill.locality.name, geoFrom(drill.locality.lat, drill.locality.lng))}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold text-[#0E7C5D] bg-[#E7F6F1] hover:bg-[#d6efe7]"
                           >
                             <Search className="w-3.5 h-3.5" />
@@ -452,7 +475,7 @@ export function HeroSearch({
                             return (
                               <div
                                 key={a.id}
-                                onClick={() => handleLocalitySelect(a.name)}
+                                onClick={() => handleLocalitySelect(a.name, geoFrom(a.lat, a.lng))}
                                 className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold transition-colors ${
                                   isSelected ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'hover:bg-[#F8FAFC] text-[#172033]'
                                 }`}
@@ -518,7 +541,7 @@ export function HeroSearch({
                             return (
                               <div
                                 key={a.id}
-                                onClick={() => handleLocalitySelect(a.name)}
+                                onClick={() => handleLocalitySelect(a.name, geoFrom(a.lat, a.lng))}
                                 className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-semibold transition-colors ${
                                   isSelected ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'hover:bg-[#F8FAFC] text-[#172033]'
                                 }`}
@@ -845,15 +868,25 @@ export function HeroSearch({
               </div>
               )}
 
-              {/* 5. Primary Search Button */}
-              <div className="md:col-span-1.5">
+              {/* 5. Primary Search + Explore on Map Buttons */}
+              <div className="md:col-span-2 grid grid-cols-5 gap-2">
                 <button
                   id="hero-search-submit-btn"
                   onClick={onExecuteSearch}
-                  className="w-full bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer text-xs sm:text-sm"
+                  className="col-span-3 w-full bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold py-3 px-3 rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer text-xs sm:text-sm"
                 >
                   <Search className="w-4 h-4" />
                   <span>Search</span>
+                </button>
+                <button
+                  id="hero-explore-map-btn"
+                  type="button"
+                  onClick={() => onExploreMap(selectedGeo ? { lat: selectedGeo.lat, lng: selectedGeo.lng, radius: 3000 } : undefined)}
+                  title={selectedGeo ? 'Explore this area on the map' : 'Explore results on the map'}
+                  className="col-span-2 w-full bg-[#0F2A43] hover:bg-[#163b5c] text-white font-bold py-3 px-2 rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer text-xs sm:text-sm"
+                >
+                  <MapIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Map</span>
                 </button>
               </div>
 
@@ -921,6 +954,57 @@ export function HeroSearch({
           </div>
 
         </div>
+
+        {/* Embedded Live Map Preview — reuses the full discovery map component.
+            Gated on a configured key; collapsible so it never blocks the page. */}
+        {isMapsEnabled && (
+          <div className="bg-white text-[#172033] rounded-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden">
+            <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+              <div className="flex items-center gap-2 min-w-0">
+                <MapIcon className="w-4 h-4 text-[#18A67D] shrink-0" />
+                <span className="text-xs font-bold text-[#0F2A43] truncate">
+                  Explore {selectedCity.name} on map
+                </span>
+                {selectedGeo && filters.locality && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-[#0E7C5D] bg-[#E7F6F1] px-2 py-0.5 rounded-full truncate">
+                    <MapPin className="w-3 h-3" /> near {filters.locality}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onExploreMap(selectedGeo ? { lat: selectedGeo.lat, lng: selectedGeo.lng, radius: 3000 } : undefined)}
+                  className="inline-flex items-center gap-1.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Open full map</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMiniMap((v) => !v)}
+                  className="text-xs font-bold text-[#64748B] hover:text-[#0F2A43] px-2 py-1.5 rounded-lg hover:bg-[#F1F5F9] transition-colors cursor-pointer"
+                >
+                  {showMiniMap ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+            {showMiniMap && (
+              <div className="relative h-[260px] sm:h-[320px]">
+                <HeroMiniMap city={selectedCity.name} focus={selectedGeo} />
+                {/* Click-through CTA so the map itself opens the full experience. */}
+                <button
+                  type="button"
+                  onClick={() => onExploreMap(selectedGeo ? { lat: selectedGeo.lat, lng: selectedGeo.lng, radius: 3000 } : undefined)}
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 bg-white/95 hover:bg-white text-[#0F2A43] text-xs font-bold px-3.5 py-2 rounded-full shadow-lg border border-[#E2E8F0] transition-colors cursor-pointer"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 text-[#18A67D]" />
+                  <span>Open full map &amp; filters</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Value Proposition Trust Badges */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
