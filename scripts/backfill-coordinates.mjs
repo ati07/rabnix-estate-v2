@@ -83,7 +83,12 @@ async function main() {
     process.exit(1);
   }
 
-  const where = { coordinates: { equals: null } };
+  // "Needs backfill" = no usable map coordinate. We key on the denormalized
+  // `latitude` Float column (null when unset) rather than the Json `coordinates`
+  // field: Prisma's `{ equals: null }` on a Json column matches a JSON `null`
+  // literal, NOT a SQL NULL, so it would silently miss rows. The migration kept
+  // latitude in sync with valid coordinates, so latitude=null is the right flag.
+  const where = { latitude: null };
   if (ONLY_CITY) where.city = ONLY_CITY;
 
   let candidates = await prisma.property.findMany({
