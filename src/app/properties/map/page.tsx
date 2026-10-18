@@ -184,7 +184,7 @@ function MapPageContent() {
   const clearRadius = () => setRadiusCenter(null);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+    <div className="h-screen overflow-hidden bg-[#F8FAFC] flex flex-col">
       {/* Top bar */}
       <header className="bg-white border-b border-[#E2E8F0] px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
