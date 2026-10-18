@@ -225,8 +225,12 @@ export default function HomeView() {
     router.push(`/properties/map?${params.toString()}`);
   };
 
-  const cityMatchingCount = useMemo(() => {
+  // Real count of VERIFIED listings in the selected city — powers the hero
+  // tagline. Only approved/verified listings count (never pending ones), so the
+  // "verified properties" claim stays truthful.
+  const cityVerifiedCount = useMemo(() => {
     return properties.filter((p) => {
+      if (!(p.isVerified || p.verificationStatus === 'approved')) return false;
       if (selectedCity && selectedCity.name !== 'All Cities') {
         return p.city.toLowerCase() === selectedCity.name.toLowerCase();
       }
@@ -273,7 +277,7 @@ export default function HomeView() {
         onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters }))}
         onExecuteSearch={() => handleExecuteSearch()}
         onExploreMap={handleExploreMap}
-        matchingCount={cityMatchingCount}
+        verifiedCount={cityVerifiedCount}
         onOpenPostProperty={() => setIsPostPropertyOpen(true)}
       />
 
