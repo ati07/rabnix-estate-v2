@@ -2,6 +2,7 @@ import 'server-only';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
+import { CITIES_DATA } from '@/lib/realEstateData';
 
 // ---------------------------------------------------------------------------
 // Listing packs & city-based pricing
@@ -26,21 +27,21 @@ export type PackId =
   | 'silver_1000';
 
 // Price columns from the sheet. NCR sub-cities (Noida, Gurgaon, Ghaziabad, …)
-// all share one price, so they collapse into `delhiNcr`. `cat2`/`cat3` are the
-// catch-all tiers for cities not named individually in the sheet.
+// all share one price, so they collapse into `delhiNcr`. `other` is the single
+// catch-all tier for any city NOT named individually in the sheet (it carries
+// the sheet's "Cat 2" prices — "Cat 3" is no longer used). Pune is not in the
+// sheet, so it has no dedicated column and bills at `other`.
 export type PriceColumn =
   | 'mumbai'
   | 'bangalore'
   | 'delhiNcr'
   | 'hyderabad'
-  | 'pune'
   | 'chennai'
   | 'naviMumbai'
   | 'thane'
   | 'kolkata'
   | 'ahmedabad'
-  | 'cat2'
-  | 'cat3';
+  | 'other';
 
 export interface ListingPack {
   id: PackId;
@@ -74,37 +75,56 @@ export function getPack(packId: string): ListingPack | null {
 // Prices in rupees, taken verbatim from the sheet (incl. the rows where
 // Hyderabad / Navi Mumbai diverge from their usual band — nothing is tiered
 // away, the full matrix is stored). Navi Mumbai / Thane have their own columns
-// but are not yet app cities, so they stay dormant until added.
+// but are not yet app cities, so they stay dormant until added. `other` carries
+// the sheet's "Cat 2" values and is the price for every city not named above
+// (Pune, Lucknow, …); the sheet's "Cat 3" column is intentionally unused.
 export const CITY_PRICE_MATRIX: Record<PackId, Record<PriceColumn, number>> = {
-  silver_100:  { mumbai: 10000, bangalore: 10000, delhiNcr: 8000,  hyderabad: 10000, pune: 8000,  chennai: 8000,  naviMumbai: 7500,  thane: 7500,  kolkata: 5000,  ahmedabad: 5000,  cat2: 4000,  cat3: 2000 },
-  silver_200:  { mumbai: 16000, bangalore: 16000, delhiNcr: 12000, hyderabad: 16000, pune: 12000, chennai: 12000, naviMumbai: 10500, thane: 10500, kolkata: 8000,  ahmedabad: 8000,  cat2: 6500,  cat3: 3200 },
-  silver_250:  { mumbai: 20000, bangalore: 20000, delhiNcr: 14000, hyderabad: 20000, pune: 14000, chennai: 14000, naviMumbai: 14000, thane: 14000, kolkata: 10000, ahmedabad: 10000, cat2: 8000,  cat3: 4000 },
-  silver_350:  { mumbai: 28500, bangalore: 28500, delhiNcr: 20000, hyderabad: 20000, pune: 20000, chennai: 20000, naviMumbai: 20000, thane: 20000, kolkata: 15000, ahmedabad: 15000, cat2: 10500, cat3: 6000 },
-  silver_400:  { mumbai: 35000, bangalore: 35000, delhiNcr: 25000, hyderabad: 35000, pune: 25000, chennai: 25000, naviMumbai: 25000, thane: 25000, kolkata: 18000, ahmedabad: 18000, cat2: 13500, cat3: 7000 },
-  silver_600:  { mumbai: 45000, bangalore: 45000, delhiNcr: 33000, hyderabad: 45000, pune: 33000, chennai: 33000, naviMumbai: 30000, thane: 30000, kolkata: 25000, ahmedabad: 25000, cat2: 18000, cat3: 10500 },
-  silver_800:  { mumbai: 65000, bangalore: 65000, delhiNcr: 60000, hyderabad: 65000, pune: 60000, chennai: 60000, naviMumbai: 42500, thane: 42500, kolkata: 34000, ahmedabad: 34000, cat2: 25000, cat3: 12500 },
-  silver_1000: { mumbai: 75000, bangalore: 75000, delhiNcr: 70000, hyderabad: 70000, pune: 70000, chennai: 70000, naviMumbai: 50000, thane: 50000, kolkata: 40000, ahmedabad: 40000, cat2: 34000, cat3: 15000 },
+  silver_100:  { mumbai: 10000, bangalore: 10000, delhiNcr: 8000,  hyderabad: 10000, chennai: 8000,  naviMumbai: 7500,  thane: 7500,  kolkata: 5000,  ahmedabad: 5000,  other: 4000 },
+  silver_200:  { mumbai: 16000, bangalore: 16000, delhiNcr: 12000, hyderabad: 16000, chennai: 12000, naviMumbai: 10500, thane: 10500, kolkata: 8000,  ahmedabad: 8000,  other: 6500 },
+  silver_250:  { mumbai: 20000, bangalore: 20000, delhiNcr: 14000, hyderabad: 20000, chennai: 14000, naviMumbai: 14000, thane: 14000, kolkata: 10000, ahmedabad: 10000, other: 8000 },
+  silver_350:  { mumbai: 28500, bangalore: 28500, delhiNcr: 20000, hyderabad: 20000, chennai: 20000, naviMumbai: 20000, thane: 20000, kolkata: 15000, ahmedabad: 15000, other: 10500 },
+  silver_400:  { mumbai: 35000, bangalore: 35000, delhiNcr: 25000, hyderabad: 35000, chennai: 25000, naviMumbai: 25000, thane: 25000, kolkata: 18000, ahmedabad: 18000, other: 13500 },
+  silver_600:  { mumbai: 45000, bangalore: 45000, delhiNcr: 33000, hyderabad: 45000, chennai: 33000, naviMumbai: 30000, thane: 30000, kolkata: 25000, ahmedabad: 25000, other: 18000 },
+  silver_800:  { mumbai: 65000, bangalore: 65000, delhiNcr: 60000, hyderabad: 65000, chennai: 60000, naviMumbai: 42500, thane: 42500, kolkata: 34000, ahmedabad: 34000, other: 25000 },
+  silver_1000: { mumbai: 75000, bangalore: 75000, delhiNcr: 70000, hyderabad: 70000, chennai: 70000, naviMumbai: 50000, thane: 50000, kolkata: 40000, ahmedabad: 40000, other: 34000 },
 };
 
-// Maps each app city (CITIES_DATA names) to its price column. Any city not
-// listed here is billed at `cat3` (see columnForCity) — current policy.
+// Maps each app city (CITIES_DATA names) to its price column. Only cities named
+// individually in the sheet appear here; everything else (Pune, Lucknow, any
+// future city) is billed at the `other` tier via columnForCity.
 export const CITY_TO_COLUMN: Record<string, PriceColumn> = {
   'Mumbai': 'mumbai',
   'Bangalore': 'bangalore',
   'Delhi / NCR': 'delhiNcr',
   'Hyderabad': 'hyderabad',
-  'Pune': 'pune',
   'Chennai': 'chennai',
   'Kolkata': 'kolkata',
   'Ahmedabad': 'ahmedabad',
-  'Lucknow': 'cat3',
 };
 
-/** The app cities a pack can be purchased for (price-matrix aware). */
-export const SELLABLE_CITIES: string[] = Object.keys(CITY_TO_COLUMN);
+/** Label for the catch-all purchase option covering every city not named in the
+ *  sheet (Pune, Lucknow, …). Packs are bought and quota is tracked under this
+ *  single key, so one "Other" pack covers all such cities. */
+export const OTHER_CITY_LABEL = 'Other';
+
+/** The options a pack can be purchased for: each sheet-named city individually,
+ *  plus one "Other" bucket for everything else. Shown in the dashboard's city
+ *  selector. */
+export const SELLABLE_CITIES: string[] = [...Object.keys(CITY_TO_COLUMN), OTHER_CITY_LABEL];
 
 export function columnForCity(city: string): PriceColumn {
-  return CITY_TO_COLUMN[city] ?? 'cat3';
+  return CITY_TO_COLUMN[city] ?? 'other';
+}
+
+/**
+ * The key a city's listing quota is tracked under. Sheet-named cities use their
+ * own name; every other app city (Pune, Lucknow, …) collapses to the single
+ * `OTHER_CITY_LABEL` bucket — so a pack bought for "Other" gates listings in any
+ * such city, matching how they are priced. Keep purchase + posting + dashboard
+ * all keyed through this so quota lines up with pricing.
+ */
+export function billingKeyForCity(city: string): string {
+  return CITY_TO_COLUMN[city] ? city : OTHER_CITY_LABEL;
 }
 
 export interface ResolvedPrice {

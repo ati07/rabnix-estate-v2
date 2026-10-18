@@ -440,7 +440,13 @@ export default function UserDashboardPage() {
   useEffect(() => {
     const cities = billing?.pricing?.cities;
     if (!cities || cities.length === 0 || billingCity) return;
-    const preferred = user?.city && cities.includes(user.city) ? user.city : cities[0];
+    // Default to the user's own city if it's individually priced; otherwise to
+    // the "Other" bucket (which covers it), else the first option.
+    const preferred = user?.city && cities.includes(user.city)
+      ? user.city
+      : cities.includes('Other')
+        ? 'Other'
+        : cities[0];
     setBillingCity(preferred);
   }, [billing?.pricing?.cities, user?.city, billingCity]);
 
@@ -526,12 +532,13 @@ export default function UserDashboardPage() {
   const entitlement = billing?.entitlement;
   const listingsRemaining = entitlement?.unlimited ? Infinity : entitlement?.totalRemaining ?? 0;
 
-  // Price of a pack for a given city, resolved from the city matrix (cat3 fallback).
+  // Price of a pack for a given city, resolved from the city matrix. Cities not
+  // named in the sheet (Pune, Lucknow, …) fall back to the `other` tier.
   const priceForPack = React.useCallback(
     (packId: string, city: string): number | null => {
       const pricing = billing?.pricing;
       if (!pricing || !city) return null;
-      const column = pricing.cityToColumn[city] ?? 'cat3';
+      const column = pricing.cityToColumn[city] ?? 'other';
       return pricing.priceMatrix[packId]?.[column] ?? null;
     },
     [billing?.pricing],
@@ -3132,7 +3139,14 @@ export default function UserDashboardPage() {
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
-                    <p className="text-[11px] text-[#64748B]">Prices and listing quota apply to this city only.</p>
+                    <p className="text-[11px] text-[#64748B]">
+                      Prices and listing quota apply to this city only.
+                      {billingCity === 'Other' && (
+                        <span className="block mt-0.5 text-[#0E7C5D] font-semibold">
+                          “Other” covers every city not listed above (e.g. Pune, Lucknow) at our standard rate.
+                        </span>
+                      )}
+                    </p>
                   </div>
 
                   {/* Pack cards */}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { getPack, resolvePrice, createRazorpayOrder, devBypassEnabled, razorpayConfigured } from '@/lib/billing';
+import { getPack, resolvePrice, createRazorpayOrder, devBypassEnabled, razorpayConfigured, billingKeyForCity } from '@/lib/billing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,10 +30,13 @@ export async function POST(req: NextRequest) {
     if (!pack) {
       return NextResponse.json({ success: false, error: 'Unknown pack.' }, { status: 400 });
     }
-    const city = typeof body.city === 'string' ? body.city.trim() : '';
-    if (!city) {
+    const rawCity = typeof body.city === 'string' ? body.city.trim() : '';
+    if (!rawCity) {
       return NextResponse.json({ success: false, error: 'Please choose a city for this pack.' }, { status: 400 });
     }
+    // Normalize to the billing bucket: sheet-named cities keep their name, every
+    // other city collapses to "Other", so quota lines up with the posting side.
+    const city = billingKeyForCity(rawCity);
     // Price is resolved server-side from the city matrix — never trust a client amount.
     const priced = resolvePrice(pack.id, city);
     if (!priced) {

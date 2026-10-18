@@ -26,7 +26,7 @@ export async function GET() {
   }));
 
   // Pricing is a function of pack × city; the client resolves a price via
-  // priceMatrix[packId][cityToColumn[city] ?? 'cat3'].
+  // priceMatrix[packId][cityToColumn[city] ?? 'other'].
   const pricing = {
     cities: SELLABLE_CITIES,
     cityToColumn: CITY_TO_COLUMN,

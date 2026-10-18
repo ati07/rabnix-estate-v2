@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
 import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
-import { getEntitlement, canCreateInCity, consumeListingCredit } from '@/lib/billing';
+import { getEntitlement, canCreateInCity, consumeListingCredit, billingKeyForCity } from '@/lib/billing';
 import { coordinateColumns } from '@/lib/maps/config';
 import type { Property } from '@/lib/types';
 
@@ -87,18 +87,23 @@ export async function POST(req: NextRequest) {
     const price = b.price;
     const city = b.city;
     const locality = b.locality;
+    // Quota is tracked per billing bucket: sheet-named cities by their own name,
+    // every other city under the shared "Other" key (so an Other pack covers
+    // Pune, Lucknow, …). The listing still stores its real city.
+    const billingCity = billingKeyForCity(city);
 
     // Listing quota: admins are unlimited; everyone else gets FREE_LISTINGS free
-    // (usable in any city), then needs an active pack bought for THIS city with
-    // remaining quota. (Race-safe consume happens inside the transaction below;
-    // this is the fast, friendly pre-check.)
+    // (usable in any city), then needs an active pack bought for THIS billing
+    // bucket with remaining quota. (Race-safe consume happens inside the
+    // transaction below; this is the fast, friendly pre-check.)
     const entitlement = await getEntitlement(user.id, user.role);
-    if (!entitlement.unlimited && !canCreateInCity(entitlement, city)) {
+    if (!entitlement.unlimited && !canCreateInCity(entitlement, billingCity)) {
+      const packLabel = billingCity === city ? `a ${city}` : `an "${billingCity}"`;
       return NextResponse.json(
         {
           success: false,
           error: 'listing-quota-exceeded',
-          message: `You have no listings left for ${city}. Buy a ${city} pack from your dashboard to post here.`,
+          message: `You have no listings left for ${city}. Buy ${packLabel} pack from your dashboard to post here.`,
         },
         { status: 402 },
       );
@@ -108,7 +113,7 @@ export async function POST(req: NextRequest) {
       // Atomically consume one credit unless the user is an admin. If nothing is
       // available (e.g. a race emptied the quota), abort the whole transaction.
       if (!entitlement.unlimited) {
-        const consumed = await consumeListingCredit(tx, user.id, city);
+        const consumed = await consumeListingCredit(tx, user.id, billingCity);
         if (!consumed) {
           throw new Error('listing-quota-exceeded');
         }
