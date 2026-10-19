@@ -314,7 +314,7 @@ export default function AdminPortalPage() {
   const cityDistributionData = [
     { city: 'Bangalore', listings: 8, inquiries: 42 },
     { city: 'Mumbai', listings: 6, inquiries: 36 },
-    { city: 'Delhi NCR', listings: 5, inquiries: 29 },
+    { city: 'New Delhi', listings: 5, inquiries: 29 },
     { city: 'Hyderabad', listings: 4, inquiries: 18 },
     { city: 'Pune', listings: 3, inquiries: 14 }
   ];

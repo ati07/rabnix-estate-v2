@@ -22,14 +22,34 @@ export const CITIES_DATA: CityInfo[] = [
     image: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&w=800&q=80',
   },
   {
-    name: 'Delhi / NCR',
-    state: 'Delhi NCR',
+    name: 'New Delhi',
+    state: 'Delhi',
     code: 'DEL',
-    popularLocalities: ['Golf Course Extension Gurgaon', 'Sector 62 Noida', 'Dwarka Expressway', 'Vasant Kunj', 'Greater Noida West', 'Cyber City Gurgaon', 'South Extension'],
-    avgPricePerSqFt: 11200,
-    yoyGrowth: 12.1,
-    totalListingsCount: 46200,
+    popularLocalities: ['Dwarka', 'Rohini', 'Saket', 'Vasant Kunj', 'Hauz Khas', 'Lajpat Nagar', 'Karol Bagh', 'Janakpuri'],
+    avgPricePerSqFt: 12200,
+    yoyGrowth: 11.4,
+    totalListingsCount: 0,
     image: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    name: 'Noida',
+    state: 'Uttar Pradesh',
+    code: 'NOI',
+    popularLocalities: ['Sector 62', 'Sector 150', 'Sector 137', 'Noida Extension', 'Greater Noida West', 'Sector 76', 'Sector 78', 'Sector 50'],
+    avgPricePerSqFt: 8200,
+    yoyGrowth: 13.8,
+    totalListingsCount: 0,
+    image: '',
+  },
+  {
+    name: 'Gurgaon',
+    state: 'Haryana',
+    code: 'GUR',
+    popularLocalities: ['Golf Course Road', 'Golf Course Extension', 'Sohna Road', 'DLF Phase 5', 'Cyber City', 'Sector 56', 'MG Road', 'New Gurgaon'],
+    avgPricePerSqFt: 10900,
+    yoyGrowth: 12.6,
+    totalListingsCount: 0,
+    image: '',
   },
   {
     name: 'Hyderabad',
@@ -93,6 +113,51 @@ export const CITIES_DATA: CityInfo[] = [
   }
 ];
 
+// Curated "Popular Cities" shown first in the city selector. Kept static so the
+// headline markets always appear even when they have no live inventory yet.
+// NCR is split into its real constituent cities (New Delhi / Gurgaon / Noida)
+// rather than a single "Delhi / NCR" aggregate.
+export const POPULAR_CITY_NAMES: string[] = [
+  'Mumbai',
+  'Navi Mumbai',
+  'Thane',
+  'Beyond Thane',
+  'Bangalore',
+  'New Delhi',
+  'Gurgaon',
+  'Noida',
+  'Hyderabad',
+  'Pune',
+  'Chennai',
+  'Kolkata',
+  'Ahmedabad',
+  'Jaipur',
+  'Indore',
+  'Lucknow',
+];
+
+// Resolve a city name to a CityInfo. Returns the rich CITIES_DATA entry when one
+// exists (case-insensitive), otherwise a minimal object so cities that only live
+// in the database (no curated image/localities) still flow through the app and
+// persist across reloads. Keep in sync with the city selector + home page init.
+export function resolveCityInfo(name: string): CityInfo {
+  const trimmed = name.trim();
+  const match = CITIES_DATA.find(
+    (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (match) return match;
+  return {
+    name: trimmed,
+    state: '',
+    code: trimmed.slice(0, 3).toUpperCase(),
+    popularLocalities: [],
+    avgPricePerSqFt: 0,
+    yoyGrowth: 0,
+    totalListingsCount: 0,
+    image: '',
+  };
+}
+
 // Comprehensive locality lists per city, used to power the Hero search
 // autocomplete (MagicBricks-style). The `popularLocalities` above are the small
 // curated set shown on tiles/sections; this is the full searchable set so that
@@ -117,14 +182,20 @@ export const CITY_SEARCH_LOCALITIES: Record<string, string[]> = {
     'Hennur', 'Thanisandra', 'Jakkur', 'Devanahalli', 'Nagawara', 'Kanakapura Road',
     'Bannerghatta Road', 'Mysore Road', 'Tumkur Road',
   ],
-  'Delhi / NCR': [
-    'Golf Course Extension Gurgaon', 'Golf Course Road Gurgaon', 'Sector 62 Noida', 'Dwarka Expressway',
-    'Vasant Kunj', 'Greater Noida West', 'Cyber City Gurgaon', 'South Extension', 'Dwarka', 'Rohini',
-    'Pitampura', 'Saket', 'Vasant Vihar', 'Hauz Khas', 'Lajpat Nagar', 'Karol Bagh', 'Janakpuri',
-    'Rajouri Garden', 'Mayur Vihar', 'Preet Vihar', 'Patparganj', 'Indirapuram', 'Vaishali', 'Vasundhara',
-    'Kaushambi', 'Raj Nagar Extension', 'Crossings Republik', 'Sector 150 Noida', 'Sector 137 Noida',
-    'Noida Extension', 'Sohna Road', 'MG Road Gurgaon', 'Sushant Lok', 'DLF Phase 1', 'DLF Phase 2',
-    'DLF Phase 3', 'Sector 56 Gurgaon', 'New Gurgaon', 'Manesar',
+  'New Delhi': [
+    'Dwarka', 'Rohini', 'Pitampura', 'Saket', 'Vasant Vihar', 'Vasant Kunj', 'Hauz Khas',
+    'Lajpat Nagar', 'Karol Bagh', 'Janakpuri', 'Rajouri Garden', 'Mayur Vihar', 'Preet Vihar',
+    'Patparganj', 'South Extension',
+  ],
+  'Noida': [
+    'Sector 62', 'Sector 150', 'Sector 137', 'Sector 76', 'Sector 78', 'Sector 50', 'Noida Extension',
+    'Greater Noida West', 'Indirapuram', 'Vaishali', 'Vasundhara', 'Kaushambi', 'Raj Nagar Extension',
+    'Crossings Republik',
+  ],
+  'Gurgaon': [
+    'Golf Course Extension', 'Golf Course Road', 'Dwarka Expressway', 'Cyber City', 'Sohna Road',
+    'MG Road', 'Sushant Lok', 'DLF Phase 1', 'DLF Phase 2', 'DLF Phase 3', 'DLF Phase 5', 'Sector 56',
+    'New Gurgaon', 'Manesar',
   ],
   'Hyderabad': [
     'Gachibowli', 'Hitec City', 'Kondapur', 'Kokapet', 'Madhapur', 'Banjara Hills', 'Jubilee Hills',
@@ -180,7 +251,7 @@ export const INITIAL_PROPERTIES: Property[] = [
     tagline: 'Nestled in an urban forest with 600+ mature trees and grand clubhouse',
     listingType: 'buy',
     category: 'Apartment',
-    city: 'Delhi / NCR',
+    city: 'Noida',
     locality: 'Sector 62 Noida',
     subLocality: 'Near Metro & Expressways',
     price: 24500000,
@@ -564,7 +635,7 @@ export const INITIAL_PROPERTIES: Property[] = [
     tagline: 'All-inclusive co-living with housekeeping, high speed WiFi, gym & gaming zone',
     listingType: 'pg',
     category: 'PG / Co-Living',
-    city: 'Delhi / NCR',
+    city: 'Gurgaon',
     locality: 'Cyber City Gurgaon',
     subLocality: 'DLF Phase 2, Near Rapid Metro',
     price: 18500,
@@ -621,7 +692,7 @@ export const INITIAL_PROPERTIES: Property[] = [
     tagline: 'Corner plot with clear title, RERA registered, and immediate registry & construction approval',
     listingType: 'plot',
     category: 'Residential Plot',
-    city: 'Delhi / NCR',
+    city: 'Gurgaon',
     locality: 'Dwarka Expressway',
     subLocality: 'Sector 150 Expressway Zone',
     price: 18000000,
@@ -1554,7 +1625,7 @@ export const LOCALITY_TRENDS_DATA: LocalityTrend[] = [
   },
   {
     locality: 'Sector 62 Noida',
-    city: 'Delhi / NCR',
+    city: 'Noida',
     avgPricePerSqFt: 9800,
     rentalYield: '4.4% p.a.',
     yoyGrowth: 13.8,

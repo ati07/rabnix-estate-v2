@@ -6,7 +6,7 @@ import {
   Sparkles, 
 } from 'lucide-react';
 import { Property, SearchFilters, CityInfo, ListingType } from '@/lib/types';
-import { CITIES_DATA } from '@/lib/realEstateData';
+import { CITIES_DATA, resolveCityInfo } from '@/lib/realEstateData';
 import { detectNearestCity, detectCityByIp } from '@/lib/geoCity';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
@@ -42,8 +42,9 @@ export default function HomeView() {
   const [selectedCity, setSelectedCity] = useState<CityInfo>(() => {
     if (typeof window !== 'undefined') {
       const savedName = localStorage.getItem(CITY_STORAGE_KEY);
-      const saved = savedName ? CITIES_DATA.find((c) => c.name === savedName) : undefined;
-      if (saved) return saved;
+      // resolveCityInfo falls back to a minimal CityInfo for cities that only
+      // live in the DB (not in CITIES_DATA), so the user's choice survives reload.
+      if (savedName) return resolveCityInfo(savedName);
     }
     return CITIES_DATA[1]; // Bangalore default
   });
@@ -225,33 +226,6 @@ export default function HomeView() {
     router.push(`/properties/map?${params.toString()}`);
   };
 
-  // Real count of VERIFIED listings in the selected city — powers the hero
-  // tagline. Only approved/verified listings count (never pending ones), so the
-  // "verified properties" claim stays truthful.
-  const cityVerifiedCount = useMemo(() => {
-    return properties.filter((p) => {
-      if (!(p.isVerified || p.verificationStatus === 'approved')) return false;
-      if (selectedCity && selectedCity.name !== 'All Cities') {
-        return p.city.toLowerCase() === selectedCity.name.toLowerCase();
-      }
-      return true;
-    }).length;
-  }, [properties, selectedCity]);
-
-  // Verified-listing count per city (keyed by lowercased name) for the city
-  // selector cards. Same "verified" predicate as the hero so the numbers agree;
-  // matched by exact city name (listings stored under e.g. "Gurgaon" won't roll
-  // up into "Delhi / NCR").
-  const cityVerifiedCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of properties) {
-      if (!(p.isVerified || p.verificationStatus === 'approved')) continue;
-      const key = p.city.toLowerCase();
-      counts[key] = (counts[key] || 0) + 1;
-    }
-    return counts;
-  }, [properties]);
-
   const shortlistedProperties = useMemo(() => {
     return properties.filter((p) => shortlistIds.includes(p.id));
   }, [properties, shortlistIds]);
@@ -291,7 +265,6 @@ export default function HomeView() {
         onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters }))}
         onExecuteSearch={() => handleExecuteSearch()}
         onExploreMap={handleExploreMap}
-        verifiedCount={cityVerifiedCount}
         onOpenPostProperty={() => setIsPostPropertyOpen(true)}
       />
 
@@ -454,7 +427,6 @@ export default function HomeView() {
         onClose={() => setIsCitySelectorOpen(false)}
         selectedCity={selectedCity}
         onSelectCity={handleSelectCity}
-        cityCounts={cityVerifiedCounts}
       />
 
       {/* 8. Authentication & Registration Modal */}

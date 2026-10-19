@@ -95,7 +95,9 @@ export const CITY_PRICE_MATRIX: Record<PackId, Record<PriceColumn, number>> = {
 export const CITY_TO_COLUMN: Record<string, PriceColumn> = {
   'Mumbai': 'mumbai',
   'Bangalore': 'bangalore',
-  'Delhi / NCR': 'delhiNcr',
+  'New Delhi': 'delhiNcr',
+  'Noida': 'delhiNcr',
+  'Gurgaon': 'delhiNcr',
   'Hyderabad': 'hyderabad',
   'Chennai': 'chennai',
   'Kolkata': 'kolkata',

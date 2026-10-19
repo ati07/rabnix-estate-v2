@@ -15,12 +15,12 @@ import { CITY_MARKET_TRENDS } from '@/data/mockProperties';
 import { TrendingUp, ArrowUpRight, ShieldCheck, MapPin } from 'lucide-react';
 
 export function MarketTrendsChart() {
-  const [selectedCity, setSelectedCity] = useState<'all' | 'Bengaluru' | 'Mumbai' | 'Delhi NCR' | 'Hyderabad' | 'Pune'>('all');
+  const [selectedCity, setSelectedCity] = useState<'all' | 'Bengaluru' | 'Mumbai' | 'New Delhi' | 'Hyderabad' | 'Pune'>('all');
 
   const cityColors: Record<string, string> = {
     Bengaluru: '#18A67D',
     Mumbai: '#0F2A43',
-    'Delhi NCR': '#F59E0B',
+    'New Delhi': '#F59E0B',
     Hyderabad: '#6366F1',
     Pune: '#EC4899',
   };
@@ -45,7 +45,7 @@ export function MarketTrendsChart() {
 
         {/* City Filter Tabs */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {['all', 'Bengaluru', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune'].map((city) => (
+          {['all', 'Bengaluru', 'Mumbai', 'New Delhi', 'Hyderabad', 'Pune'].map((city) => (
             <button
               key={city}
               type="button"
@@ -106,11 +106,11 @@ export function MarketTrendsChart() {
                 activeDot={{ r: 6 }}
               />
             )}
-            {(selectedCity === 'all' || selectedCity === 'Delhi NCR') && (
+            {(selectedCity === 'all' || selectedCity === 'New Delhi') && (
               <Line
                 type="monotone"
-                dataKey="Delhi NCR"
-                stroke={cityColors['Delhi NCR']}
+                dataKey="New Delhi"
+                stroke={cityColors['New Delhi']}
                 strokeWidth={3}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}

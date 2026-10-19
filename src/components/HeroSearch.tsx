@@ -53,8 +53,6 @@ interface HeroSearchProps {
   onFilterChange: (newFilters: Partial<SearchFilters>) => void;
   onExecuteSearch: () => void;
   onExploreMap: (geo?: { lat: number; lng: number; radius?: number }) => void;
-  /** Real count of verified listings in the selected city (drives the tagline). */
-  verifiedCount: number;
   onOpenPostProperty: () => void;
 }
 
@@ -74,7 +72,6 @@ export function HeroSearch({
   onFilterChange,
   onExecuteSearch,
   onExploreMap,
-  verifiedCount,
   onOpenPostProperty
 }: HeroSearchProps) {
   const [localityQuery, setLocalityQuery] = useState('');
@@ -338,9 +335,7 @@ export function HeroSearch({
             Find Your Dream Home in <span className="text-[#22C39A]">{selectedCity.name}</span>
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm">
-            {verifiedCount > 0
-              ? `${verifiedCount.toLocaleString()} verified ${verifiedCount === 1 ? 'property' : 'properties'} for buy, rent & investment with direct owner options.`
-              : 'Verified properties for buy, rent & investment with direct owner options.'}
+            Verified properties for buy, rent & investment with direct owner options.
           </p>
         </div>
 

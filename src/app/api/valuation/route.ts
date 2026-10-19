@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const baseRates: Record<string, number> = {
       Bengaluru: 9800,
       Mumbai: 22500,
-      'Delhi NCR': 8200,
+      'New Delhi': 8200,
       Hyderabad: 8800,
       Pune: 7600,
       Chennai: 7400,

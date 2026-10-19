@@ -4,7 +4,7 @@ export const INDIAN_CITIES = [
   'All Cities',
   'Bengaluru',
   'Mumbai',
-  'Delhi NCR',
+  'New Delhi',
   'Hyderabad',
   'Pune',
   'Chennai',
@@ -222,7 +222,7 @@ export const MOCK_PROPERTIES: Property[] = [
     isFeatured: false,
     location: {
       locality: 'Sector 54, Golf Course Road',
-      city: 'Delhi NCR',
+      city: 'New Delhi',
       state: 'Haryana',
       pincode: '122011',
       landmark: 'Opposite DLF Golf and Country Club'
@@ -490,11 +490,11 @@ export const MOCK_PROPERTIES: Property[] = [
 ];
 
 export const CITY_MARKET_TRENDS = [
-  { month: 'Jan', Bengaluru: 8400, Mumbai: 21500, 'Delhi NCR': 7200, Hyderabad: 7600, Pune: 6800 },
-  { month: 'Mar', Bengaluru: 8650, Mumbai: 21800, 'Delhi NCR': 7350, Hyderabad: 7850, Pune: 6950 },
-  { month: 'May', Bengaluru: 8900, Mumbai: 22100, 'Delhi NCR': 7500, Hyderabad: 8100, Pune: 7100 },
-  { month: 'Jul', Bengaluru: 9200, Mumbai: 22500, 'Delhi NCR': 7700, Hyderabad: 8400, Pune: 7300 },
-  { month: 'Sep', Bengaluru: 9550, Mumbai: 22900, 'Delhi NCR': 7900, Hyderabad: 8700, Pune: 7550 },
-  { month: 'Nov', Bengaluru: 9950, Mumbai: 23400, 'Delhi NCR': 8150, Hyderabad: 9050, Pune: 7800 },
-  { month: 'Jan (Now)', Bengaluru: 10400, Mumbai: 24100, 'Delhi NCR': 8400, Hyderabad: 9450, Pune: 8100 }
+  { month: 'Jan', Bengaluru: 8400, Mumbai: 21500, 'New Delhi': 7200, Hyderabad: 7600, Pune: 6800 },
+  { month: 'Mar', Bengaluru: 8650, Mumbai: 21800, 'New Delhi': 7350, Hyderabad: 7850, Pune: 6950 },
+  { month: 'May', Bengaluru: 8900, Mumbai: 22100, 'New Delhi': 7500, Hyderabad: 8100, Pune: 7100 },
+  { month: 'Jul', Bengaluru: 9200, Mumbai: 22500, 'New Delhi': 7700, Hyderabad: 8400, Pune: 7300 },
+  { month: 'Sep', Bengaluru: 9550, Mumbai: 22900, 'New Delhi': 7900, Hyderabad: 8700, Pune: 7550 },
+  { month: 'Nov', Bengaluru: 9950, Mumbai: 23400, 'New Delhi': 8150, Hyderabad: 9050, Pune: 7800 },
+  { month: 'Jan (Now)', Bengaluru: 10400, Mumbai: 24100, 'New Delhi': 8400, Hyderabad: 9450, Pune: 8100 }
 ];

@@ -67,7 +67,7 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
       isOwnerOnly: true,
       isVerifiedOnly: false
     },
-    recommendedCities: ['Bangalore', 'Mumbai', 'Delhi / NCR', 'Pune', 'Hyderabad'],
+    recommendedCities: ['Bangalore', 'Mumbai', 'New Delhi', 'Pune', 'Hyderabad'],
     faqs: [
       {
         question: 'Are all properties in this collection posted directly by owners?',
@@ -111,7 +111,7 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
     filters: {
       constructionStatus: 'Ready to Move'
     },
-    recommendedCities: ['Bangalore', 'Delhi / NCR', 'Mumbai', 'Hyderabad', 'Chennai', 'Pune'],
+    recommendedCities: ['Bangalore', 'New Delhi', 'Mumbai', 'Hyderabad', 'Chennai', 'Pune'],
     faqs: [
       {
         question: 'Do ready-to-move homes require GST payment?',
@@ -155,7 +155,7 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
     filters: {
       minPrice: 20000000
     },
-    recommendedCities: ['Mumbai', 'Delhi / NCR', 'Bangalore', 'Hyderabad', 'Goa'],
+    recommendedCities: ['Mumbai', 'New Delhi', 'Bangalore', 'Hyderabad', 'Goa'],
     faqs: [
       {
         question: 'Does BayBayt provide private confidential showings?',
@@ -195,7 +195,7 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
     filters: {
       maxPrice: 5000000
     },
-    recommendedCities: ['Pune', 'Bangalore', 'Ahmedabad', 'Chennai', 'Kolkata', 'Delhi / NCR'],
+    recommendedCities: ['Pune', 'Bangalore', 'Ahmedabad', 'Chennai', 'Kolkata', 'New Delhi'],
     faqs: [
       {
         question: 'What financing options are available for homes under ₹50 Lakhs?',
@@ -235,7 +235,7 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
     filters: {
       category: 'Villa'
     },
-    recommendedCities: ['Bangalore', 'Hyderabad', 'Chennai', 'Delhi / NCR', 'Lucknow'],
+    recommendedCities: ['Bangalore', 'Hyderabad', 'Chennai', 'New Delhi', 'Lucknow'],
     faqs: [
       {
         question: 'Do these villas come with freehold land titles?',
@@ -276,7 +276,7 @@ export const CURATED_COLLECTIONS: CuratedCollection[] = [
       category: 'Commercial Office',
       listingType: 'commercial'
     },
-    recommendedCities: ['Mumbai', 'Bangalore', 'Delhi / NCR', 'Hyderabad', 'Pune'],
+    recommendedCities: ['Mumbai', 'Bangalore', 'New Delhi', 'Hyderabad', 'Pune'],
     faqs: [
       {
         question: 'What is the minimum investment for Grade-A commercial offices?',

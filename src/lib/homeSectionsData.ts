@@ -278,7 +278,7 @@ export const HOME_FEATURED_PROJECTS: FeaturedProjectItem[] = [
     name: 'Godrej Woods Residences',
     builderName: 'Godrej Properties Ltd',
     builderLogo: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=200&q=80',
-    city: 'Delhi / NCR',
+    city: 'Noida',
     locality: 'Sector 62 Noida',
     address: 'Sector 62, Near Electronic City Metro, Noida, UP 201309',
     marketedBy: 'Godrej Partner Desk',
@@ -461,7 +461,7 @@ export const HOME_FEATURED_PROJECTS: FeaturedProjectItem[] = [
     name: 'DLF The Camellias Super Luxury',
     builderName: 'DLF Limited',
     builderLogo: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=200&q=80',
-    city: 'Delhi / NCR',
+    city: 'Gurgaon',
     locality: 'Golf Course Road, Gurgaon',
     address: 'DLF 5, Golf Course Road, Sector 42, Gurgaon 122002',
     marketedBy: 'DLF Signature Advisory',
@@ -970,7 +970,7 @@ export const HOME_PREFERRED_AGENTS: PreferredAgentItem[] = [
     experienceYears: 18,
     buyersServed: '9500+',
     propertiesForSaleCount: 178,
-    city: 'Delhi / NCR',
+    city: 'Gurgaon',
     rating: 5.0,
     phone: '+91 98100 88990',
     email: 'vikram@ncrprime.com',
@@ -1185,11 +1185,35 @@ export const POPULAR_LOCALITIES_TILES: Record<string, PopularLocalityCardItem[]>
       propertiesCount: 1840
     }
   ],
-  'Delhi / NCR': [
+  'New Delhi': [
+    {
+      id: 'loc-del-vasant-kunj',
+      name: 'Vasant Kunj',
+      city: 'New Delhi',
+      priceRangeSqFt: '₹ 18,000 - ₹ 45,000 per sqft',
+      rating: 4.8,
+      reviewsCount: 740,
+      thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80',
+      propertiesCount: 980
+    }
+  ],
+  'Noida': [
+    {
+      id: 'loc-del-noida-62',
+      name: 'Sector 62',
+      city: 'Noida',
+      priceRangeSqFt: '₹ 7,500 - ₹ 16,800 per sqft',
+      rating: 4.4,
+      reviewsCount: 980,
+      thumbnail: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=200&q=80',
+      propertiesCount: 1950
+    }
+  ],
+  'Gurgaon': [
     {
       id: 'loc-del-golf-course',
       name: 'Golf Course Extension',
-      city: 'Delhi / NCR',
+      city: 'Gurgaon',
       priceRangeSqFt: '₹ 12,500 - ₹ 32,000 per sqft',
       rating: 4.7,
       reviewsCount: 1450,
@@ -1197,34 +1221,14 @@ export const POPULAR_LOCALITIES_TILES: Record<string, PopularLocalityCardItem[]>
       propertiesCount: 2890
     },
     {
-      id: 'loc-del-noida-62',
-      name: 'Sector 62 Noida',
-      city: 'Delhi / NCR',
-      priceRangeSqFt: '₹ 7,500 - ₹ 16,800 per sqft',
-      rating: 4.4,
-      reviewsCount: 980,
-      thumbnail: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=200&q=80',
-      propertiesCount: 1950
-    },
-    {
       id: 'loc-del-dwarka-exp',
       name: 'Dwarka Expressway',
-      city: 'Delhi / NCR',
+      city: 'Gurgaon',
       priceRangeSqFt: '₹ 8,200 - ₹ 19,500 per sqft',
       rating: 4.3,
       reviewsCount: 1120,
       thumbnail: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=200&q=80',
       propertiesCount: 3100
-    },
-    {
-      id: 'loc-del-vasant-kunj',
-      name: 'Vasant Kunj',
-      city: 'Delhi / NCR',
-      priceRangeSqFt: '₹ 18,000 - ₹ 45,000 per sqft',
-      rating: 4.8,
-      reviewsCount: 740,
-      thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80',
-      propertiesCount: 980
     }
   ],
   'Mumbai': [
