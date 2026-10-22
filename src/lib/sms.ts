@@ -2,18 +2,23 @@ import 'server-only';
 
 // Pluggable SMS delivery for OTP sign-in.
 //
-// The real estate app targets India, so the production provider is MSG91
-// (India-first, cheapest for +91 numbers, and it carries the DLT-registered
-// templates India legally requires for transactional SMS). Until DLT clears
-// and credentials are set, delivery falls back to the server console so the
-// whole OTP flow is testable end-to-end for free.
+// The real estate app targets India. Two providers are supported, plus a
+// console fallback so the whole OTP flow is testable end-to-end for free until
+// credentials are set.
 //
-// To go live, set in the environment:
-//   SMS_PROVIDER=msg91
-//   MSG91_AUTH_KEY=<authkey from MSG91 dashboard>
-//   MSG91_OTP_TEMPLATE_ID=<id of an approved MSG91 "OTP" template containing ##OTP##>
-// The DLT header/sender is bound to the template in the MSG91 panel, so no
-// separate sender id is needed here.
+//  • renflair — a DLT-free OTP gateway (sms.renflair.in). A single GET carries
+//    the API key, the 10-digit number, and our code. This is the current live
+//    provider because it needs no DLT registration. To go live:
+//      SMS_PROVIDER=renflair
+//      RENFLAIR_API_KEY=<API key from the Renflair dashboard>
+//
+//  • msg91 — India-first, cheapest for +91, but requires DLT-registered
+//    templates. To go live:
+//      SMS_PROVIDER=msg91
+//      MSG91_AUTH_KEY=<authkey from MSG91 dashboard>
+//      MSG91_OTP_TEMPLATE_ID=<id of an approved MSG91 "OTP" template containing ##OTP##>
+//    The DLT header/sender is bound to the template in the MSG91 panel, so no
+//    separate sender id is needed here.
 
 export interface SmsResult {
   sent: boolean;
@@ -28,6 +33,11 @@ const isProd = process.env.NODE_ENV === 'production';
 export async function sendOtpSms(phone: string, code: string): Promise<SmsResult> {
   const provider = (process.env.SMS_PROVIDER || '').toLowerCase();
 
+  if (provider === 'renflair' && process.env.RENFLAIR_API_KEY) {
+    await sendViaRenflair(phone, code);
+    return { sent: true };
+  }
+
   if (provider === 'msg91' && process.env.MSG91_AUTH_KEY) {
     await sendViaMsg91(phone, code);
     return { sent: true };
@@ -40,6 +50,42 @@ export async function sendOtpSms(phone: string, code: string): Promise<SmsResult
     `[OTP] +91 ${phone} → code ${code} (no SMS provider configured; console delivery)`
   );
   return { sent: true, devCode: isProd ? undefined : code };
+}
+
+/** Renflair OTP gateway (https://sms.renflair.in/V1.php). A DLT-free OTP API:
+ *  one GET with the API key, the 10-digit number (no country code), and our
+ *  code. We generate and verify the code ourselves (see src/lib/otp.ts);
+ *  Renflair only delivers it. The gateway answers with JSON and can return
+ *  HTTP 200 for a logical failure, so we inspect the body and throw on failure
+ *  rather than falsely claim it sent — the caller then surfaces an error. */
+async function sendViaRenflair(phone: string, code: string): Promise<void> {
+  const apiKey = process.env.RENFLAIR_API_KEY!;
+
+  const url = new URL('https://sms.renflair.in/V1.php');
+  url.searchParams.set('API', apiKey);
+  url.searchParams.set('PHONE', phone); // normalized to last-10 digits by the caller
+  url.searchParams.set('OTP', code);
+
+  const res = await fetch(url, { method: 'GET' });
+  const text = await res.text();
+  let data: any = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // Non-JSON body — fall through to the HTTP check below.
+  }
+
+  if (!res.ok) {
+    throw new Error(`Renflair send failed (${res.status}): ${text.slice(0, 200) || 'no response body'}`);
+  }
+
+  // Renflair signals logical failure in the body (HTTP is still 200). Treat an
+  // explicit error/false status as a failure; anything else is accepted.
+  const status = String(data?.status ?? data?.Status ?? '').toLowerCase();
+  const isError = data?.status === false || status === 'error' || status === 'false' || status === 'failed';
+  if (isError) {
+    throw new Error(`Renflair send failed: ${data?.message || data?.msg || text.slice(0, 200) || 'unknown error'}`);
+  }
 }
 
 /** MSG91 OTP API (v5). We generate and verify the code ourselves (see

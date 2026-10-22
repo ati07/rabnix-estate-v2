@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, devCode: delivery.devCode });
   } catch (err: any) {
     console.error('otp/request error', err);
-    return NextResponse.json({ success: false, error: 'Could not send the verification code. Please try again.' }, { status: 500 });
+    // In non-production, surface the provider's real reason (e.g. "SMS BALANCE
+    // UNAVAILABLE") so delivery issues are diagnosable during setup.
+    const detail = process.env.NODE_ENV !== 'production' && err?.message ? ` (${err.message})` : '';
+    return NextResponse.json({ success: false, error: `Could not send the verification code. Please try again.${detail}` }, { status: 500 });
   }
 }
