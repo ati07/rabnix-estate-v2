@@ -18,6 +18,8 @@ model User {
   passwordHash     String
   role             String   @default("buyer") // buyer | owner | agent | builder | admin
   city             String?
+  state            String? // e.g. "Karnataka" (nullable: legacy rows predate this field)
+  country          String   @default("India")
   avatar           String?
   companyName      String?
   reraNumber       String?

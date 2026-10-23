@@ -12,7 +12,7 @@ const VALID_ROLES: UserRole[] = ['buyer', 'owner', 'agent', 'builder'];
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, phone, password, role, city, companyName, reraNumber, phoneOtp, emailOtp } = body;
+    const { name, email, phone, password, role, city, state, country, companyName, reraNumber, phoneOtp, emailOtp } = body;
 
     if (!name || !email || !phone || !password) {
       return NextResponse.json({ success: false, error: 'Name, email, phone and password are required.' }, { status: 400 });
@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
         passwordHash: await hashPassword(password),
         role: safeRole,
         city: city || 'Bangalore',
+        state: state || null,
+        country: country || 'India',
         companyName: companyName || undefined,
         reraNumber: reraNumber || undefined,
         isPhoneVerified: true,

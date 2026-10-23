@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { UserRole } from '@/lib/types';
-import { CITIES_DATA } from '@/lib/realEstateData';
+import { LocationSelect } from '@/components/location/LocationSelect';
+import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 
 interface AuthFormProps {
   initialMode?: 'signin' | 'signup';
@@ -52,6 +53,8 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
   const [signUpPhone, setSignUpPhone] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpCity, setSignUpCity] = useState('Bangalore');
+  const [signUpState, setSignUpState] = useState(() => findStateForCity('Bangalore')?.state || 'Karnataka');
+  const [signUpCountry, setSignUpCountry] = useState(() => findStateForCity('Bangalore')?.country || DEFAULT_COUNTRY);
   const [signUpCompany, setSignUpCompany] = useState('');
   const [signUpRera, setSignUpRera] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -256,6 +259,8 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
       phone: signUpPhone,
       role: selectedRole,
       city: signUpCity,
+      state: signUpState,
+      country: signUpCountry,
       companyName: signUpCompany,
       reraNumber: signUpRera,
       password: signUpPassword,
@@ -636,36 +641,31 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
             </div>
 
             {/* Step 2: Basic Contact Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-[#172033] uppercase">Full Name *</label>
-                <div className="relative flex items-center">
-                  <User className="absolute left-3 w-4 h-4 text-[#64748B]" />
-                  <input
-                    id="signup-name-input"
-                    type="text"
-                    value={signUpName}
-                    onChange={(e) => setSignUpName(e.target.value)}
-                    placeholder="e.g. Rahul Sharma"
-                    required
-                    className="w-full pl-9 pr-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-medium text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-[#172033] uppercase">Primary City</label>
-                <select
-                  value={signUpCity}
-                  onChange={(e) => setSignUpCity(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-medium text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
-                >
-                  {CITIES_DATA.map((c) => (
-                    <option key={c.name} value={c.name}>{c.name} ({c.state})</option>
-                  ))}
-                </select>
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-[#172033] uppercase">Full Name *</label>
+              <div className="relative flex items-center">
+                <User className="absolute left-3 w-4 h-4 text-[#64748B]" />
+                <input
+                  id="signup-name-input"
+                  type="text"
+                  value={signUpName}
+                  onChange={(e) => setSignUpName(e.target.value)}
+                  placeholder="e.g. Rahul Sharma"
+                  required
+                  className="w-full pl-9 pr-3 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-medium text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
+                />
               </div>
             </div>
+
+            {/* Primary location — Country → State → City (city is searchable/add) */}
+            <LocationSelect
+              value={{ country: signUpCountry, state: signUpState, city: signUpCity }}
+              onChange={(next) => {
+                setSignUpCountry(next.country);
+                setSignUpState(next.state);
+                setSignUpCity(next.city);
+              }}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">

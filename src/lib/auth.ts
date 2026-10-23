@@ -119,6 +119,8 @@ export function toPublicProfile(user: DbUser): UserProfile {
     phone: user.phone,
     role: user.role as UserRole,
     city: user.city ?? undefined,
+    state: user.state ?? undefined,
+    country: user.country ?? undefined,
     avatar: user.avatar ?? undefined,
     companyName: user.companyName ?? undefined,
     reraNumber: user.reraNumber ?? undefined,

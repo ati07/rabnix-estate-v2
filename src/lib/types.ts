@@ -204,6 +204,8 @@ export interface UserProfile {
   phone: string;
   role: UserRole;
   city?: string;
+  state?: string;
+  country?: string;
   avatar?: string;
   companyName?: string;
   reraNumber?: string;

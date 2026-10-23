@@ -32,6 +32,8 @@ interface AuthContextType {
     phone: string;
     role: UserRole;
     city?: string;
+    state?: string;
+    country?: string;
     companyName?: string;
     reraNumber?: string;
     password?: string;
