@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getCollectionForPage } from '@/lib/seoLoaders';
+import { getCollectionForPage, getCollectionIds } from '@/lib/seoLoaders';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { JsonLd, collectionPageJsonLd, faqJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import CollectionDetailsClient from './CollectionDetailsClient';
@@ -9,6 +9,12 @@ export const runtime = 'nodejs';
 export const revalidate = 3600;
 
 type Params = { params: Promise<{ id: string }> };
+
+// Pre-render all collections; unknown ids fall back to on-demand ISR.
+export async function generateStaticParams() {
+  const ids = await getCollectionIds();
+  return ids.map((id) => ({ id }));
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getAgentForPage } from '@/lib/seoLoaders';
+import { getAgentForPage, getPreferredAgentIds } from '@/lib/seoLoaders';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { JsonLd, agentJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import AgentDetailsClient from './AgentDetailsClient';
@@ -9,6 +9,12 @@ export const runtime = 'nodejs';
 export const revalidate = 3600;
 
 type Params = { params: Promise<{ id: string }> };
+
+// Pre-render preferred agent profiles; others fall back to on-demand ISR.
+export async function generateStaticParams() {
+  const ids = await getPreferredAgentIds();
+  return ids.map((id) => ({ id }));
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;

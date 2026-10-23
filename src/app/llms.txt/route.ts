@@ -1,4 +1,5 @@
 import { getSiteUrl } from '@/lib/siteUrl';
+import { getIndexableCities } from '@/lib/cityLoader';
 
 export const runtime = 'nodejs';
 export const revalidate = 86400;
@@ -6,8 +7,18 @@ export const revalidate = 86400;
 // /llms.txt — a concise, machine-readable description of BayBayt for AI answer
 // engines (AEO). Mirrors the emerging llms.txt convention: what the site is, its
 // canonical sections, and usage notes. Kept factual and free of marketing fluff.
-export function GET() {
+export async function GET() {
   const base = getSiteUrl();
+
+  // Cities with live inventory → their canonical landing pages, so answer
+  // engines can link directly to "property in <city>" queries.
+  const cities = await getIndexableCities();
+  const citySection = cities.length
+    ? `\n## Browse by city\n${cities
+        .map((c) => `- ${c.name} (${c.count} listings): ${base}/properties/in/${c.slug}`)
+        .join('\n')}\n`
+    : '';
+
   const body = `# BayBayt
 
 > BayBayt is an India-focused real estate platform for buying, selling, and
@@ -31,7 +42,7 @@ export function GET() {
 - Builders: ${base}/builders
 - Curated collections: ${base}/collections
 - Preferred agents: ${base}/agents
-
+${citySection}
 ## Machine resources
 - Sitemap: ${base}/sitemap.xml
 - Robots: ${base}/robots.txt

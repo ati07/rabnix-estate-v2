@@ -43,3 +43,21 @@ export async function getVerifiedProperties(): Promise<Property[]> {
     return [];
   }
 }
+
+/**
+ * IDs of all publicly indexable properties, for `generateStaticParams` so the
+ * most-trafficked listings are pre-rendered at build time (others fall back to
+ * on-demand ISR). Returns [] on any DB error so the build never fails.
+ */
+export async function getVerifiedPropertyIds(): Promise<string[]> {
+  try {
+    const rows = await prisma.property.findMany({
+      where: { verificationStatus: 'approved' },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  } catch (err) {
+    console.error('getVerifiedPropertyIds error', err);
+    return [];
+  }
+}

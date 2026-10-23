@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getPropertyForPage } from '@/lib/propertyLoader';
+import { getPropertyForPage, getVerifiedPropertyIds } from '@/lib/propertyLoader';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { JsonLd, propertyJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import PropertyDetailsClient from './PropertyDetailsClient';
@@ -11,6 +11,13 @@ export const runtime = 'nodejs';
 export const revalidate = 3600;
 
 type Params = { params: Promise<{ id: string }> };
+
+// Pre-render approved listings at build time; unknown ids are still rendered
+// on-demand and cached (dynamicParams defaults to true).
+export async function generateStaticParams() {
+  const ids = await getVerifiedPropertyIds();
+  return ids.map((id) => ({ id }));
+}
 
 // Per-listing title/description/canonical/OG — replaces the generic root
 // metadata that every property page used to inherit.

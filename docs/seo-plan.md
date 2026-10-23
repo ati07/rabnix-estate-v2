@@ -135,8 +135,19 @@ JSON-LD types, real seeded content in the SSR HTML, and no phone in the markup.
   `src/app/opengraph-image.tsx` is auto-applied as the default
   og:image/twitter:image (detail pages still override with the real listing photo).
 
-**Remaining polish (optional):** `generateStaticParams` + ISR on detail routes;
-city landing pages (`/properties/pune`).
+- **Static generation (done):** every detail route now has `generateStaticParams`
+  (pre-renders approved/public records; unknown ids fall back to on-demand ISR
+  via the existing `revalidate`). ID-list loaders in `propertyLoader.ts` +
+  `seoLoaders.ts`, each try/catch → `[]` so a DB hiccup never fails the build.
+- **City landing pages (done):** `/properties/in/[city]` (e.g. `/properties/in/pune`)
+  — a static segment that doesn't collide with `/properties/[id]`. Fully
+  server-rendered: H1 + real inventory stats, popular-locality chips, a listing
+  grid, and an FAQ built from genuine per-city data. Emits CollectionPage +
+  ItemList + BreadcrumbList + FAQPage JSON-LD. `generateStaticParams` +
+  `getIndexableCities` cover every city with approved inventory; added to the
+  sitemap and to `/llms.txt` ("Browse by city"). Loaders in `cityLoader.ts`
+  (phone withheld). Verified: slugs 200, unknown slug 404, `/properties/[id]`
+  unaffected, no phone leak.
 
 ## Phasing, Risks & Open Questions
 
@@ -149,7 +160,7 @@ city landing pages (`/properties/pune`).
 **Open questions**
 
 1. ~~Canonical domain~~ — resolved: **https://www.baybayt.com**.
-2. ~~`generateStaticParams` + ISR vs pure dynamic SSR?~~ — shipped as dynamic SSR with `revalidate` (ISR at the route level); per-param static generation left as optional polish.
-3. City landing pages (e.g. `/properties/pune`) — strong organic lever, separate feature. Now or later?
+2. ~~`generateStaticParams` + ISR vs pure dynamic SSR?~~ — resolved: both. `revalidate` ISR plus `generateStaticParams` on all detail routes.
+3. ~~City landing pages~~ — shipped at `/properties/in/[city]` (not `/properties/pune`, which would collide with `/properties/[id]`).
 
 **Env note:** set `SITE_URL=https://www.baybayt.com` in Vercel (not `NEXT_PUBLIC_*`).

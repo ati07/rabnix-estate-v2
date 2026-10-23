@@ -212,6 +212,34 @@ export function collectionPageJsonLd(c: CuratedCollection, base: string) {
   };
 }
 
+/** A city landing page: CollectionPage whose mainEntity is an ItemList of the
+ * city's listings (each a RealEstateListing URL), so engines understand the page
+ * as a curated set of properties in that city. */
+export function cityCollectionJsonLd(
+  base: string,
+  args: { city: string; slug: string; title: string; description: string; properties: Property[] },
+) {
+  const url = `${base}/properties/in/${args.slug}`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    url,
+    name: args.title,
+    description: args.description,
+    about: { '@type': 'City', name: args.city },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: args.properties.length,
+      itemListElement: args.properties.slice(0, 50).map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `${base}/properties/${p.id}`,
+        name: p.title,
+      })),
+    },
+  };
+}
+
 /** FAQ structured data — an AEO lever: lets engines answer questions directly
  * with BayBayt's own copy. Pass genuine on-page Q&A only. */
 export function faqJsonLd(faqs: { question: string; answer: string }[]) {

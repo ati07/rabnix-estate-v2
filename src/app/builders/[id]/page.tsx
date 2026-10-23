@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getBuilderForPage } from '@/lib/seoLoaders';
+import { getBuilderForPage, getBuilderIds } from '@/lib/seoLoaders';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { JsonLd, builderJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import BuilderDetailsClient from './BuilderDetailsClient';
@@ -9,6 +9,12 @@ export const runtime = 'nodejs';
 export const revalidate = 3600;
 
 type Params = { params: Promise<{ id: string }> };
+
+// Pre-render known builders; others fall back to on-demand ISR.
+export async function generateStaticParams() {
+  const ids = await getBuilderIds();
+  return ids.map((id) => ({ id }));
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;

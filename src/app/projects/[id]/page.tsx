@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getProjectForPage } from '@/lib/seoLoaders';
+import { getProjectForPage, getApprovedProjectIds } from '@/lib/seoLoaders';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { JsonLd, projectJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import ProjectDetailsClient from './ProjectDetailsClient';
@@ -8,6 +8,12 @@ export const runtime = 'nodejs';
 export const revalidate = 3600;
 
 type Params = { params: Promise<{ id: string }> };
+
+// Pre-render approved projects; others fall back to on-demand ISR.
+export async function generateStaticParams() {
+  const ids = await getApprovedProjectIds();
+  return ids.map((id) => ({ id }));
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;

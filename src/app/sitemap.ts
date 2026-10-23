@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getSiteUrl } from '@/lib/siteUrl';
+import { getIndexableCities } from '@/lib/cityLoader';
 
 export const runtime = 'nodejs';
 // Regenerate at most hourly so freshly approved listings surface without a
@@ -59,6 +60,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       entries.push({ url: `${base}/collections/${c.id}`, lastModified: c.createdAt, changeFrequency: 'monthly', priority: 0.6 });
     for (const a of agents)
       entries.push({ url: `${base}/agents/${a.id}`, lastModified: a.createdAt, changeFrequency: 'monthly', priority: 0.6 });
+
+    // City landing pages — one per city with approved inventory.
+    const cities = await getIndexableCities();
+    for (const c of cities)
+      entries.push({ url: `${base}/properties/in/${c.slug}`, lastModified: now, changeFrequency: 'daily', priority: 0.8 });
   } catch (err) {
     // A DB hiccup must not 500 the sitemap; serve the static routes at least.
     console.error('sitemap generation error', err);

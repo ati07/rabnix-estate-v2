@@ -21,6 +21,57 @@ import type { Property } from '@/lib/types';
  * can fall back to the client (owner/admin view) or 404.
  */
 
+/**
+ * ID lists for `generateStaticParams` — pre-render the publicly indexable
+ * records at build time (others fall back to on-demand ISR). Each returns []
+ * on any DB error so the build never fails.
+ */
+export async function getApprovedProjectIds(): Promise<string[]> {
+  try {
+    const rows = await prisma.featuredProject.findMany({
+      where: { submissionStatus: 'approved' },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  } catch (err) {
+    console.error('getApprovedProjectIds error', err);
+    return [];
+  }
+}
+
+export async function getBuilderIds(): Promise<string[]> {
+  try {
+    const rows = await prisma.builder.findMany({ select: { id: true } });
+    return rows.map((r) => r.id);
+  } catch (err) {
+    console.error('getBuilderIds error', err);
+    return [];
+  }
+}
+
+export async function getPreferredAgentIds(): Promise<string[]> {
+  try {
+    const rows = await prisma.user.findMany({
+      where: { role: 'agent', isPreferredAgent: true, isBlocked: false },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  } catch (err) {
+    console.error('getPreferredAgentIds error', err);
+    return [];
+  }
+}
+
+export async function getCollectionIds(): Promise<string[]> {
+  try {
+    const rows = await prisma.collection.findMany({ select: { id: true } });
+    return rows.map((r) => r.id);
+  } catch (err) {
+    console.error('getCollectionIds error', err);
+    return [];
+  }
+}
+
 /** Approved project only (public). Non-approved → null (client handles owner view). */
 export async function getProjectForPage(id: string): Promise<FeaturedProjectItem | null> {
   try {
