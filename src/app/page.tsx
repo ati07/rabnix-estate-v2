@@ -334,9 +334,9 @@ export default function HomeView() {
       />
 
       {/* 12. TOP REPUTED BUILDERS & DEVELOPER SPOTLIGHT */}
-      <TopBuildersSection
+      {/* <TopBuildersSection
         cityName={selectedCity.name}
-      />
+      /> */}
 
       {/* 13. LOCALITY TRENDS & PRICE INTELLIGENCE */}
       <LocalityTrendsSection
