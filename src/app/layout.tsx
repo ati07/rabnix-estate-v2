@@ -3,21 +3,32 @@ import './globals.css'; // Global styles
 import { AuthProvider } from '@/lib/authContext';
 import { PropertyProvider } from '@/lib/propertyContext';
 import { GenieProvider } from '@/lib/genieContext';
+import { getSiteUrl } from '@/lib/siteUrl';
 
-// Base URL used to resolve relative OG/Twitter image paths into absolute URLs.
-// Sourced from the environment: set NEXT_PUBLIC_SITE_URL to your canonical
-// domain in production. Falls back to Vercel's auto-injected deployment URL,
-// then to localhost for local development.
-const siteUrl =
-  process.env.SITE_URL ||
-  (process.env.SITE_URL
-    ? `https://${process.env.SITE_URL}`
-    : 'http://localhost:3000');
+// Canonical base URL; resolves relative OG/Twitter image paths into absolute
+// URLs and anchors every page's canonical link. See src/lib/siteUrl.ts.
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'BayBayt - Buy, Rent, PG & AI Property Valuation',
+  title: {
+    default: 'BayBayt - Buy, Rent, PG & AI Property Valuation',
+    template: '%s | BayBayt',
+  },
   description: 'India’s premier real estate platform by BayBayt for buying, selling, and renting properties with verified owner-direct listings and AI valuation.',
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: '/icon.png',
     apple: '/icon.png',
@@ -26,6 +37,9 @@ export const metadata: Metadata = {
     title: 'BayBayt - India Real Estate Platform',
     description: 'Find homes, commercial properties, and lands with AI valuation on BayBayt.',
     type: 'website',
+    siteName: 'BayBayt',
+    url: '/',
+    locale: 'en_IN',
     images: ['/logo.png'],
   },
   twitter: {
