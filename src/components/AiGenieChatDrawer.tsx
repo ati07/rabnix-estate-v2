@@ -84,9 +84,9 @@ export function AiGenieChatDrawer({
 
   const quickPrompts = [
     'Show me 2 BHK flats for sale in Bangalore under ₹1 Cr',
-    'Any owner-direct properties for rent in Pune?',
+    'What is the average price per sqft & rental yield in Whitefield?',
     'EMI for a ₹50 lakh loan at 8.5% for 20 years',
-    'Explain RERA carpet area vs super built-up area rules in India'
+    'I want to list my 2 BHK flat in Pune for sale'
   ];
 
   // Stash the Genie-prepared draft and open the pre-filled post-property wizard.

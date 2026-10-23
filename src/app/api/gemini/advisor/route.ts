@@ -10,6 +10,7 @@ import {
 import { calculateEmiDeclaration, runEmiCalculation, type EmiArgs } from "@/lib/genie/finance";
 import { createInquiryDeclaration, runCreateInquiry, type CreateInquiryArgs } from "@/lib/genie/leads";
 import { draftPropertyListingDeclaration, normalizeListingDraft, type GenieListingDraft } from "@/lib/genie/listingDraft";
+import { marketInsightsDeclaration, runMarketInsights, type MarketInsightsArgs } from "@/lib/genie/market";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -155,6 +156,9 @@ POST-A-PROPERTY RULES:
 - If the user wants to list / post / sell / rent out their own property, help them conversationally. Ask for the missing essentials one or two at a time: purpose (sell/rent/pg/plot/commercial), property type, city, locality, size, BHK, and price. Once you have at least purpose, type, city, locality and price, call draft_property_listing. If no title/description was given, synthesise sensible ones.
 - After draft_property_listing, DO NOT say the listing is live. Tell the user to tap "Review & publish listing" to open the pre-filled form, add photos and submit for verification.
 
+MARKET / ADVISORY RULES:
+- For pricing (₹/sq.ft), rental-yield, buy-vs-rent, or "is this a good area/investment" questions, call market_insights to get real stats from our listings. To compare two areas, call it once per area. Base your analysis on the returned numbers; if a field is null, say the data is limited rather than guessing. Always note these stats come from BayBayt listings and are indicative.
+
 Tone: Professional, friendly, highly knowledgeable about Indian cities & real estate law. Keep responses scannable, using bullet points and bold highlights. Keep answers concise (150-250 words max).`;
 
       const tools = [{
@@ -163,6 +167,7 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
           calculateEmiDeclaration as any,
           createInquiryDeclaration as any,
           draftPropertyListingDeclaration as any,
+          marketInsightsDeclaration as any,
         ],
       }];
 
@@ -226,6 +231,11 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
             );
             responseParts.push({
               functionResponse: { name: call.name, response: outcome as any },
+            });
+          } else if (call.name === 'market_insights') {
+            const stats = await runMarketInsights((call.args || {}) as unknown as MarketInsightsArgs);
+            responseParts.push({
+              functionResponse: { name: call.name, response: stats as any },
             });
           } else if (call.name === 'draft_property_listing') {
             propertyDraft = normalizeListingDraft(call.args || {});
