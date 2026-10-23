@@ -225,7 +225,7 @@ export default function ProjectDetailsClient({ id, initialProject }: { id: strin
             <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-slate-900 border border-[#E2E8F0] shadow-xs">
               <Image
                 src={galleryList[activeImageIndex] || project.image}
-                alt={project.name}
+                alt={`${project.name} by ${project.builderName} — new project in ${[project.locality, project.city].filter(Boolean).join(', ')} — photo ${activeImageIndex + 1}`}
                 fill
                 className="object-cover"
                 priority
@@ -252,7 +252,7 @@ export default function ProjectDetailsClient({ id, initialProject }: { id: strin
                       activeImageIndex === idx ? 'border-[#18A67D] scale-95 ring-2 ring-[#18A67D]/20' : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <Image src={img} alt={`Thumb ${idx + 1}`} fill className="object-cover" />
+                    <Image src={img} alt={`${project.name} — photo ${idx + 1}`} fill className="object-cover" />
                   </button>
                 ))}
               </div>

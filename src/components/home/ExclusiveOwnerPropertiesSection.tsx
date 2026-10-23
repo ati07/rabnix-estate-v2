@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react';
 import Image from 'next/image';
+import { propertyImageAlt } from '@/lib/seoText';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, Camera, CheckCircle, Sparkles } from 'lucide-react';
 import { Property } from '@/lib/types';
@@ -106,7 +107,7 @@ export function ExclusiveOwnerPropertiesSection({
                 <div className="relative h-36 sm:h-40 w-full bg-[#E2E8F0] overflow-hidden">
                   <Image
                     src={prop.images?.[0] || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80'}
-                    alt={prop.title}
+                    alt={propertyImageAlt(prop)}
                     fill
                     sizes="(max-width: 640px) 240px, 270px"
                     className="object-cover group-hover/card:scale-105 transition-transform duration-500"

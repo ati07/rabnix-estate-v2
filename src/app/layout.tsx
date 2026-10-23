@@ -35,19 +35,20 @@ export const metadata: Metadata = {
     apple: '/icon.png',
   },
   openGraph: {
+    // Images intentionally omitted: the branded card from
+    // src/app/opengraph-image.tsx is auto-applied as the default og:image.
     title: 'BayBayt - India Real Estate Platform',
     description: 'Find homes, commercial properties, and lands with AI valuation on BayBayt.',
     type: 'website',
     siteName: 'BayBayt',
     url: '/',
     locale: 'en_IN',
-    images: ['/logo.png'],
   },
   twitter: {
+    // twitter:image falls back to the opengraph-image card automatically.
     card: 'summary_large_image',
     title: 'BayBayt - India Real Estate Platform',
     description: 'Find homes, commercial properties, and lands with AI valuation on BayBayt.',
-    images: ['/logo.png'],
   },
 };
 

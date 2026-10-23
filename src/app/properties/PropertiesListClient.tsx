@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/BrandLogo';
 import Image from 'next/image';
+import { propertyImageAlt } from '@/lib/seoText';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Building2, 
@@ -954,7 +955,7 @@ function PropertiesCatalogContent() {
                         <div className="relative h-56 w-full overflow-hidden bg-slate-100">
                           <Image
                             src={prop.images[0] || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80'}
-                            alt={prop.title}
+                            alt={propertyImageAlt(prop)}
                             fill
                             referrerPolicy="no-referrer"
                             className="object-cover group-hover:scale-105 transition-transform duration-500"

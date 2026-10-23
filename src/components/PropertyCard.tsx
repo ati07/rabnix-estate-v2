@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { propertyImageAlt } from '@/lib/seoText';
 import { 
   Heart, 
   MapPin, 
@@ -64,7 +65,7 @@ export function PropertyCard({
       <div className="relative w-full md:w-80 h-56 md:h-auto shrink-0 bg-[#F1F5F9] overflow-hidden">
         <Image
           src={images[currentImageIndex]}
-          alt={property.title}
+          alt={propertyImageAlt(property, images.length > 1 ? currentImageIndex + 1 : undefined)}
           fill
           className="object-cover group-hover:scale-103 transition-transform duration-500"
           sizes="(max-width: 768px) 100vw, 320px"

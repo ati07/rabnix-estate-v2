@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { Property } from '@/lib/types';
+import { propertyImageAlt } from '@/lib/seoText';
 import { BrandLogo } from '@/components/BrandLogo';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -400,7 +401,7 @@ export default function PropertyDetailsClient({ id, initialProperty }: { id: str
               <div className="rounded-2xl overflow-hidden shadow-md border border-[#E2E8F0] aspect-21/9 sm:aspect-2/1 lg:aspect-21/9 bg-[#0F2A43] relative">
                 <Image
                   src={property.images[activeImageIndex] || property.images[0]}
-                  alt={property.title}
+                  alt={propertyImageAlt(property, activeImageIndex + 1)}
                   fill
                   className="object-cover transition-all duration-300"
                   referrerPolicy="no-referrer"
@@ -424,7 +425,7 @@ export default function PropertyDetailsClient({ id, initialProperty }: { id: str
                     >
                       <Image
                         src={img}
-                        alt={`Thumbnail ${idx + 1}`}
+                        alt={propertyImageAlt(property, idx + 1)}
                         fill
                         className="object-cover"
                         referrerPolicy="no-referrer"
@@ -773,7 +774,7 @@ export default function PropertyDetailsClient({ id, initialProperty }: { id: str
                   <div className="aspect-video relative overflow-hidden bg-slate-100">
                     <Image
                       src={simProp.images[0]}
-                      alt={simProp.title}
+                      alt={propertyImageAlt(simProp)}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                       referrerPolicy="no-referrer"

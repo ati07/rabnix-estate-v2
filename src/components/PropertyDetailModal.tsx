@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { propertyImageAlt } from '@/lib/seoText';
 import { 
   X, 
   MapPin, 
@@ -262,7 +263,7 @@ export function PropertyDetailModal({
             <div className="relative w-full h-72 sm:h-96 rounded-xl overflow-hidden bg-[#0F2A43]">
               <Image
                 src={images[selectedImageIndex]}
-                alt={property.title}
+                alt={propertyImageAlt(property, selectedImageIndex + 1)}
                 fill
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 900px"
@@ -291,7 +292,7 @@ export function PropertyDetailModal({
                   >
                     <Image
                       src={img}
-                      alt={`Thumbnail ${idx + 1}`}
+                      alt={propertyImageAlt(property, idx + 1)}
                       fill
                       className="object-cover"
                       sizes="80px"
