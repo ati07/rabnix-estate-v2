@@ -1,4 +1,7 @@
 import type { Property } from '@/lib/types';
+import type { FeaturedProjectItem, PreferredAgentItem } from '@/lib/homeSectionsData';
+import type { Builder } from '@/lib/buildersData';
+import type { CuratedCollection } from '@/lib/collectionsData';
 
 /**
  * Structured data (schema.org JSON-LD) for SEO rich results and AEO — the facts
@@ -124,6 +127,88 @@ export function breadcrumbJsonLd(base: string, items: { name: string; path: stri
       name: it.name,
       item: absolute(base, it.path),
     })),
+  };
+}
+
+/** A real-estate project/development. Emits an Apartment complex-style node
+ * with its builder, location, and starting price as an Offer. */
+export function projectJsonLd(p: FeaturedProjectItem, base: string) {
+  const url = `${base}/projects/${p.id}`;
+  const images = [p.image, ...(p.galleryImages || [])].filter(Boolean).map((img) => absolute(base, img));
+  const node: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'ApartmentComplex',
+    url,
+    name: p.name,
+    ...(p.description ? { description: p.description } : {}),
+    ...(images.length ? { image: images } : {}),
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: p.address || p.locality,
+      addressLocality: p.locality,
+      addressRegion: p.city,
+      addressCountry: 'IN',
+    },
+  };
+  if (p.builderName) {
+    node.developer = { '@type': 'Organization', name: p.builderName };
+  }
+  if (typeof p.minPrice === 'number' && p.minPrice > 0) {
+    node.offers = {
+      '@type': 'Offer',
+      price: p.minPrice,
+      priceCurrency: 'INR',
+      availability: 'https://schema.org/InStock',
+      url,
+    };
+  }
+  return node;
+}
+
+/** A builder/developer company page. */
+export function builderJsonLd(b: Builder, base: string) {
+  const url = `${base}/builders/${b.slug || b.id}`;
+  const node: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    '@id': `${url}#organization`,
+    url,
+    name: b.name,
+    ...(b.logo ? { logo: absolute(base, b.logo) } : {}),
+    ...(b.about ? { description: b.about } : {}),
+    ...(b.headquarters ? { address: { '@type': 'PostalAddress', streetAddress: b.headquarters, addressCountry: 'IN' } } : {}),
+    ...(b.website ? { sameAs: [b.website] } : {}),
+  };
+  return node;
+}
+
+/** A preferred agent's profile. RealEstateAgent — name, photo, area served.
+ * No phone (contact reveal stays gated). */
+export function agentJsonLd(a: PreferredAgentItem, base: string) {
+  const url = `${base}/agents/${a.id}`;
+  const node: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'RealEstateAgent',
+    url,
+    name: a.name,
+    ...(a.avatar ? { image: absolute(base, a.avatar) } : {}),
+    ...(a.about ? { description: a.about } : {}),
+    ...(a.agencyName ? { worksFor: { '@type': 'Organization', name: a.agencyName } } : {}),
+    ...(a.city ? { areaServed: a.city } : {}),
+  };
+  return node;
+}
+
+/** A curated collection landing page. */
+export function collectionPageJsonLd(c: CuratedCollection, base: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    url: `${base}/collections/${c.id}`,
+    name: c.title,
+    ...(c.subtitle ? { headline: c.subtitle } : {}),
+    ...(c.overview ? { description: c.overview } : {}),
+    ...(c.heroImage ? { image: absolute(base, c.heroImage) } : {}),
   };
 }
 
