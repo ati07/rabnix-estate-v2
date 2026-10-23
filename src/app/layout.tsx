@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css'; // Global styles
 import { AuthProvider } from '@/lib/authContext';
 import { PropertyProvider } from '@/lib/propertyContext';
+import { GenieProvider } from '@/lib/genieContext';
 
 // Base URL used to resolve relative OG/Twitter image paths into absolute URLs.
 // Sourced from the environment: set NEXT_PUBLIC_SITE_URL to your canonical
@@ -41,7 +42,9 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       <body suppressHydrationWarning>
         <AuthProvider>
           <PropertyProvider>
-            {children}
+            <GenieProvider>
+              {children}
+            </GenieProvider>
           </PropertyProvider>
         </AuthProvider>
       </body>

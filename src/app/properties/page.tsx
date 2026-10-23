@@ -28,8 +28,10 @@ import {
   Check,
   ChevronRight
 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
+import { useGenie } from '@/lib/genieContext';
 import { ListingType, CommercialListingType } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
 
@@ -67,6 +69,7 @@ function PropertiesCatalogContent() {
   const router = useRouter();
   const { properties, isShortlisted, toggleShortlist } = useProperties();
   const { user: _user } = useAuth();
+  const { openGenie } = useGenie();
 
   // Derive initial values from URL Search Parameters
   const initialCity = useMemo(() => {
@@ -1041,21 +1044,32 @@ function PropertiesCatalogContent() {
                       </div>
 
                       {/* Card Actions Footer */}
-                      <div className="p-5 pt-0 flex items-center gap-2">
-                        <Link
-                          href={`/properties/${prop.id}`}
-                          className="flex-1 py-2.5 bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold rounded-xl text-center transition-colors flex items-center justify-center gap-1"
+                      <div className="p-5 pt-0 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/properties/${prop.id}`}
+                            className="flex-1 py-2.5 bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold rounded-xl text-center transition-colors flex items-center justify-center gap-1"
+                          >
+                            <span>View Details</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                          <Link
+                            href={`/properties/${prop.id}`}
+                            className="p-2.5 bg-[#E7F6F1] hover:bg-[#d0f0e6] text-[#0E7C5D] rounded-xl border border-[#18A67D]/20 transition-colors"
+                            title="Contact Seller"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </Link>
+                        </div>
+                        {/* Ask Genie — opens the chat drawer with this listing as context. */}
+                        <button
+                          type="button"
+                          onClick={() => openGenie(prop)}
+                          className="w-full py-2.5 bg-[#EAF7F2] hover:bg-[#D7F0E7] text-[#0F2A43] text-xs font-bold rounded-xl border border-[#C9E9DD] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <span>View Details</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                        <Link
-                          href={`/properties/${prop.id}`}
-                          className="p-2.5 bg-[#E7F6F1] hover:bg-[#d0f0e6] text-[#0E7C5D] rounded-xl border border-[#18A67D]/20 transition-colors"
-                          title="Contact Seller"
-                        >
-                          <Phone className="w-4 h-4" />
-                        </Link>
+                          <Sparkles className="w-3.5 h-3.5 text-[#18A67D]" />
+                          <span>Ask Genie about this property</span>
+                        </button>
                       </div>
 
                     </div>

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
+import { useGenie } from '@/lib/genieContext';
 import { OtpVerifyModal } from '@/components/OtpVerifyModal';
 import PropertyLocationMap from '@/components/map/PropertyLocationMap';
 import NearbyProperties from '@/components/map/NearbyProperties';
@@ -43,6 +44,7 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
 
   const { properties, isLoading, getPropertyById, isShortlisted, toggleShortlist, addInquiry } = useProperties();
   const { user } = useAuth();
+  const { openGenie } = useGenie();
 
   const property = getPropertyById(propertyId);
 
@@ -491,11 +493,13 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
 
           </div>
 
-          {/* Right 1 Col: Contact Seller, Schedule Tour & Agent Card */}
-          <div className="space-y-6">
-            
-            {/* Contact Seller Sticky Form */}
-            <div id="contact-seller-card" className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-md space-y-5 sticky top-20">
+          {/* Right 1 Col: Contact Seller, Schedule Tour & Agent Card.
+              The whole column is sticky so both the contact form and the
+              "Ask Genie" card float alongside the scrolling content. */}
+          <div className="space-y-6 sticky top-20 self-start">
+
+            {/* Contact Seller Form */}
+            <div id="contact-seller-card" className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-md space-y-5">
               
               {/* Seller Profile Summary */}
               <div className="flex items-center gap-3 pb-4 border-b border-[#E2E8F0]">
@@ -652,6 +656,21 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
               )}
 
             </div>
+
+            {/* Ask Genie about this property */}
+            <button
+              type="button"
+              onClick={() => openGenie(property)}
+              className="w-full bg-[#0F2A43] hover:bg-[#163b5c] text-white rounded-2xl p-4 flex items-center gap-3 transition-colors cursor-pointer shadow-md text-left"
+            >
+              <div className="w-9 h-9 rounded-lg bg-[#18A67D] flex items-center justify-center shrink-0 transform rotate-45">
+                <Sparkles className="w-4 h-4 transform -rotate-45" />
+              </div>
+              <div>
+                <div className="text-sm font-bold">Ask BayBayt Genie</div>
+                <div className="text-[11px] text-slate-300">Price, locality, EMI & more about this home</div>
+              </div>
+            </button>
 
           </div>
 

@@ -3,9 +3,10 @@
 import React, { useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, ChevronLeft, ChevronRight, Camera, CheckCircle } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Camera, CheckCircle, Sparkles } from 'lucide-react';
 import { Property } from '@/lib/types';
 import { SpaceAvailable } from '@/components/SpaceAvailable';
+import { useGenie } from '@/lib/genieContext';
 
 interface ExclusiveOwnerPropertiesSectionProps {
   cityName?: string;
@@ -19,6 +20,7 @@ export function ExclusiveOwnerPropertiesSection({
   onSelectProperty
 }: ExclusiveOwnerPropertiesSectionProps) {
   const router = useRouter();
+  const { openGenie } = useGenie();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleClickProperty = (prop: Property) => {
@@ -147,6 +149,20 @@ export function ExclusiveOwnerPropertiesSection({
                     <span>{prop.constructionStatus || 'Ready to Move'}</span>
                     <span className="text-[10px] text-[#0E7C5D] font-bold">Owner Direct</span>
                   </div>
+
+                  {/* Ask Genie — opens the chat drawer with this listing as context,
+                      without triggering the card's navigate-to-detail click. */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openGenie(prop);
+                    }}
+                    className="mt-2.5 w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#0F2A43] bg-[#EAF7F2] hover:bg-[#D7F0E7] border border-[#C9E9DD] rounded-lg py-1.5 transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#18A67D]" />
+                    <span>Ask Genie</span>
+                  </button>
                 </div>
               </div>
             );

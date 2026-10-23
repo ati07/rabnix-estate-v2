@@ -10,12 +10,12 @@ import { CITIES_DATA, resolveCityInfo } from '@/lib/realEstateData';
 import { detectNearestCity, detectCityByIp } from '@/lib/geoCity';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
+import { useGenie } from '@/lib/genieContext';
 import { Navbar } from '@/components/Navbar';
 import { HeroSearch } from '@/components/HeroSearch';
 import { PropertyDetailModal } from '@/components/PropertyDetailModal';
 import { PostPropertyModal } from '@/components/PostPropertyModal';
 import { AiValuationModal } from '@/components/AiValuationModal';
-import { AiGenieChatDrawer } from '@/components/AiGenieChatDrawer';
 import { ShortlistDrawer } from '@/components/ShortlistDrawer';
 import { CitySelectorModal } from '@/components/CitySelectorModal';
 import { AuthModal } from '@/components/AuthModal';
@@ -37,6 +37,7 @@ export default function HomeView() {
   const router = useRouter();
   const { properties, addProperty, shortlistIds, toggleShortlist } = useProperties();
   const { user } = useAuth();
+  const { openGenie } = useGenie();
 
   // Active City
   const [selectedCity, setSelectedCity] = useState<CityInfo>(() => {
@@ -83,8 +84,6 @@ export default function HomeView() {
   const [isCitySelectorOpen, setIsCitySelectorOpen] = useState(false);
   const [isPostPropertyOpen, setIsPostPropertyOpen] = useState(false);
   const [isAiValuationOpen, setIsAiValuationOpen] = useState(false);
-  const [isGenieDrawerOpen, setIsGenieDrawerOpen] = useState(false);
-  const [genieContextProperty, setGenieContextProperty] = useState<Property | null>(null);
   const [isShortlistDrawerOpen, setIsShortlistDrawerOpen] = useState(false);
   const [selectedPropertyForModal, setSelectedPropertyForModal] = useState<Property | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -141,11 +140,6 @@ export default function HomeView() {
   const handlePropertyAdded = (newProperty: Property) => {
     addProperty(newProperty);
     router.push(`/properties?city=${encodeURIComponent(newProperty.city)}&listingType=${newProperty.listingType}`);
-  };
-
-  const handleOpenGenieWithContext = (property: Property) => {
-    setGenieContextProperty(property);
-    setIsGenieDrawerOpen(true);
   };
 
   // Serialize the active filters into URL params. Shared by the catalog search
@@ -246,10 +240,7 @@ export default function HomeView() {
         onOpenShortlist={() => setIsShortlistDrawerOpen(true)}
         onOpenPostProperty={() => setIsPostPropertyOpen(true)}
         onOpenAiValuation={() => setIsAiValuationOpen(true)}
-        onOpenAiGenie={() => {
-          setGenieContextProperty(null);
-          setIsGenieDrawerOpen(true);
-        }}
+        onOpenAiGenie={() => openGenie(null)}
         onOpenAuthModal={(mode) => {
           setAuthModalMode(mode || 'signin');
           setIsAuthModalOpen(true);
@@ -357,10 +348,7 @@ export default function HomeView() {
       {/* 8. FLOATING AI GENIE CHAT BUTTON */}
       <button
         id="floating-genie-btn"
-        onClick={() => {
-          setGenieContextProperty(null);
-          setIsGenieDrawerOpen(true);
-        }}
+        onClick={() => openGenie(null)}
         className="fixed bottom-6 right-6 z-40 bg-[#0F2A43] hover:bg-[#163b5c] text-white p-3 sm:px-4 sm:py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 border border-[#163b5c] cursor-pointer group"
       >
         <div className="w-7 h-7 rounded-md bg-[#18A67D] flex items-center justify-center text-white shadow-sm transform rotate-45">
@@ -386,7 +374,7 @@ export default function HomeView() {
           onClose={() => setSelectedPropertyForModal(null)}
           isShortlisted={shortlistIds.includes(selectedPropertyForModal.id)}
           onToggleShortlist={handleToggleShortlist}
-          onOpenAiGenieWithContext={(p) => handleOpenGenieWithContext(p)}
+          onOpenAiGenieWithContext={(p) => openGenie(p)}
         />
       )}
 
@@ -404,12 +392,7 @@ export default function HomeView() {
         defaultCity={selectedCity.name}
       />
 
-      {/* 5. BayBayt Genie Chat Drawer */}
-      <AiGenieChatDrawer
-        isOpen={isGenieDrawerOpen}
-        onClose={() => setIsGenieDrawerOpen(false)}
-        contextProperty={genieContextProperty}
-      />
+      {/* 5. BayBayt Genie Chat Drawer is now mounted globally via GenieProvider. */}
 
       {/* 6. Shortlist Drawer */}
       <ShortlistDrawer
