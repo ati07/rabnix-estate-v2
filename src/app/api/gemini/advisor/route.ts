@@ -9,6 +9,7 @@ import {
 } from "@/lib/genie/propertySearch";
 import { calculateEmiDeclaration, runEmiCalculation, type EmiArgs } from "@/lib/genie/finance";
 import { createInquiryDeclaration, runCreateInquiry, type CreateInquiryArgs } from "@/lib/genie/leads";
+import { draftPropertyListingDeclaration, normalizeListingDraft, type GenieListingDraft } from "@/lib/genie/listingDraft";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -150,6 +151,10 @@ LOAN / EMI RULES:
 BOOKING / LEAD RULES:
 - If the user wants to contact the owner, book a site visit, or "I'm interested", offer to pass their details to the owner. Collect their NAME and PHONE first (ask for them if missing), then call create_inquiry with the correct propertyId (from the current listing context or a listing they picked from search results). Confirm once it's filed. This notifies the owner — it does not reveal the owner's number to the user.
 
+POST-A-PROPERTY RULES:
+- If the user wants to list / post / sell / rent out their own property, help them conversationally. Ask for the missing essentials one or two at a time: purpose (sell/rent/pg/plot/commercial), property type, city, locality, size, BHK, and price. Once you have at least purpose, type, city, locality and price, call draft_property_listing. If no title/description was given, synthesise sensible ones.
+- After draft_property_listing, DO NOT say the listing is live. Tell the user to tap "Review & publish listing" to open the pre-filled form, add photos and submit for verification.
+
 Tone: Professional, friendly, highly knowledgeable about Indian cities & real estate law. Keep responses scannable, using bullet points and bold highlights. Keep answers concise (150-250 words max).`;
 
       const tools = [{
@@ -157,6 +162,7 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
           searchPropertiesDeclaration as any,
           calculateEmiDeclaration as any,
           createInquiryDeclaration as any,
+          draftPropertyListingDeclaration as any,
         ],
       }];
 
@@ -167,6 +173,7 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
       const contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
       const collected: GeniePropertyCard[] = [];
       const seen = new Set<string>();
+      let propertyDraft: GenieListingDraft | null = null;
       let reply = '';
 
       for (let turn = 0; turn < 4; turn++) {
@@ -220,6 +227,18 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
             responseParts.push({
               functionResponse: { name: call.name, response: outcome as any },
             });
+          } else if (call.name === 'draft_property_listing') {
+            propertyDraft = normalizeListingDraft(call.args || {});
+            responseParts.push({
+              functionResponse: {
+                name: call.name,
+                response: {
+                  ready: true,
+                  draft: propertyDraft,
+                  note: 'Draft prepared. The user must tap "Review & publish listing" to add photos and submit.',
+                },
+              },
+            });
           } else {
             responseParts.push({
               functionResponse: { name: call.name || 'unknown', response: { error: 'Unknown tool.' } },
@@ -233,6 +252,7 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
         success: true,
         reply: reply || 'I can help guide you through Indian real estate, property valuation, home loans, or locality recommendations.',
         properties: collected.slice(0, 10),
+        propertyDraft,
       });
     }
 

@@ -31,6 +31,7 @@ import { useProperties } from '@/lib/propertyContext';
 import { ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, ConstructionStatus, FacingDirection } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import LocationPicker, { type LatLng } from '@/components/LocationPicker';
+import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/listingDraft';
 
 // Commercial listings use a dedicated set of property types (Office / Shop /
 // Warehouse / Land) and a rent-or-sale deal type instead of residential BHK.
@@ -164,6 +165,46 @@ export default function PostPropertyPage() {
   const isCommercial = listingType === 'commercial';
   // Commercial-rent and residential rent/pg are all monthly; everything else is a total sale price.
   const isMonthlyPrice = listingType === 'rent' || listingType === 'pg' || (isCommercial && commercialListingType === 'rent');
+
+  // Prefill from a BayBayt Genie conversation. The drawer stashes a draft in
+  // sessionStorage and routes here; we apply it once, then clear it so a manual
+  // revisit starts clean. The user still reviews, adds photos and submits.
+  useEffect(() => {
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(GENIE_LISTING_DRAFT_KEY);
+      if (raw) sessionStorage.removeItem(GENIE_LISTING_DRAFT_KEY);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+
+    let draft: GenieListingDraft;
+    try {
+      draft = JSON.parse(raw);
+    } catch {
+      return;
+    }
+
+    if (draft.listingType) {
+      setListingType(draft.listingType as ListingType);
+      if (draft.listingType === 'commercial' && draft.commercialListingType) {
+        setCommercialListingType(draft.commercialListingType as CommercialListingType);
+      }
+    }
+    if (draft.category) setCategory(draft.category as PropertyCategory);
+    if (draft.city) setCity(draft.city);
+    if (draft.locality) setLocality(draft.locality);
+    if (draft.subLocality) setSubLocality(draft.subLocality);
+    if (draft.title) setTitle(draft.title);
+    if (typeof draft.bhk === 'number') setBhk(draft.bhk);
+    if (typeof draft.bathrooms === 'number') setBathrooms(draft.bathrooms);
+    if (typeof draft.carpetAreaSqFt === 'number') setCarpetAreaSqFt(draft.carpetAreaSqFt);
+    if (typeof draft.price === 'number') setPrice(draft.price);
+    if (draft.furnishing) setFurnishing(draft.furnishing as FurnishingStatus);
+    if (draft.constructionStatus) setConstructionStatus(draft.constructionStatus as ConstructionStatus);
+    if (draft.description) setDescription(draft.description);
+  }, []);
 
   // Switching the listing purpose keeps the category valid for that purpose.
   const handleListingTypeChange = (next: ListingType) => {

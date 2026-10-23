@@ -10,16 +10,19 @@ import {
   User,
   MapPin,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  UploadCloud
 } from 'lucide-react';
 import { Property } from '@/lib/types';
 import type { GeniePropertyCard } from '@/lib/genie/propertySearch';
+import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/listingDraft';
 
 interface Message {
   sender: 'user' | 'bot';
   text: string;
   timestamp: string;
   properties?: GeniePropertyCard[];
+  propertyDraft?: GenieListingDraft | null;
 }
 
 interface AiGenieChatDrawerProps {
@@ -37,7 +40,7 @@ export function AiGenieChatDrawer({
     const initial: Message[] = [
       {
         sender: 'bot',
-        text: `Namaste! I am **BayBayt Genie**, your AI Real Estate Advisor at BayBayt. I can **search our live listings** for you — just tell me the city, budget & BHK — or help with home loans, RERA rules, stamp duty and locality comparisons. What are you looking for?`,
+        text: `Welcome! I am **BayBayt Genie**, your AI Real Estate Advisor at BayBayt. I can **search our live listings** for you — just tell me the city, budget & BHK — or help with home loans, RERA rules, stamp duty and locality comparisons. What are you looking for?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ];
@@ -86,6 +89,19 @@ export function AiGenieChatDrawer({
     'Explain RERA carpet area vs super built-up area rules in India'
   ];
 
+  // Stash the Genie-prepared draft and open the pre-filled post-property wizard.
+  // The user still adds photos and submits through the normal (auth + quota +
+  // review) flow — the bot never publishes a listing directly.
+  const handleReviewDraft = (draft: GenieListingDraft) => {
+    try {
+      sessionStorage.setItem(GENIE_LISTING_DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* ignore storage errors — the form just opens with its defaults */
+    }
+    onClose();
+    router.push('/post-property');
+  };
+
   const handleSendMessage = async (queryText?: string) => {
     const textToSend = queryText || input;
     if (!textToSend.trim() || loading) return;
@@ -121,6 +137,7 @@ export function AiGenieChatDrawer({
             sender: 'bot',
             text: data.reply,
             properties: Array.isArray(data.properties) ? data.properties : undefined,
+            propertyDraft: data.propertyDraft || undefined,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ]);
@@ -248,6 +265,18 @@ export function AiGenieChatDrawer({
                     </button>
                   ))}
                 </div>
+              )}
+
+              {/* Conversational post-a-property: hand off the prepared draft to
+                  the pre-filled /post-property wizard. */}
+              {msg.propertyDraft && (
+                <button
+                  onClick={() => handleReviewDraft(msg.propertyDraft!)}
+                  className="mt-2.5 w-full flex items-center justify-center gap-2 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold px-3 py-2.5 rounded-xl transition-colors cursor-pointer shadow-xs"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span>Review &amp; publish listing</span>
+                </button>
               )}
 
               <div
