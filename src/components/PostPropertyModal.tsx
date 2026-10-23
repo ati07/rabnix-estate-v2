@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { Property, ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, FacingDirection, ConstructionStatus } from '@/lib/types';
-import { CITIES_DATA } from '@/lib/realEstateData';
+import { LocationSelect } from '@/components/location/LocationSelect';
+import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { formatIndianCurrency } from '@/lib/formatters';
 
 const COMMERCIAL_CATEGORIES: { label: string; value: PropertyCategory }[] = [
@@ -55,6 +56,12 @@ export function PostPropertyModal({
   const [commercialListingType, setCommercialListingType] = useState<CommercialListingType>('sale');
   const [category, setCategory] = useState<PropertyCategory>('Apartment');
   const [city, setCity] = useState<string>(user?.city || 'Bangalore');
+  const [country, setCountry] = useState<string>(
+    () => findStateForCity(user?.city || 'Bangalore')?.country || DEFAULT_COUNTRY
+  );
+  const [state, setState] = useState<string>(
+    () => findStateForCity(user?.city || 'Bangalore')?.state || 'Karnataka'
+  );
   const [locality, setLocality] = useState<string>('');
   const [title, setTitle] = useState<string>('');
   const [bhk, setBhk] = useState<number>(2);
@@ -168,6 +175,8 @@ export function PostPropertyModal({
       commercialListingType: isCommercial ? commercialListingType : undefined,
       category,
       city,
+      state: state || undefined,
+      country: country || DEFAULT_COUNTRY,
       locality: locality || 'Central Hub',
       price,
       priceFormatted: formattedPrice,
@@ -391,34 +400,28 @@ export function PostPropertyModal({
                   </div>
                 </div>
 
-                {/* City & Locality */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#172033]">City</label>
-                    <select
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
-                    >
-                      {CITIES_DATA.map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name} ({c.state})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Country / State / City */}
+                <LocationSelect
+                  value={{ country, state, city }}
+                  onChange={(next) => {
+                    setCountry(next.country);
+                    setState(next.state);
+                    if (next.city !== city) setLocality('');
+                    setCity(next.city);
+                  }}
+                />
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#172033]">Locality / Neighborhood</label>
-                    <input
-                      type="text"
-                      required
-                      value={locality}
-                      onChange={(e) => setLocality(e.target.value)}
-                      placeholder="e.g. Indiranagar, Bandra West, Whitefield"
-                      className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
-                    />
-                  </div>
+                {/* Locality */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#172033]">Locality / Neighborhood</label>
+                  <input
+                    type="text"
+                    required
+                    value={locality}
+                    onChange={(e) => setLocality(e.target.value)}
+                    placeholder="e.g. Indiranagar, Bandra West, Whitefield"
+                    className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
+                  />
                 </div>
 
                 {/* Title */}

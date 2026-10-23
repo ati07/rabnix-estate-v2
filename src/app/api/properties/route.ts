@@ -124,6 +124,8 @@ export async function POST(req: NextRequest) {
         commercialListingType: b.listingType === 'commercial' ? (b.commercialListingType || 'sale') : null,
         category: b.category || 'Apartment',
         city: city,
+        state: b.state || null,
+        country: b.country || 'India',
         locality: locality,
         subLocality: b.subLocality,
         address: b.address,

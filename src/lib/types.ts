@@ -29,6 +29,8 @@ export interface Property {
   commercialListingType?: CommercialListingType; // only when listingType==='commercial'
   category: PropertyCategory;
   city: string;
+  state?: string;
+  country?: string;
   locality: string;
   subLocality?: string;
   address?: string; // full street address (free text; captured via the map picker)

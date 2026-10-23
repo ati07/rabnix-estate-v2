@@ -36,6 +36,8 @@ export function serializeProperty(p: DbProperty, includeContact = false): Proper
     commercialListingType: (p.commercialListingType as Property['commercialListingType']) ?? undefined,
     category: p.category as Property['category'],
     city: p.city,
+    state: p.state ?? undefined,
+    country: p.country ?? undefined,
     locality: p.locality,
     subLocality: p.subLocality ?? undefined,
     address: p.address ?? undefined,

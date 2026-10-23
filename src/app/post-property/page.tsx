@@ -31,6 +31,8 @@ import { useProperties } from '@/lib/propertyContext';
 import { ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, ConstructionStatus, FacingDirection } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import LocationPicker, { type LatLng } from '@/components/LocationPicker';
+import { LocationSelect } from '@/components/location/LocationSelect';
+import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/listingDraft';
 
 // Commercial listings use a dedicated set of property types (Office / Shop /
@@ -107,6 +109,12 @@ export default function PostPropertyPage() {
   const [commercialListingType, setCommercialListingType] = useState<CommercialListingType>('sale');
   const [category, setCategory] = useState<PropertyCategory>('Apartment');
   const [city, setCity] = useState<string>(user?.city || 'Bangalore');
+  const [country, setCountry] = useState<string>(
+    () => findStateForCity(user?.city || 'Bangalore')?.country || DEFAULT_COUNTRY
+  );
+  const [state, setState] = useState<string>(
+    () => findStateForCity(user?.city || 'Bangalore')?.state || 'Karnataka'
+  );
   const [locality, setLocality] = useState<string>('');
   const [subLocality, setSubLocality] = useState<string>('');
   const [address, setAddress] = useState<string>('');
@@ -193,7 +201,15 @@ export default function PostPropertyPage() {
       }
     }
     if (draft.category) setCategory(draft.category as PropertyCategory);
-    if (draft.city) setCity(draft.city);
+    if (draft.city) {
+      setCity(draft.city);
+      // Keep the cascading pickers consistent with the Genie-supplied city.
+      const match = findStateForCity(draft.city);
+      if (match) {
+        setCountry(match.country);
+        setState(match.state);
+      }
+    }
     if (draft.locality) setLocality(draft.locality);
     if (draft.subLocality) setSubLocality(draft.subLocality);
     if (draft.title) setTitle(draft.title);
@@ -328,6 +344,8 @@ export default function PostPropertyPage() {
         commercialListingType: isCommercial ? commercialListingType : undefined,
         category,
         city,
+        state: state || undefined,
+        country: country || DEFAULT_COUNTRY,
         locality: locality || selectedCityData.popularLocalities[0],
         subLocality,
         address: address || undefined,
@@ -699,40 +717,29 @@ export default function PostPropertyPage() {
                     </div>
                   </div>
 
-                  {/* City & Locality */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#172033] uppercase">
-                        City *
-                      </label>
-                      <select
-                        value={city}
-                        onChange={(e) => {
-                          setCity(e.target.value);
-                          setLocality('');
-                        }}
-                        className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-medium text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
-                      >
-                        {CITIES_DATA.map((c) => (
-                          <option key={c.name} value={c.name}>
-                            {c.name} ({c.state})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  {/* Country / State / City */}
+                  <LocationSelect
+                    value={{ country, state, city }}
+                    onChange={(next) => {
+                      setCountry(next.country);
+                      setState(next.state);
+                      if (next.city !== city) setLocality('');
+                      setCity(next.city);
+                    }}
+                  />
 
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#172033] uppercase">
-                        Locality / Neighborhood *
-                      </label>
-                      <input
-                        type="text"
-                        value={locality}
-                        onChange={(e) => setLocality(e.target.value)}
-                        placeholder={`e.g. ${selectedCityData.popularLocalities[0] || 'Whitefield'}`}
-                        className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-medium text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
-                      />
-                    </div>
+                  {/* Locality */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-[#172033] uppercase">
+                      Locality / Neighborhood *
+                    </label>
+                    <input
+                      type="text"
+                      value={locality}
+                      onChange={(e) => setLocality(e.target.value)}
+                      placeholder={`e.g. ${selectedCityData.popularLocalities[0] || 'Whitefield'}`}
+                      className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs sm:text-sm font-medium text-[#172033] focus:bg-white focus:border-[#18A67D] outline-none"
+                    />
                   </div>
 
                   {/* Popular suggestions */}

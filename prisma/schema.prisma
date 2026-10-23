@@ -115,6 +115,8 @@ model Property {
   commercialListingType String? // commercial only: rent | sale
   category              String
   city                  String
+  state                 String? // e.g. "Uttar Pradesh" (nullable: legacy rows predate this field)
+  country               String   @default("India")
   locality              String
   subLocality           String?
   address               String? // full street address (free text; map-assisted)
@@ -165,6 +167,7 @@ model Property {
   views     PropertyView[]
 
   @@index([city])
+  @@index([state])
   @@index([listingType])
   @@index([verificationStatus])
   @@index([postedByUserId])

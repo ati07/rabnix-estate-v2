@@ -102,7 +102,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Owner-editable fields (also editable by admin). Promotion flags are handled
     // above (admin only) and deliberately excluded here.
     const editable: (keyof Property)[] = [
-      'title', 'tagline', 'listingType', 'commercialListingType', 'category', 'city', 'locality', 'subLocality',
+      'title', 'tagline', 'listingType', 'commercialListingType', 'category', 'city', 'state', 'country', 'locality', 'subLocality',
       'address', 'coordinates',
       'price', 'priceFormatted', 'pricePerSqFt', 'maintenance', 'bhk', 'bathrooms', 'balconies',
       'carpetAreaSqFt', 'superBuiltUpAreaSqFt', 'furnishing', 'floor', 'totalFloors', 'facing',

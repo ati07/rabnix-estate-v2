@@ -122,8 +122,9 @@ import {
   VerificationStatus,
   SystemActivityLog
 } from '@/lib/types';
-import { CITIES_DATA } from '@/lib/realEstateData';
 import LocationPicker, { type LatLng } from '@/components/LocationPicker';
+import { LocationSelect } from '@/components/location/LocationSelect';
+import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { formatIndianCurrency } from '@/lib/formatters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
 
@@ -320,6 +321,12 @@ export default function UserDashboardPage() {
   const [uploadCommercialListingType, setUploadCommercialListingType] = useState<CommercialListingType>('sale');
   const [uploadCategory, setUploadCategory] = useState<PropertyCategory>('Apartment');
   const [uploadCity, setUploadCity] = useState<string>(user?.city || 'Bangalore');
+  const [uploadCountry, setUploadCountry] = useState<string>(
+    () => findStateForCity(user?.city || 'Bangalore')?.country || DEFAULT_COUNTRY
+  );
+  const [uploadState, setUploadState] = useState<string>(
+    () => findStateForCity(user?.city || 'Bangalore')?.state || 'Karnataka'
+  );
   const [uploadLocality, setUploadLocality] = useState<string>('');
   const [uploadSubLocality, setUploadSubLocality] = useState<string>('');
   const [uploadAddress, setUploadAddress] = useState<string>('');
@@ -945,6 +952,8 @@ export default function UserDashboardPage() {
       commercialListingType: isCommercialUpload ? uploadCommercialListingType : undefined,
       category: uploadCategory,
       city: uploadCity,
+      state: uploadState || undefined,
+      country: uploadCountry || DEFAULT_COUNTRY,
       locality: uploadLocality,
       subLocality: uploadSubLocality,
       address: uploadAddress || undefined,
@@ -1825,32 +1834,28 @@ export default function UserDashboardPage() {
                       </div>
                     </div>
 
-                    {/* City & Locality */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-[#172033]">City</label>
-                        <select
-                          value={uploadCity}
-                          onChange={(e) => setUploadCity(e.target.value)}
-                          className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
-                        >
-                          {CITIES_DATA.map((c) => (
-                            <option key={c.name} value={c.name}>{c.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                    {/* Country / State / City */}
+                    <LocationSelect
+                      value={{ country: uploadCountry, state: uploadState, city: uploadCity }}
+                      onChange={(next) => {
+                        setUploadCountry(next.country);
+                        setUploadState(next.state);
+                        if (next.city !== uploadCity) setUploadLocality('');
+                        setUploadCity(next.city);
+                      }}
+                    />
 
-                      <div className="space-y-1 sm:col-span-2">
-                        <label className="text-xs font-bold text-[#172033]">Locality / Neighborhood *</label>
-                        <input
-                          type="text"
-                          required
-                          value={uploadLocality}
-                          onChange={(e) => setUploadLocality(e.target.value)}
-                          placeholder="e.g. Indiranagar, Whitefield, Bandra West"
-                          className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
-                        />
-                      </div>
+                    {/* Locality */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-[#172033]">Locality / Neighborhood *</label>
+                      <input
+                        type="text"
+                        required
+                        value={uploadLocality}
+                        onChange={(e) => setUploadLocality(e.target.value)}
+                        placeholder="e.g. Indiranagar, Whitefield, Bandra West"
+                        className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
+                      />
                     </div>
 
                     {/* Pin exact location on the map (OpenStreetMap, no Google) */}
