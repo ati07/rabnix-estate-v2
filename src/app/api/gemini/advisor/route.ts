@@ -9,7 +9,7 @@ import {
 } from "@/lib/genie/propertySearch";
 import { calculateEmiDeclaration, runEmiCalculation, type EmiArgs } from "@/lib/genie/finance";
 import { createInquiryDeclaration, runCreateInquiry, type CreateInquiryArgs } from "@/lib/genie/leads";
-import { draftPropertyListingDeclaration, normalizeListingDraft, type GenieListingDraft } from "@/lib/genie/listingDraft";
+import { draftPropertyListingDeclaration, normalizeListingDraft, normalizePartialDraft, type GenieListingDraft } from "@/lib/genie/listingDraft";
 import { marketInsightsDeclaration, runMarketInsights, type MarketInsightsArgs } from "@/lib/genie/market";
 
 export const dynamic = 'force-dynamic';
@@ -118,6 +118,89 @@ Provide accurate, realistic Indian real estate valuation metrics with INR figure
       const responseText = response.text || '{}';
       const parsed = JSON.parse(responseText);
       return NextResponse.json({ success: true, data: parsed });
+    }
+
+    // Action: Describe-and-fill — turn an owner's free-text description of their
+    // own property into structured listing fields for the /post-property form.
+    // Extraction only: unmentioned fields are omitted (never fabricated), so the
+    // result can be applied over a form the user has already started.
+    if (action === 'extract_listing') {
+      const text: string = (payload?.text || '').toString();
+      if (!text.trim()) {
+        return NextResponse.json({ success: false, error: 'Please describe your property first.' }, { status: 400 });
+      }
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: `Extract structured BayBayt listing fields from this property owner's description. ` +
+          `Only fill a field if the text clearly states or strongly implies it; OMIT anything not mentioned. ` +
+          `Do NOT invent a price, area, RERA number, locality or city. Prices are absolute INR ` +
+          `(e.g. 8500000; use the monthly amount for rent/pg).\n\nDescription:\n"""${text.trim()}"""`,
+        config: {
+          systemInstruction:
+            'You convert a property owner\'s free-text description into structured listing fields for ' +
+            'BayBayt (India). Return JSON only. Never fabricate values that are not present in the text.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              listingType: { type: Type.STRING, enum: ['buy', 'rent', 'pg', 'plot', 'commercial'], description: 'buy = sell residential; rent; pg; plot = sell land; commercial.' },
+              commercialListingType: { type: Type.STRING, enum: ['rent', 'sale'], description: 'Commercial listings only.' },
+              category: { type: Type.STRING, enum: ['Apartment', 'Villa', 'Builder Floor', 'Penthouse', 'Studio', 'Commercial Office', 'Retail Shop', 'Warehouse', 'Commercial Land', 'Residential Plot'] },
+              city: { type: Type.STRING },
+              locality: { type: Type.STRING },
+              subLocality: { type: Type.STRING },
+              title: { type: Type.STRING },
+              bhk: { type: Type.NUMBER },
+              bathrooms: { type: Type.NUMBER },
+              carpetAreaSqFt: { type: Type.NUMBER },
+              price: { type: Type.NUMBER, description: 'Asking price, or monthly rent for rent/pg, in absolute INR.' },
+              furnishing: { type: Type.STRING, enum: ['Furnished', 'Semi-Furnished', 'Unfurnished'] },
+              constructionStatus: { type: Type.STRING, enum: ['Ready to Move', 'Under Construction', 'New Launch'] },
+              description: { type: Type.STRING },
+            },
+          },
+        },
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      const draft = normalizePartialDraft(parsed);
+      return NextResponse.json({ success: true, draft });
+    }
+
+    // Action: Listing copywriter — generate a title + description from the specs
+    // the user has already entered. Factual to the given details only; no made-up
+    // amenities, prices or RERA numbers, and never a phone number.
+    if (action === 'listing_copy') {
+      const specs = payload?.specs || {};
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: `Write a listing TITLE and DESCRIPTION for this BayBayt property. Be specific and ` +
+          `factual to the details provided; do NOT invent amenities, prices, RERA numbers or a phone ` +
+          `number.\n\nDetails (JSON):\n${JSON.stringify(specs)}`,
+        config: {
+          systemInstruction:
+            'You are a BayBayt copywriter for Indian real-estate listings. Return JSON { title, description }. ' +
+            'Title <= 70 characters, catchy, include the BHK and locality when known. Description 2-4 ' +
+            'sentences, factual, appealing, no fabricated claims and no phone numbers.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              description: { type: Type.STRING },
+            },
+            required: ['title', 'description'],
+          },
+        },
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      return NextResponse.json({
+        success: true,
+        title: (parsed.title || '').toString(),
+        description: (parsed.description || '').toString(),
+      });
     }
 
     // Action 2: BayBayt Genie Chatbot & Real Estate Consultation

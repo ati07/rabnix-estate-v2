@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/BrandLogo';
 import Image from 'next/image';
@@ -125,6 +125,10 @@ import {
 import LocationPicker, { type LatLng } from '@/components/LocationPicker';
 import { LocationSelect } from '@/components/location/LocationSelect';
 import { MediaUploadFields, type PropertyMediaValue } from '@/components/media/MediaUploadFields';
+import { ListingGenieBox } from '@/components/genie/ListingGenieBox';
+import { GenieAssistButton } from '@/components/genie/GenieAssistButton';
+import { generateListingCopy, estimateListingPrice, formatInr } from '@/lib/genie/listingAssist';
+import type { GenieListingDraft } from '@/lib/genie/listingDraft';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { formatIndianCurrency } from '@/lib/formatters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
@@ -373,6 +377,8 @@ export default function UserDashboardPage() {
   const [hasTaxDoc, setHasTaxDoc] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccessId, setUploadSuccessId] = useState<string | null>(null);
+  // AI price-estimate note shown under the upload price field (indicative range).
+  const [uploadPriceEstimateNote, setUploadPriceEstimateNote] = useState<string | null>(null);
 
   // Appearance & Branding Form States
   const [brandName, setBrandName] = useState(user?.name || '');
@@ -907,6 +913,37 @@ export default function UserDashboardPage() {
       setUploadCategory('Apartment');
     }
   };
+
+  // Apply a (partial) Genie draft to the inline upload form. Used by the
+  // "Describe your property" box; only fields present in the draft are touched,
+  // so it never clobbers choices the user already made.
+  const applyUploadDraft = useCallback((draft: Partial<GenieListingDraft>) => {
+    if (draft.listingType) {
+      setUploadListingType(draft.listingType as ListingType);
+      if (draft.listingType === 'commercial' && draft.commercialListingType) {
+        setUploadCommercialListingType(draft.commercialListingType as CommercialListingType);
+      }
+    }
+    if (draft.category) setUploadCategory(draft.category as PropertyCategory);
+    if (draft.city) {
+      setUploadCity(draft.city);
+      const match = findStateForCity(draft.city);
+      if (match) {
+        setUploadCountry(match.country);
+        setUploadState(match.state);
+      }
+    }
+    if (draft.locality) setUploadLocality(draft.locality);
+    if (draft.subLocality) setUploadSubLocality(draft.subLocality);
+    if (draft.title) setUploadTitle(draft.title);
+    if (typeof draft.bhk === 'number') setUploadBhk(draft.bhk);
+    if (typeof draft.bathrooms === 'number') setUploadBathrooms(draft.bathrooms);
+    if (typeof draft.carpetAreaSqFt === 'number') setUploadCarpetArea(draft.carpetAreaSqFt);
+    if (typeof draft.price === 'number') setUploadPrice(draft.price);
+    if (draft.furnishing) setUploadFurnishing(draft.furnishing as FurnishingStatus);
+    if (draft.constructionStatus) setUploadConstruction(draft.constructionStatus as ConstructionStatus);
+    if (draft.description) setUploadDescription(draft.description);
+  }, []);
 
   // Blank the free-text / media fields back to create defaults (mirrors the
   // "Upload Another" reset). Used when leaving an edit to start a fresh upload.
@@ -1841,6 +1878,12 @@ export default function UserDashboardPage() {
                     </div>
                   )}
 
+                  {/* Describe-and-fill: let Genie populate the form from a sentence.
+                      Hidden while editing an existing listing (would overwrite it). */}
+                  {!editingPropertyId && (
+                    <ListingGenieBox onApply={applyUploadDraft} />
+                  )}
+
                   {/* STEP 1: Type & Category */}
                   <div className="space-y-4">
                     <div className="space-y-1.5">
@@ -2064,9 +2107,32 @@ export default function UserDashboardPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-[#172033]">
-                          {uploadListingType === 'rent' || uploadListingType === 'pg' || (isCommercialUpload && uploadCommercialListingType === 'rent') ? 'Expected Monthly Rent (₹)' : 'Expected Total Price (₹)'}
-                        </label>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <label className="text-xs font-bold text-[#172033]">
+                            {uploadListingType === 'rent' || uploadListingType === 'pg' || (isCommercialUpload && uploadCommercialListingType === 'rent') ? 'Expected Monthly Rent (₹)' : 'Expected Total Price (₹)'}
+                          </label>
+                          <GenieAssistButton
+                            label="Estimate fair price"
+                            busyLabel="Valuing…"
+                            onRun={async () => {
+                              const monthly = uploadListingType === 'rent' || uploadListingType === 'pg' || (isCommercialUpload && uploadCommercialListingType === 'rent');
+                              const est = await estimateListingPrice({
+                                city: uploadCity,
+                                locality: uploadLocality,
+                                category: uploadCategory,
+                                areaSqFt: uploadCarpetArea,
+                                bhk: uploadBhk,
+                                furnishing: uploadFurnishing,
+                                isMonthly: monthly,
+                              });
+                              if (est.suggestedPrice > 0) setUploadPrice(est.suggestedPrice);
+                              setUploadPriceEstimateNote(
+                                `Genie estimate: ${formatInr(est.min)}–${formatInr(est.max)}` +
+                                  `${monthly ? '/mo' : ''} — indicative, based on BayBayt data. Adjust as you see fit.`,
+                              );
+                            }}
+                          />
+                        </div>
                         <input
                           type="number"
                           required
@@ -2077,6 +2143,11 @@ export default function UserDashboardPage() {
                         <span className="text-[11px] font-bold text-[#18A67D]">
                           Formatted: {formatIndianCurrency(uploadPrice)}
                         </span>
+                        {uploadPriceEstimateNote && (
+                          <div className="text-[11px] font-medium text-[#0E7C5D] bg-[#E7F6F1] border border-[#18A67D]/25 rounded-lg px-2.5 py-1.5 mt-1">
+                            {uploadPriceEstimateNote}
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-1">
@@ -2206,7 +2277,32 @@ export default function UserDashboardPage() {
 
                     {/* Description */}
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-[#172033]">Description</label>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <label className="text-xs font-bold text-[#172033]">Description</label>
+                        <GenieAssistButton
+                          label="Write with Genie"
+                          busyLabel="Writing…"
+                          onRun={async () => {
+                            const copy = await generateListingCopy({
+                              listingType: uploadListingType,
+                              commercialListingType: isCommercialUpload ? uploadCommercialListingType : undefined,
+                              category: uploadCategory,
+                              city: uploadCity,
+                              locality: uploadLocality,
+                              subLocality: uploadSubLocality,
+                              bhk: isCommercialUpload ? undefined : uploadBhk,
+                              bathrooms: isCommercialUpload ? undefined : uploadBathrooms,
+                              carpetAreaSqFt: uploadCarpetArea,
+                              furnishing: uploadFurnishing,
+                              constructionStatus: uploadConstruction,
+                              amenities: uploadAmenities,
+                              price: uploadPrice,
+                            });
+                            if (copy.description) setUploadDescription(copy.description);
+                            if (copy.title) setUploadTitle(copy.title);
+                          }}
+                        />
+                      </div>
                       <textarea
                         rows={3}
                         value={uploadDescription}

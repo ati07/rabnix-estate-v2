@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/BrandLogo';
 import Image from 'next/image';
@@ -35,6 +35,9 @@ import { LocationSelect } from '@/components/location/LocationSelect';
 import { MediaUploadFields, type PropertyMediaValue } from '@/components/media/MediaUploadFields';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/listingDraft';
+import { ListingGenieBox } from '@/components/genie/ListingGenieBox';
+import { GenieAssistButton } from '@/components/genie/GenieAssistButton';
+import { generateListingCopy, estimateListingPrice, formatInr } from '@/lib/genie/listingAssist';
 
 // Commercial listings use a dedicated set of property types (Office / Shop /
 // Warehouse / Land) and a rent-or-sale deal type instead of residential BHK.
@@ -176,26 +179,11 @@ export default function PostPropertyPage() {
   // Commercial-rent and residential rent/pg are all monthly; everything else is a total sale price.
   const isMonthlyPrice = listingType === 'rent' || listingType === 'pg' || (isCommercial && commercialListingType === 'rent');
 
-  // Prefill from a BayBayt Genie conversation. The drawer stashes a draft in
-  // sessionStorage and routes here; we apply it once, then clear it so a manual
-  // revisit starts clean. The user still reviews, adds photos and submits.
-  useEffect(() => {
-    let raw: string | null = null;
-    try {
-      raw = sessionStorage.getItem(GENIE_LISTING_DRAFT_KEY);
-      if (raw) sessionStorage.removeItem(GENIE_LISTING_DRAFT_KEY);
-    } catch {
-      return;
-    }
-    if (!raw) return;
-
-    let draft: GenieListingDraft;
-    try {
-      draft = JSON.parse(raw);
-    } catch {
-      return;
-    }
-
+  // Apply a (partial) Genie draft to the live form. Shared by the mount-time
+  // prefill (from a Genie conversation) and the in-form "Describe your property"
+  // box. Only fields present in the draft are touched, so it never clobbers
+  // choices the user already made.
+  const applyDraft = useCallback((draft: Partial<GenieListingDraft>) => {
     if (draft.listingType) {
       setListingType(draft.listingType as ListingType);
       if (draft.listingType === 'commercial' && draft.commercialListingType) {
@@ -223,6 +211,29 @@ export default function PostPropertyPage() {
     if (draft.constructionStatus) setConstructionStatus(draft.constructionStatus as ConstructionStatus);
     if (draft.description) setDescription(draft.description);
   }, []);
+
+  // Prefill from a BayBayt Genie conversation. The drawer stashes a draft in
+  // sessionStorage and routes here; we apply it once, then clear it so a manual
+  // revisit starts clean. The user still reviews, adds photos and submits.
+  useEffect(() => {
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(GENIE_LISTING_DRAFT_KEY);
+      if (raw) sessionStorage.removeItem(GENIE_LISTING_DRAFT_KEY);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+
+    try {
+      applyDraft(JSON.parse(raw) as GenieListingDraft);
+    } catch {
+      /* malformed draft — ignore */
+    }
+  }, [applyDraft]);
+
+  // AI price-estimate note shown under the price field (indicative range).
+  const [priceEstimateNote, setPriceEstimateNote] = useState<string | null>(null);
 
   // Switching the listing purpose keeps the category valid for that purpose.
   const handleListingTypeChange = (next: ListingType) => {
@@ -632,13 +643,19 @@ export default function PostPropertyPage() {
               </div>
             )}
 
+            {/* Describe-and-fill: let Genie populate the form from a sentence.
+                Shown on step 1 so it's the first thing an owner can reach for. */}
+            {currentStep === 1 && !outOfQuota && (
+              <ListingGenieBox onApply={applyDraft} />
+            )}
+
             {/* Step Forms */}
             <div className="bg-white rounded-2xl shadow-md border border-[#E2E8F0] p-6 sm:p-8">
-              
+
               {/* ================= STEP 1: CATEGORY & LOCATION ================= */}
               {currentStep === 1 && (
                 <div className="space-y-6 animate-in fade-in">
-                  
+
                   {/* Listing Type Picker */}
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-[#172033] uppercase tracking-wider">
@@ -903,9 +920,31 @@ export default function PostPropertyPage() {
                   {/* Price & Maintenance */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-[#172033] uppercase">
-                        {isMonthlyPrice ? 'Monthly Rent (₹) *' : 'Total Expected Price (₹) *'}
-                      </label>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <label className="block text-xs font-bold text-[#172033] uppercase">
+                          {isMonthlyPrice ? 'Monthly Rent (₹) *' : 'Total Expected Price (₹) *'}
+                        </label>
+                        <GenieAssistButton
+                          label="Estimate fair price"
+                          busyLabel="Valuing…"
+                          onRun={async () => {
+                            const est = await estimateListingPrice({
+                              city,
+                              locality,
+                              category,
+                              areaSqFt: carpetAreaSqFt,
+                              bhk,
+                              furnishing,
+                              isMonthly: isMonthlyPrice,
+                            });
+                            if (est.suggestedPrice > 0) setPrice(est.suggestedPrice);
+                            setPriceEstimateNote(
+                              `Genie estimate: ${formatInr(est.min)}–${formatInr(est.max)}` +
+                                `${isMonthlyPrice ? '/mo' : ''} — indicative, based on BayBayt data. Adjust as you see fit.`,
+                            );
+                          }}
+                        />
+                      </div>
                       <div className="relative flex items-center">
                         <span className="absolute left-3.5 text-xs font-bold text-[#64748B]">₹</span>
                         <input
@@ -917,13 +956,18 @@ export default function PostPropertyPage() {
                       </div>
                       <div className="text-[11px] text-[#64748B]">
                         Formatted: <strong>
-                          {price >= 10000000 
-                            ? `₹${(price / 10000000).toFixed(2)} Crore` 
-                            : price >= 100000 
-                            ? `₹${(price / 100000).toFixed(1)} Lakh` 
+                          {price >= 10000000
+                            ? `₹${(price / 10000000).toFixed(2)} Crore`
+                            : price >= 100000
+                            ? `₹${(price / 100000).toFixed(1)} Lakh`
                             : `₹${price.toLocaleString('en-IN')}`}
                         </strong>
                       </div>
+                      {priceEstimateNote && (
+                        <div className="text-[11px] font-medium text-[#0E7C5D] bg-[#E7F6F1] border border-[#18A67D]/25 rounded-lg px-2.5 py-1.5">
+                          {priceEstimateNote}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -1152,9 +1196,36 @@ export default function PostPropertyPage() {
 
                   {/* Description */}
                   <div className="space-y-1.5 pt-2">
-                    <label className="block text-xs font-bold text-[#172033] uppercase">
-                      Detailed Property Description
-                    </label>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <label className="block text-xs font-bold text-[#172033] uppercase">
+                        Detailed Property Description
+                      </label>
+                      <GenieAssistButton
+                        label="Write with Genie"
+                        busyLabel="Writing…"
+                        onRun={async () => {
+                          const copy = await generateListingCopy({
+                            listingType,
+                            commercialListingType: isCommercial ? commercialListingType : undefined,
+                            category,
+                            city,
+                            locality,
+                            subLocality,
+                            bhk: isCommercial ? undefined : bhk,
+                            bathrooms: isCommercial ? undefined : bathrooms,
+                            carpetAreaSqFt,
+                            furnishing,
+                            constructionStatus,
+                            amenities: selectedAmenities,
+                            price,
+                          });
+                          if (copy.description) setDescription(copy.description);
+                          // Title has no visible field (it's auto-generated on
+                          // submit) — upgrade it too so the listing reads well.
+                          if (copy.title) setTitle(copy.title);
+                        }}
+                      />
+                    </div>
                     <textarea
                       rows={3}
                       value={description}

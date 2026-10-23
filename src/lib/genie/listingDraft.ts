@@ -100,3 +100,34 @@ export function normalizeListingDraft(args: Record<string, unknown>): GenieListi
 
   return draft;
 }
+
+/**
+ * Like normalizeListingDraft but WITHOUT forcing defaults — only fields the
+ * caller (e.g. the "Describe your property" extractor) actually produced are
+ * included. This lets us safely apply a draft to a form the user has already
+ * started filling, without overwriting their choices with "buy"/"Apartment".
+ */
+export function normalizePartialDraft(args: Record<string, unknown>): Partial<GenieListingDraft> {
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+  const num = (v: unknown) => (typeof v === 'number' && isFinite(v) && v >= 0 ? v : undefined);
+
+  const draft: Partial<GenieListingDraft> = {};
+  const listingType = str(args.listingType); if (listingType) draft.listingType = listingType;
+  const category = str(args.category); if (category) draft.category = category;
+  const city = str(args.city); if (city) draft.city = city;
+  const locality = str(args.locality); if (locality) draft.locality = locality;
+  if (draft.listingType === 'commercial') {
+    const clt = str(args.commercialListingType); if (clt) draft.commercialListingType = clt;
+  }
+  const subLocality = str(args.subLocality); if (subLocality) draft.subLocality = subLocality;
+  const title = str(args.title); if (title) draft.title = title;
+  const bhk = num(args.bhk); if (bhk != null) draft.bhk = bhk;
+  const bathrooms = num(args.bathrooms); if (bathrooms != null) draft.bathrooms = bathrooms;
+  const carpet = num(args.carpetAreaSqFt); if (carpet != null) draft.carpetAreaSqFt = carpet;
+  const price = num(args.price); if (price != null) draft.price = price;
+  const furnishing = str(args.furnishing); if (furnishing) draft.furnishing = furnishing;
+  const cs = str(args.constructionStatus); if (cs) draft.constructionStatus = cs;
+  const description = str(args.description); if (description) draft.description = description;
+
+  return draft;
+}
