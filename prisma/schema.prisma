@@ -107,6 +107,24 @@ model OtpCode {
   @@index([expiresAt])
 }
 
+// One-time codes for EMAIL verification at sign-up. Same rules as OtpCode
+// (hashed at rest, short expiry, single-use, capped attempts, resend cooldown)
+// but keyed by the normalized email. Delivery is in src/lib/email.ts and the
+// flow in src/lib/emailOtp.ts. Used only to prove control of an email before
+// an account is created — there is no email-based sign-in.
+model EmailOtpCode {
+  id        String   @id @default(cuid())
+  email     String // normalized (lowercased, trimmed)
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
 model Property {
   id                    String   @id @default(cuid())
   title                 String

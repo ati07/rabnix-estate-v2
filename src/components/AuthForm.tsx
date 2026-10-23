@@ -32,7 +32,7 @@ interface AuthFormProps {
 }
 
 export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }: AuthFormProps) {
-  const { loginWithPassword, sendOtp, loginWithOtp, signup, isLoading } = useAuth();
+  const { loginWithPassword, sendOtp, loginWithOtp, sendSignupPhoneOtp, sendSignupEmailOtp, signup, isLoading } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [signInMethod, setSignInMethod] = useState<'password' | 'otp'>('password');
@@ -56,6 +56,14 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
   const [signUpRera, setSignUpRera] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
 
+  // Sign Up verification step (both phone & email proven before account creation)
+  const [signupPhase, setSignupPhase] = useState<'details' | 'verify'>('details');
+  const [signUpPhoneOtp, setSignUpPhoneOtp] = useState('');
+  const [signUpEmailOtp, setSignUpEmailOtp] = useState('');
+  const [signUpPhoneTimer, setSignUpPhoneTimer] = useState(0);
+  const [signUpEmailTimer, setSignUpEmailTimer] = useState(0);
+  const [isSendingCodes, setIsSendingCodes] = useState(false);
+
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -74,6 +82,19 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
     }
     return () => clearInterval(interval);
   }, [otpSent, otpTimer]);
+
+  // Resend countdowns for the sign-up phone & email codes.
+  useEffect(() => {
+    if (signUpPhoneTimer <= 0) return;
+    const t = setInterval(() => setSignUpPhoneTimer((p) => (p > 0 ? p - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [signUpPhoneTimer]);
+
+  useEffect(() => {
+    if (signUpEmailTimer <= 0) return;
+    const t = setInterval(() => setSignUpEmailTimer((p) => (p > 0 ? p - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [signUpEmailTimer]);
 
   const handleSendOtp = async () => {
     if (!signInPhone || signInPhone.length < 10) {
@@ -131,8 +152,10 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
     }
   };
 
-  const handleSignUpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Step 1 → validate the details, then send a code to both the phone and the
+  // email and advance to the verification step. The account is NOT created yet;
+  // it only exists once both codes are confirmed (handleSignUpSubmit).
+  const handleContinueToVerify = async () => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -140,24 +163,90 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
       setErrorMessage('Please agree to the Terms of Service & Privacy Policy');
       return;
     }
-
     if (!signUpName.trim()) {
       setErrorMessage('Please enter your full name');
       return;
     }
-
     if (!signUpEmail.trim() || !signUpEmail.includes('@')) {
       setErrorMessage('Please enter a valid email address');
       return;
     }
-
     if (!signUpPhone.trim() || signUpPhone.length < 10) {
       setErrorMessage('Please enter a valid 10-digit mobile number');
       return;
     }
-
     if (signUpPassword.length < 6) {
       setErrorMessage('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsSendingCodes(true);
+    // Email first: it's the one that can hard-fail (already registered), so we
+    // surface that before sending an SMS.
+    const emailRes = await sendSignupEmailOtp(signUpEmail);
+    if (!emailRes.success) {
+      setIsSendingCodes(false);
+      setErrorMessage(emailRes.error || 'Could not send the email verification code.');
+      return;
+    }
+    const phoneRes = await sendSignupPhoneOtp(signUpPhone);
+    setIsSendingCodes(false);
+    if (!phoneRes.success) {
+      setErrorMessage(phoneRes.error || 'Could not send the mobile verification code.');
+      return;
+    }
+
+    setSignUpPhoneTimer(30);
+    setSignUpEmailTimer(30);
+    // In dev (no SMS/email provider) the codes are returned so the flow is
+    // testable without real delivery; prefill them for convenience.
+    setSignUpPhoneOtp(phoneRes.devCode || '');
+    setSignUpEmailOtp(emailRes.devCode || '');
+    setSignupPhase('verify');
+    setSuccessMessage(
+      phoneRes.devCode || emailRes.devCode
+        ? `Codes generated (dev). Phone: ${phoneRes.devCode || '—'}, Email: ${emailRes.devCode || '—'}`
+        : `Verification codes sent to +91 ${signUpPhone} and ${signUpEmail}.`
+    );
+  };
+
+  const resendSignupPhoneOtp = async () => {
+    setErrorMessage(null);
+    const res = await sendSignupPhoneOtp(signUpPhone);
+    if (!res.success) {
+      setErrorMessage(res.error || 'Could not resend the mobile code.');
+      return;
+    }
+    setSignUpPhoneTimer(30);
+    if (res.devCode) setSignUpPhoneOtp(res.devCode);
+    setSuccessMessage(`Mobile code resent to +91 ${signUpPhone}.`);
+  };
+
+  const resendSignupEmailOtp = async () => {
+    setErrorMessage(null);
+    const res = await sendSignupEmailOtp(signUpEmail);
+    if (!res.success) {
+      setErrorMessage(res.error || 'Could not resend the email code.');
+      return;
+    }
+    setSignUpEmailTimer(30);
+    if (res.devCode) setSignUpEmailOtp(res.devCode);
+    setSuccessMessage(`Email code resent to ${signUpEmail}.`);
+  };
+
+  // Step 2 → both codes entered. The server verifies them before creating the
+  // account, so an account never exists with an unverified phone or email.
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (signUpPhoneOtp.replace(/\D/g, '').length !== 6) {
+      setErrorMessage('Enter the 6-digit code sent to your mobile.');
+      return;
+    }
+    if (signUpEmailOtp.replace(/\D/g, '').length !== 6) {
+      setErrorMessage('Enter the 6-digit code sent to your email.');
       return;
     }
 
@@ -169,7 +258,9 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
       city: signUpCity,
       companyName: signUpCompany,
       reraNumber: signUpRera,
-      password: signUpPassword
+      password: signUpPassword,
+      phoneOtp: signUpPhoneOtp,
+      emailOtp: signUpEmailOtp,
     });
 
     if (res.success) {
@@ -202,6 +293,7 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
           id="auth-tab-signin"
           onClick={() => {
             setMode('signin');
+            setSignupPhase('details');
             setErrorMessage(null);
             setSuccessMessage(null);
           }}
@@ -218,6 +310,7 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
           id="auth-tab-signup"
           onClick={() => {
             setMode('signup');
+            setSignupPhase('details');
             setErrorMessage(null);
             setSuccessMessage(null);
           }}
@@ -494,7 +587,10 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
         {/* ================= MODE 2: SIGN UP / REGISTRATION ================= */}
         {mode === 'signup' && (
           <form onSubmit={handleSignUpSubmit} className="space-y-4">
-            
+
+            {/* ===== STEP 1: Account details ===== */}
+            {signupPhase === 'details' && (
+            <>
             {/* Step 1: Select User Role */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-[#172033] uppercase tracking-wider">
@@ -679,22 +775,120 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
               </span>
             </label>
 
-            {/* Sign Up Submit */}
+            {/* Continue → send verification codes */}
             <button
-              type="submit"
+              type="button"
               id="auth-submit-signup-btn"
-              disabled={isLoading}
+              onClick={handleContinueToVerify}
+              disabled={isLoading || isSendingCodes}
               className="w-full bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
             >
-              {isLoading ? (
+              {isSendingCodes ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Create {selectedRole.toUpperCase()} Account</span>
+                  <span>Continue to Verification</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
+            </>
+            )}
+
+            {/* ===== STEP 2: Verify mobile & email ===== */}
+            {signupPhase === 'verify' && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+                  <ShieldCheck className="w-4 h-4 text-[#18A67D] shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-[#64748B] leading-relaxed">
+                    We&rsquo;ve sent a 6-digit code to your mobile and your email. Enter both to finish creating your account.
+                  </p>
+                </div>
+
+                {/* Mobile code */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-[#172033] uppercase">
+                      <Phone className="w-3.5 h-3.5 text-[#18A67D]" /> Mobile code
+                    </label>
+                    <span className="text-[10px] text-[#64748B]">+91 {signUpPhone}</span>
+                  </div>
+                  <input
+                    id="signup-phone-otp-input"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={signUpPhoneOtp}
+                    onChange={(e) => setSignUpPhoneOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit code"
+                    className="w-full text-center tracking-[0.4em] text-base font-black py-2.5 bg-white border-2 border-[#CBD5E1] rounded-lg text-[#0F2A43] outline-none focus:border-[#18A67D]"
+                  />
+                  <div className="flex items-center justify-end text-[11px]">
+                    {signUpPhoneTimer > 0 ? (
+                      <span className="text-[#64748B]">Resend in {signUpPhoneTimer}s</span>
+                    ) : (
+                      <button type="button" onClick={resendSignupPhoneOtp} className="flex items-center gap-1 text-[#18A67D] hover:underline font-bold cursor-pointer">
+                        <RotateCcw className="w-3 h-3" /> Resend mobile code
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Email code */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-[#172033] uppercase">
+                      <Mail className="w-3.5 h-3.5 text-[#18A67D]" /> Email code
+                    </label>
+                    <span className="text-[10px] text-[#64748B] truncate max-w-[55%]">{signUpEmail}</span>
+                  </div>
+                  <input
+                    id="signup-email-otp-input"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={signUpEmailOtp}
+                    onChange={(e) => setSignUpEmailOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit code"
+                    className="w-full text-center tracking-[0.4em] text-base font-black py-2.5 bg-white border-2 border-[#CBD5E1] rounded-lg text-[#0F2A43] outline-none focus:border-[#18A67D]"
+                  />
+                  <div className="flex items-center justify-end text-[11px]">
+                    {signUpEmailTimer > 0 ? (
+                      <span className="text-[#64748B]">Resend in {signUpEmailTimer}s</span>
+                    ) : (
+                      <button type="button" onClick={resendSignupEmailOtp} className="flex items-center gap-1 text-[#18A67D] hover:underline font-bold cursor-pointer">
+                        <RotateCcw className="w-3 h-3" /> Resend email code
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Create account (verifies both codes) */}
+                <button
+                  type="submit"
+                  id="auth-submit-create-btn"
+                  disabled={isLoading}
+                  className="w-full bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Verify & Create {selectedRole.toUpperCase()} Account</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setSignupPhase('details'); setErrorMessage(null); setSuccessMessage(null); }}
+                  className="w-full text-xs text-[#64748B] hover:text-[#0F2A43] font-semibold cursor-pointer"
+                >
+                  ← Edit details
+                </button>
+              </div>
+            )}
 
           </form>
         )}

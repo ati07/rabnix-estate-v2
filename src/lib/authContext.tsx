@@ -22,6 +22,10 @@ interface AuthContextType {
   loginWithPassword: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string; devCode?: string }>;
   loginWithOtp: (phone: string, otp: string) => Promise<{ success: boolean; error?: string }>;
+  // Sign-up verification: send a code to a NEW user's phone / email (works for
+  // numbers & addresses not yet attached to any account).
+  sendSignupPhoneOtp: (phone: string) => Promise<{ success: boolean; error?: string; devCode?: string }>;
+  sendSignupEmailOtp: (email: string) => Promise<{ success: boolean; error?: string; devCode?: string }>;
   signup: (userData: {
     name: string;
     email: string;
@@ -31,6 +35,8 @@ interface AuthContextType {
     companyName?: string;
     reraNumber?: string;
     password?: string;
+    phoneOtp: string;
+    emailOtp: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => void;
@@ -165,6 +171,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: data?.error || 'Invalid code. Please try again.' };
   };
 
+  // Uses /api/otp/request (not /api/auth/otp/send) so it works for a phone that
+  // has no account yet — this is registration, not sign-in.
+  const sendSignupPhoneOtp = async (phone: string) => {
+    const { ok, data } = await api('/api/otp/request', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+    if (ok && data?.success) return { success: true, devCode: data.devCode };
+    return { success: false, error: data?.error || 'Could not send the mobile code.' };
+  };
+
+  const sendSignupEmailOtp = async (email: string) => {
+    const { ok, data } = await api('/api/auth/email-otp/send', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    if (ok && data?.success) return { success: true, devCode: data.devCode };
+    return { success: false, error: data?.error || 'Could not send the email code.' };
+  };
+
   const signup: AuthContextType['signup'] = async (userData) => {
     setIsLoading(true);
     const { ok, data } = await api('/api/auth/register', {
@@ -258,6 +284,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithPassword,
         sendOtp,
         loginWithOtp,
+        sendSignupPhoneOtp,
+        sendSignupEmailOtp,
         signup,
         logout,
         updateProfile,

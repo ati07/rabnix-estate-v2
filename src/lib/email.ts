@@ -1,0 +1,84 @@
+import 'server-only';
+
+// Pluggable email delivery for sign-up verification codes.
+//
+// Mirrors src/lib/sms.ts: one real provider plus a console fallback so the
+// whole email-verification flow is testable end-to-end for free until
+// credentials are set.
+//
+//  • resend — https://resend.com. A single HTTPS POST carries the API key, the
+//    from/to addresses and the HTML body; no SMTP, no new npm dependency. To go
+//    live:
+//      EMAIL_PROVIDER=resend
+//      RESEND_API_KEY=<API key from the Resend dashboard>
+//      EMAIL_FROM="BayBayt <verify@yourdomain.com>"   (must be a verified sender)
+//
+// With no provider configured the code is logged to the server console and
+// echoed back to the caller ONLY in non-production, exactly like the SMS path.
+
+export interface EmailResult {
+  sent: boolean;
+  /** The code, echoed back ONLY in non-production console-delivery mode so the
+   *  flow can be tested without an email account. Never populated in production. */
+  devCode?: string;
+}
+
+const isProd = process.env.NODE_ENV === 'production';
+
+/** Sends a 6-digit email-verification code to `email`. */
+export async function sendVerificationEmail(email: string, code: string): Promise<EmailResult> {
+  const provider = (process.env.EMAIL_PROVIDER || '').toLowerCase();
+
+  if (provider === 'resend' && process.env.RESEND_API_KEY) {
+    await sendViaResend(email, code);
+    return { sent: true };
+  }
+
+  // No provider configured → dev fallback. Log to the server console so email
+  // verification is usable locally, and surface the code in the response only
+  // when not in production.
+  console.log(
+    `[EMAIL] ${email} → verification code ${code} (no email provider configured; console delivery)`
+  );
+  return { sent: true, devCode: isProd ? undefined : code };
+}
+
+/** Resend email API (https://api.resend.com/emails). Returns 2xx with an id on
+ *  success; any non-2xx is a failure we throw on so the caller surfaces an
+ *  error rather than falsely claiming it sent. */
+async function sendViaResend(email: string, code: string): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY!;
+  const from = process.env.EMAIL_FROM;
+  if (!from) {
+    throw new Error('EMAIL_FROM is not set.');
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [email],
+      subject: `${code} is your BayBayt verification code`,
+      html: verificationHtml(code),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Resend send failed (${res.status}): ${text.slice(0, 200) || 'no response body'}`);
+  }
+}
+
+/** Minimal, inline-styled verification email (no external assets). */
+function verificationHtml(code: string): string {
+  return `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#172033">
+  <div style="font-size:18px;font-weight:800;color:#0F2A43;margin-bottom:8px">BayBayt</div>
+  <p style="font-size:14px;color:#64748B;margin:0 0 20px">Use this code to verify your email and finish creating your account. It expires in 5 minutes.</p>
+  <div style="font-size:34px;font-weight:800;letter-spacing:8px;color:#0E7C5D;background:#E7F6F1;border:1px solid #18A67D33;border-radius:12px;padding:16px;text-align:center">${code}</div>
+  <p style="font-size:12px;color:#94A3B8;margin:20px 0 0">If you didn't request this, you can safely ignore this email.</p>
+</div>`;
+}
