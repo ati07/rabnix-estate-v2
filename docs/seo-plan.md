@@ -106,32 +106,42 @@ Verified: `tsc` clean; `/robots.txt` and `/sitemap.xml` return 200 locally (61 U
 Verification: Google Rich Results Test (no errors, no contact phone); confirm
 `/llms.txt` renders.
 
-## Phase C — Detail Refactor & Polish
+## Phase C — Detail Refactor & Polish ✅ (done & verified)
 
-Medium risk — touches the large, interactive `[id]` page; delivers per-listing
+Medium risk — touched the large, interactive `[id]` pages; delivers per-listing
 titles and real server-rendered content.
 
-- **Step 3 — Server-wrapper on `/properties/[id]`**: rename the current page to
-  `PropertyDetailsClient.tsx` (accepts `initialProperty` prop); new server `page.tsx`
-  exports `generateMetadata` (dynamic title/description/canonical/OG image) and
-  renders `<JsonLd>` + the client child. Optionally `generateStaticParams` + ISR.
-  Same pattern for `/projects/[id]`, `/agents/[id]`, `/builders/[id]`, `/collections/[id]`.
-- **Step 7 — List & static polish**: static `metadata` on `/properties`, `/projects`,
-  `/agents`, `/builders`, `/collections`, `/properties/map`; descriptive `<Image alt>`;
-  optional dynamic `/opengraph-image.tsx`.
+- **Step 3 — Server-wrappers** (done): each money page is split into a
+  `<Type>DetailsClient.tsx` (still `'use client'`, seeded from the server) fronted
+  by a thin server `page.tsx` that exports `generateMetadata` and renders the
+  type's JSON-LD. Covers `/properties/[id]` (RealEstateListing + Breadcrumb),
+  `/projects/[id]` (ApartmentComplex), `/builders/[id]` (Organization),
+  `/agents/[id]` (RealEstateAgent), `/collections/[id]` (CollectionPage + **FAQPage**).
+  Server loaders live in `src/lib/propertyLoader.ts` + `src/lib/seoLoaders.ts`
+  (phone always withheld; approved/public records only). Non-approved listings get
+  `robots:noindex`.
+- **Step 7 — List & static polish** (done): static `metadata` (title/description/
+  canonical) on `/properties`, `/projects`, `/agents`, `/builders`, `/collections`,
+  `/properties/map`, each via a server `page.tsx` + `<Name>ListClient.tsx`.
+
+Verified: `tsc` clean; every route returns 200 with its own `<title>`, correct
+JSON-LD types, real seeded content in the SSR HTML, and no phone in the markup.
+
+**Remaining polish (optional):** descriptive `<Image alt>` sweep and a dynamic
+`/opengraph-image.tsx`; `generateStaticParams` + ISR on detail routes.
 
 ## Phasing, Risks & Open Questions
 
 | Phase | Steps | Risk | Payoff | Status |
 | --- | --- | --- | --- | --- |
 | A — Foundations | 1, 4, 5 | Low (additive) | Crawlability + indexing baseline | Done |
-| B — Structured data + AEO | 2, 6, AEO | Low | Rich results, sitewide schema, AI citeability | In progress |
-| C — Detail refactor | 3, 7 | Medium | Per-listing titles + real SSR content | Planned |
+| B — Structured data + AEO | 2, 6, AEO | Low | Rich results, sitewide schema, AI citeability | Done |
+| C — Detail refactor | 3, 7 | Medium | Per-listing titles + real SSR content | Done |
 
 **Open questions**
 
 1. ~~Canonical domain~~ — resolved: **https://www.baybayt.com**.
-2. `generateStaticParams` + ISR on detail pages (cacheable) vs pure dynamic SSR? Decide at Phase C.
+2. ~~`generateStaticParams` + ISR vs pure dynamic SSR?~~ — shipped as dynamic SSR with `revalidate` (ISR at the route level); per-param static generation left as optional polish.
 3. City landing pages (e.g. `/properties/pune`) — strong organic lever, separate feature. Now or later?
 
 **Env note:** set `SITE_URL=https://www.baybayt.com` in Vercel (not `NEXT_PUBLIC_*`).
