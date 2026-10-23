@@ -1,24 +1,25 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  X, 
-  Sparkles, 
-  Send, 
-  Bot, 
-  User, 
-  Building2, 
-  HelpCircle, 
-  TrendingUp, 
-  ShieldCheck,
-  RefreshCw
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import {
+  X,
+  Sparkles,
+  Send,
+  User,
+  MapPin,
+  CheckCircle,
+  ArrowRight
 } from 'lucide-react';
 import { Property } from '@/lib/types';
+import type { GeniePropertyCard } from '@/lib/genie/propertySearch';
 
 interface Message {
   sender: 'user' | 'bot';
   text: string;
   timestamp: string;
+  properties?: GeniePropertyCard[];
 }
 
 interface AiGenieChatDrawerProps {
@@ -36,7 +37,7 @@ export function AiGenieChatDrawer({
     const initial: Message[] = [
       {
         sender: 'bot',
-        text: `Namaste! I am **BayBayt Genie**, your AI Real Estate Advisor at BayBayt. How can I assist you with Indian properties, home loans, RERA rules, or locality comparisons today?`,
+        text: `Namaste! I am **BayBayt Genie**, your AI Real Estate Advisor at BayBayt. I can **search our live listings** for you — just tell me the city, budget & BHK — or help with home loans, RERA rules, stamp duty and locality comparisons. What are you looking for?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ];
@@ -49,6 +50,7 @@ export function AiGenieChatDrawer({
     }
     return initial;
   });
+  const router = useRouter();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -78,10 +80,10 @@ export function AiGenieChatDrawer({
   if (!isOpen) return null;
 
   const quickPrompts = [
-    'Top localities in Bangalore for ₹1.5 Cr budget near tech corridors',
+    'Show me 2 BHK flats for sale in Bangalore under ₹1 Cr',
+    'Any owner-direct properties for rent in Pune?',
     'Explain RERA carpet area vs super built-up area rules in India',
-    'Calculate stamp duty & registration charges in Maharashtra',
-    'Compare rental yields in Gachibowli vs Whitefield'
+    'Calculate stamp duty & registration charges in Maharashtra'
   ];
 
   const handleSendMessage = async (queryText?: string) => {
@@ -118,6 +120,7 @@ export function AiGenieChatDrawer({
           {
             sender: 'bot',
             text: data.reply,
+            properties: Array.isArray(data.properties) ? data.properties : undefined,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ]);
@@ -196,6 +199,57 @@ export function AiGenieChatDrawer({
               }`}
             >
               <div className="whitespace-pre-line">{msg.text}</div>
+
+              {/* Real, clickable listings returned by the search_properties tool */}
+              {msg.properties && msg.properties.length > 0 && (
+                <div className="mt-2.5 space-y-2">
+                  {msg.properties.map((prop) => (
+                    <button
+                      key={prop.id}
+                      onClick={() => {
+                        onClose();
+                        router.push(`/properties/${prop.id}`);
+                      }}
+                      className="w-full flex gap-2.5 text-left bg-[#F8FAFC] hover:bg-[#E7F6F1] border border-[#E2E8F0] hover:border-[#18A67D] rounded-xl p-2 transition-colors cursor-pointer group"
+                    >
+                      <div className="relative h-14 w-16 shrink-0 rounded-lg overflow-hidden bg-[#E2E8F0]">
+                        {prop.image ? (
+                          <Image
+                            src={prop.image}
+                            alt={prop.title}
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[#94A3B8]">
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1 text-[13px] font-bold text-[#172033] truncate">
+                          <span>{prop.priceFormatted}</span>
+                          {prop.isExclusiveOwner && (
+                            <CheckCircle className="w-3 h-3 text-[#0E7C5D] shrink-0" />
+                          )}
+                        </div>
+                        <div className="text-[11px] text-[#64748B] truncate">
+                          {prop.bhk ? `${prop.bhk} BHK ` : ''}{prop.category}
+                          {prop.carpetAreaSqFt ? ` · ${prop.carpetAreaSqFt} sqft` : ''}
+                        </div>
+                        <div className="text-[11px] text-[#64748B] truncate flex items-center gap-0.5">
+                          <MapPin className="w-2.5 h-2.5 shrink-0" />
+                          {prop.subLocality || prop.locality}, {prop.city}
+                        </div>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-[#94A3B8] group-hover:text-[#18A67D] self-center shrink-0 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div
                 className={`text-[10px] mt-1.5 text-right ${
                   msg.sender === 'user' ? 'text-slate-300' : 'text-[#64748B]'

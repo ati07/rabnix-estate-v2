@@ -1,5 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  searchPropertiesDeclaration,
+  runPropertySearch,
+  type GeniePropertyCard,
+  type PropertySearchArgs,
+} from "@/lib/genie/propertySearch";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -111,18 +117,14 @@ Provide accurate, realistic Indian real estate valuation metrics with INR figure
 
     // Action 2: BayBayt Genie Chatbot & Real Estate Consultation
     if (action === 'chat') {
-      const { messages, userQuery, contextProperty } = payload;
+      const { userQuery, contextProperty } = payload;
 
       let prompt = `User Query: ${userQuery}\n`;
       if (contextProperty) {
         prompt += `\nCurrently viewed property context:\nTitle: ${contextProperty.title}\nCity: ${contextProperty.city}, Locality: ${contextProperty.locality}\nPrice: ${contextProperty.priceFormatted} (${contextProperty.pricePerSqFt} / sq.ft)\nBHK: ${contextProperty.bhk || 'N/A'}, Carpet Area: ${contextProperty.carpetAreaSqFt} sq.ft\nRERA: ${contextProperty.reraId || 'Approved'}\n`;
       }
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents: prompt,
-        config: {
-          systemInstruction: `You are "BayBayt Genie", the official AI Real Estate Advisor at BayBayt (India's Premier Real Estate & Property Portal).
+      const systemInstruction = `You are "BayBayt Genie", the official AI Real Estate Advisor at BayBayt (India's Premier Real Estate & Property Portal).
 You help buyers, tenants, sellers, and NRI investors navigate Indian real estate with expertise in:
 1. Locality recommendations, price per sq.ft trends across Mumbai, Bangalore, Delhi-NCR, Hyderabad, Pune, Chennai, etc.
 2. Home Loans, interest rates (Repo-linked lending rates), Section 80C and Section 24(b) tax deductions.
@@ -130,13 +132,76 @@ You help buyers, tenants, sellers, and NRI investors navigate Indian real estate
 4. Stamp duty & registration charges by state (Maharashtra, Karnataka, Delhi, Telangana, etc.).
 5. Rental agreements, security deposit norms, and negotiation tactics.
 
-Tone: Professional, friendly, highly knowledgeable about Indian cities & real estate law. Keep responses scannable, using bullet points and bold highlights. Keep answers concise (150-250 words max).`
+INVENTORY RULES (critical):
+- When the user wants to find, show, browse, compare, or count ACTUAL properties on BayBayt, you MUST call the search_properties tool. Never invent listings, prices, or RERA numbers.
+- The listing cards are rendered in the UI from the tool result, so do NOT repeat every listing in prose — briefly summarise what you found (e.g. how many, price range, standout options) and invite the user to tap a card.
+- If the tool returns zero results, say so honestly and suggest widening the budget/area or a nearby locality. Do not fabricate alternatives.
+- Never share owner/agent phone numbers; tell users to tap a listing and use "Get Owner Contact" to reveal it.
+
+Tone: Professional, friendly, highly knowledgeable about Indian cities & real estate law. Keep responses scannable, using bullet points and bold highlights. Keep answers concise (150-250 words max).`;
+
+      const tools = [{ functionDeclarations: [searchPropertiesDeclaration as any] }];
+
+      // Multi-turn function-calling loop. Gemini may ask us to run a property
+      // search; we execute it against the DB, feed the results back, and let it
+      // compose the final reply. We also collect the raw cards so the drawer can
+      // render real, clickable listings (dedup by id, cap the payload).
+      const contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
+      const collected: GeniePropertyCard[] = [];
+      const seen = new Set<string>();
+      let reply = '';
+
+      for (let turn = 0; turn < 4; turn++) {
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.7-flash',
+          contents,
+          config: { systemInstruction, tools },
+        });
+
+        const calls = response.functionCalls || [];
+        if (calls.length === 0) {
+          reply = response.text || '';
+          break;
         }
-      });
+
+        // Record the model's tool-call turn, then answer each call.
+        if (response.candidates?.[0]?.content) {
+          contents.push(response.candidates[0].content);
+        }
+
+        const responseParts: any[] = [];
+        for (const call of calls) {
+          if (call.name === 'search_properties') {
+            const { count, results } = await runPropertySearch((call.args || {}) as PropertySearchArgs);
+            for (const r of results) {
+              if (!seen.has(r.id)) {
+                seen.add(r.id);
+                collected.push(r);
+              }
+            }
+            responseParts.push({
+              functionResponse: {
+                name: call.name,
+                response: {
+                  totalMatches: count,
+                  returned: results.length,
+                  listings: results,
+                },
+              },
+            });
+          } else {
+            responseParts.push({
+              functionResponse: { name: call.name || 'unknown', response: { error: 'Unknown tool.' } },
+            });
+          }
+        }
+        contents.push({ role: 'user', parts: responseParts });
+      }
 
       return NextResponse.json({
         success: true,
-        reply: response.text || 'I can help guide you through Indian real estate, property valuation, home loans, or locality recommendations.'
+        reply: reply || 'I can help guide you through Indian real estate, property valuation, home loans, or locality recommendations.',
+        properties: collected.slice(0, 10),
       });
     }
 
