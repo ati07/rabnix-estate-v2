@@ -82,8 +82,8 @@ export function AiGenieChatDrawer({
   const quickPrompts = [
     'Show me 2 BHK flats for sale in Bangalore under ₹1 Cr',
     'Any owner-direct properties for rent in Pune?',
-    'Explain RERA carpet area vs super built-up area rules in India',
-    'Calculate stamp duty & registration charges in Maharashtra'
+    'EMI for a ₹50 lakh loan at 8.5% for 20 years',
+    'Explain RERA carpet area vs super built-up area rules in India'
   ];
 
   const handleSendMessage = async (queryText?: string) => {

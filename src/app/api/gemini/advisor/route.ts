@@ -1,11 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import {
   searchPropertiesDeclaration,
   runPropertySearch,
   type GeniePropertyCard,
   type PropertySearchArgs,
 } from "@/lib/genie/propertySearch";
+import { calculateEmiDeclaration, runEmiCalculation, type EmiArgs } from "@/lib/genie/finance";
+import { createInquiryDeclaration, runCreateInquiry, type CreateInquiryArgs } from "@/lib/genie/leads";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -118,10 +121,13 @@ Provide accurate, realistic Indian real estate valuation metrics with INR figure
     // Action 2: BayBayt Genie Chatbot & Real Estate Consultation
     if (action === 'chat') {
       const { userQuery, contextProperty } = payload;
+      // Same-origin fetch carries the session cookie, so a signed-in user's
+      // inquiries get attributed to their account.
+      const currentUser = await getCurrentUser();
 
       let prompt = `User Query: ${userQuery}\n`;
       if (contextProperty) {
-        prompt += `\nCurrently viewed property context:\nTitle: ${contextProperty.title}\nCity: ${contextProperty.city}, Locality: ${contextProperty.locality}\nPrice: ${contextProperty.priceFormatted} (${contextProperty.pricePerSqFt} / sq.ft)\nBHK: ${contextProperty.bhk || 'N/A'}, Carpet Area: ${contextProperty.carpetAreaSqFt} sq.ft\nRERA: ${contextProperty.reraId || 'Approved'}\n`;
+        prompt += `\nCurrently viewed property context:\npropertyId: ${contextProperty.id}\nTitle: ${contextProperty.title}\nCity: ${contextProperty.city}, Locality: ${contextProperty.locality}\nPrice: ${contextProperty.priceFormatted} (${contextProperty.pricePerSqFt} / sq.ft)\nBHK: ${contextProperty.bhk || 'N/A'}, Carpet Area: ${contextProperty.carpetAreaSqFt} sq.ft\nRERA: ${contextProperty.reraId || 'Approved'}\n(Use this propertyId for create_inquiry if the user wants to contact the owner or book a visit for this listing.)\n`;
       }
 
       const systemInstruction = `You are "BayBayt Genie", the official AI Real Estate Advisor at BayBayt (India's Premier Real Estate & Property Portal).
@@ -138,9 +144,21 @@ INVENTORY RULES (critical):
 - If the tool returns zero results, say so honestly and suggest widening the budget/area or a nearby locality. Do not fabricate alternatives.
 - Never share owner/agent phone numbers; tell users to tap a listing and use "Get Owner Contact" to reveal it.
 
+LOAN / EMI RULES:
+- For any EMI, affordability, or "how much can I borrow" question, call the calculate_emi tool — never compute EMI yourself. Present the EMI, total interest, and (if income was given) the eligibility verdict clearly.
+
+BOOKING / LEAD RULES:
+- If the user wants to contact the owner, book a site visit, or "I'm interested", offer to pass their details to the owner. Collect their NAME and PHONE first (ask for them if missing), then call create_inquiry with the correct propertyId (from the current listing context or a listing they picked from search results). Confirm once it's filed. This notifies the owner — it does not reveal the owner's number to the user.
+
 Tone: Professional, friendly, highly knowledgeable about Indian cities & real estate law. Keep responses scannable, using bullet points and bold highlights. Keep answers concise (150-250 words max).`;
 
-      const tools = [{ functionDeclarations: [searchPropertiesDeclaration as any] }];
+      const tools = [{
+        functionDeclarations: [
+          searchPropertiesDeclaration as any,
+          calculateEmiDeclaration as any,
+          createInquiryDeclaration as any,
+        ],
+      }];
 
       // Multi-turn function-calling loop. Gemini may ask us to run a property
       // search; we execute it against the DB, feed the results back, and let it
@@ -188,6 +206,19 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
                   listings: results,
                 },
               },
+            });
+          } else if (call.name === 'calculate_emi') {
+            const emi = runEmiCalculation((call.args || {}) as unknown as EmiArgs);
+            responseParts.push({
+              functionResponse: { name: call.name, response: emi as any },
+            });
+          } else if (call.name === 'create_inquiry') {
+            const outcome = await runCreateInquiry(
+              (call.args || {}) as unknown as CreateInquiryArgs,
+              currentUser?.id,
+            );
+            responseParts.push({
+              functionResponse: { name: call.name, response: outcome as any },
             });
           } else {
             responseParts.push({
