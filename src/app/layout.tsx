@@ -4,6 +4,7 @@ import { AuthProvider } from '@/lib/authContext';
 import { PropertyProvider } from '@/lib/propertyContext';
 import { GenieProvider } from '@/lib/genieContext';
 import { getSiteUrl } from '@/lib/siteUrl';
+import { JsonLd, organizationJsonLd, websiteJsonLd } from '@/components/seo/JsonLd';
 
 // Canonical base URL; resolves relative OG/Twitter image paths into absolute
 // URLs and anchors every page's canonical link. See src/lib/siteUrl.ts.
@@ -54,6 +55,9 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>
+        {/* Sitewide structured data — resolves BayBayt as one entity (SEO/AEO)
+            and offers Google a sitelinks search box. */}
+        <JsonLd data={[organizationJsonLd(siteUrl), websiteJsonLd(siteUrl)]} />
         <AuthProvider>
           <PropertyProvider>
             <GenieProvider>
