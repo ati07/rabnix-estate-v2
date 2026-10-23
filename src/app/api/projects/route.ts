@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeFeaturedProject } from '@/lib/serialize';
 import { getEntitlement, canCreateInCity, consumeListingCredit } from '@/lib/billing';
-import { HOME_FEATURED_PROJECTS, HOME_TOP_PROJECTS, getAllProjects, type FeaturedProjectItem } from '@/lib/homeSectionsData';
+import { type FeaturedProjectItem } from '@/lib/homeSectionsData';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,21 +59,13 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { createdAt: 'asc' },
     });
-    if (rows.length > 0 || mine === '1' || scope === 'all') {
-      return NextResponse.json({ success: true, projects: rows.map(serializeFeaturedProject) });
-    }
+    // Return whatever the DB has (possibly empty — the UI shows a
+    // "Space available" placeholder). No demo/static fallback.
+    return NextResponse.json({ success: true, projects: rows.map(serializeFeaturedProject) });
   } catch (err: any) {
-    console.warn('Prisma projects fallback to static data:', err?.message || err);
+    console.error('GET /api/projects error:', err?.message || err);
+    return NextResponse.json({ success: true, projects: [] });
   }
-
-  // Static fallback (curated data is implicitly approved) — only for public reads.
-  let projects: FeaturedProjectItem[] =
-    section === 'featured' ? HOME_FEATURED_PROJECTS
-    : section === 'top' ? HOME_TOP_PROJECTS
-    : getAllProjects();
-  // Strict per-city fallback so a city shows only its own demo projects.
-  if (city) projects = projects.filter((p) => p.city.toLowerCase() === city.toLowerCase());
-  return NextResponse.json({ success: true, projects });
 }
 
 // POST /api/projects — submit a new project for review (builders only).

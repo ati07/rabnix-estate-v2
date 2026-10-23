@@ -16,8 +16,9 @@ import {
   Phone,
   Sparkles,
 } from 'lucide-react';
-import { HOME_PREFERRED_AGENTS, PreferredAgentItem } from '@/lib/homeSectionsData';
+import { PreferredAgentItem } from '@/lib/homeSectionsData';
 import { CITIES_DATA } from '@/lib/realEstateData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 function AgentsDirectoryContent() {
   const searchParams = useSearchParams();
@@ -26,14 +27,15 @@ function AgentsDirectoryContent() {
   const [selectedCity, setSelectedCity] = useState<string>(initialCity);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Live agents from the API; seed with static data so first paint + offline still work.
-  const [agents, setAgents] = useState<PreferredAgentItem[]>(HOME_PREFERRED_AGENTS);
+  // Live agents from the API. No static fallback — an empty result renders a
+  // "Space available" placeholder.
+  const [agents, setAgents] = useState<PreferredAgentItem[]>([]);
   useEffect(() => {
     let active = true;
     fetch('/api/agents')
       .then((r) => r.json())
-      .then((d) => { if (active && d?.success && Array.isArray(d.agents) && d.agents.length) setAgents(d.agents); })
-      .catch(() => { /* keep static fallback */ });
+      .then((d) => { if (active && d?.success && Array.isArray(d.agents)) setAgents(d.agents); })
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, []);
 
@@ -180,11 +182,10 @@ function AgentsDirectoryContent() {
         </div>
 
         {filteredAgents.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-12 text-center">
-            <Users className="w-10 h-10 text-[#CBD5E1] mx-auto mb-3" />
-            <p className="text-sm font-bold text-[#0F2A43]">No agents match your filters</p>
-            <p className="text-xs text-[#64748B] mt-1">Try clearing the search or choosing a different city.</p>
-          </div>
+          <SpaceAvailable
+            title="Space available"
+            message="No preferred agents are listed yet. Verified agents will appear here as they are onboarded."
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredAgents.map((agent) => (

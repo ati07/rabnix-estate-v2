@@ -4,7 +4,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ExternalLink, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
-import { getPopularLocalitiesForCity, PopularLocalityCardItem } from '@/lib/homeSectionsData';
+import { PopularLocalityCardItem } from '@/lib/homeSectionsData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 interface ExplorePopularLocalitiesSectionProps {
   cityName?: string;
@@ -20,17 +21,15 @@ export function ExplorePopularLocalitiesSection({
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Static tiles for instant paint; the API overlays live approved-listing counts per locality.
-  const [localities, setLocalities] = useState<PopularLocalityCardItem[]>(
-    () => getPopularLocalitiesForCity(cityName, popularLocalities)
-  );
+  // Live localities (admin-curated tiles with approved inventory) from the API.
+  // No static fallback — an empty result renders a "Space available" placeholder.
+  const [localities, setLocalities] = useState<PopularLocalityCardItem[]>([]);
   useEffect(() => {
     let active = true;
-    setLocalities(getPopularLocalitiesForCity(cityName, popularLocalities));
     fetch(`/api/localities?city=${encodeURIComponent(cityName)}`)
       .then((r) => r.json())
-      .then((d) => { if (active && d?.success && Array.isArray(d.localities) && d.localities.length) setLocalities(d.localities); })
-      .catch(() => { /* keep static fallback */ });
+      .then((d) => { if (active && d?.success && Array.isArray(d.localities)) setLocalities(d.localities); })
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, [cityName, popularLocalities]);
 
@@ -68,6 +67,15 @@ export function ExplorePopularLocalitiesSection({
         </div>
 
         {/* Right Localities Carousel Track */}
+        {localities.length === 0 ? (
+          <div className="flex-1 min-w-0">
+            <SpaceAvailable
+              title="Space available"
+              message={`Popular localities in ${cityName} will appear here once listings go live.`}
+              className="h-full"
+            />
+          </div>
+        ) : (
         <div className="flex-1 relative min-w-0">
           {/* Scroll Arrows */}
           <button
@@ -136,6 +144,7 @@ export function ExplorePopularLocalitiesSection({
             ))}
           </div>
         </div>
+        )}
 
       </div>
     </section>

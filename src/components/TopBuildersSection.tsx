@@ -4,26 +4,28 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Award, ShieldCheck, Building2, ExternalLink, ArrowRight } from 'lucide-react';
-import { BUILDERS_DATA, Builder } from '@/lib/buildersData';
+import { Builder } from '@/lib/buildersData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 interface TopBuildersProps {
   cityName: string;
 }
 
 export function TopBuildersSection({ cityName }: TopBuildersProps) {
-  // Static data is the first-paint fallback; overwrite with live DB data if present.
-  const [allBuilders, setAllBuilders] = useState<Builder[]>(BUILDERS_DATA);
+  // Live builders from the DB. No static fallback — an empty result renders a
+  // "Space available" placeholder.
+  const [allBuilders, setAllBuilders] = useState<Builder[]>([]);
 
   useEffect(() => {
     let active = true;
     fetch('/api/builders')
       .then((r) => r.json())
       .then((d) => {
-        if (active && d?.success && Array.isArray(d.builders) && d.builders.length) {
+        if (active && d?.success && Array.isArray(d.builders)) {
           setAllBuilders(d.builders);
         }
       })
-      .catch(() => { /* keep static fallback */ });
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, []);
 
@@ -56,6 +58,12 @@ export function TopBuildersSection({ cityName }: TopBuildersProps) {
         </div>
 
         {/* Builder Cards */}
+        {builders.length === 0 ? (
+          <SpaceAvailable
+            title="Space available"
+            message={`Reputed builders in ${cityName} will appear here once listed.`}
+          />
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {builders.map((b) => (
             <Link
@@ -105,6 +113,7 @@ export function TopBuildersSection({ cityName }: TopBuildersProps) {
             </Link>
           ))}
         </div>
+        )}
 
       </div>
     </section>

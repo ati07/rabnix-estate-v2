@@ -16,8 +16,9 @@ import {
   Layers,
   CalendarClock,
 } from 'lucide-react';
-import { FeaturedProjectItem, getAllProjects } from '@/lib/homeSectionsData';
+import { FeaturedProjectItem } from '@/lib/homeSectionsData';
 import { CITIES_DATA } from '@/lib/realEstateData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 const STATUS_FILTERS: Array<'All' | FeaturedProjectItem['status']> = [
   'All',
@@ -34,14 +35,15 @@ function ProjectsDirectoryContent() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'All' | FeaturedProjectItem['status']>('All');
 
-  // Live projects from the API; seed with static data so first paint + offline still work.
-  const [projects, setProjects] = useState<FeaturedProjectItem[]>(getAllProjects());
+  // Live projects from the API. No static fallback — an empty result renders a
+  // "Space available" placeholder.
+  const [projects, setProjects] = useState<FeaturedProjectItem[]>([]);
   useEffect(() => {
     let active = true;
     fetch('/api/projects')
       .then((r) => r.json())
-      .then((d) => { if (active && d?.success && Array.isArray(d.projects) && d.projects.length) setProjects(d.projects); })
-      .catch(() => { /* keep static fallback */ });
+      .then((d) => { if (active && d?.success && Array.isArray(d.projects)) setProjects(d.projects); })
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, []);
 
@@ -214,11 +216,10 @@ function ProjectsDirectoryContent() {
         </div>
 
         {filteredProjects.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-12 text-center">
-            <Building2 className="w-10 h-10 text-[#CBD5E1] mx-auto mb-3" />
-            <p className="text-sm font-bold text-[#0F2A43]">No projects match your filters</p>
-            <p className="text-xs text-[#64748B] mt-1">Try clearing the search or choosing a different city.</p>
-          </div>
+          <SpaceAvailable
+            title="Space available"
+            message="No projects are listed yet. New & featured projects will appear here as developers publish them."
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredProjects.map((project) => (

@@ -30,25 +30,30 @@ import {
   Home,
   Tag
 } from 'lucide-react';
-import { BUILDERS_DATA, Builder, BuilderProject } from '@/lib/buildersData';
+import { Builder, BuilderProject } from '@/lib/buildersData';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 export default function SingleBuilderProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const builderId = resolvedParams.id;
   const router = useRouter();
 
-  // Seed from static data for instant paint, then hydrate from the live API.
-  const [builder, setBuilder] = useState<Builder>(
-    () => BUILDERS_DATA.find((b) => b.id === builderId || b.slug === builderId) || BUILDERS_DATA[0]
-  );
+  // Live builder from the API. No static fallback: null while loading, and a
+  // "not found" state when the API has no such builder.
+  const [builder, setBuilder] = useState<Builder | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
     let active = true;
     fetch(`/api/builders/${builderId}`)
       .then((r) => r.json())
-      .then((d) => { if (active && d?.success && d.builder) setBuilder(d.builder); })
-      .catch(() => { /* keep static fallback */ });
+      .then((d) => {
+        if (!active) return;
+        if (d?.success && d.builder) setBuilder(d.builder);
+        else setLoadFailed(true);
+      })
+      .catch(() => { if (active) setLoadFailed(true); });
     return () => { active = false; };
   }, [builderId]);
 
@@ -72,12 +77,14 @@ export default function SingleBuilderProfilePage({ params }: { params: Promise<{
 
   // Filter projects by status
   const filteredProjects = useMemo(() => {
+    if (!builder) return [];
     if (activeProjectStatus === 'All') return builder.projects;
     return builder.projects.filter((p) => p.status === activeProjectStatus);
   }, [builder, activeProjectStatus]);
 
   // Find active property listings on the platform belonging to this builder
   const linkedProperties = useMemo(() => {
+    if (!builder) return [];
     const builderNameLower = builder.name.toLowerCase();
     return properties.filter((p) => {
       const matchCompany = p.postedBy.companyName?.toLowerCase().includes(builderNameLower);
@@ -107,9 +114,40 @@ export default function SingleBuilderProfilePage({ params }: { params: Promise<{
     }, 1500);
   };
 
+  // Loading / not-found states — no static fallback.
+  if (!builder) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+        <header className="w-full bg-white border-b border-[#E2E8F0] py-3.5 px-4 sm:px-8">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 group select-none">
+              <BrandLogo variant="onLight" className="h-8 w-auto" />
+            </Link>
+            <Link href="/builders" className="text-xs font-bold text-[#18A67D] hover:text-[#0E7C5D] flex items-center gap-1">
+              <ArrowLeft className="w-3.5 h-3.5" /> All Builders
+            </Link>
+          </div>
+        </header>
+        <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-8 py-16">
+          {loadFailed ? (
+            <SpaceAvailable
+              title="Builder not found"
+              message="This builder profile isn't available. Browse all verified builders instead."
+            />
+          ) : (
+            <div className="flex items-center justify-center gap-2 text-sm font-bold text-[#0F2A43] py-16">
+              <div className="w-4 h-4 border-2 border-[#18A67D] border-t-transparent rounded-full animate-spin" />
+              <span>Loading builder profile...</span>
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between">
-      
+
       {/* Top Header */}
       <header className="w-full bg-white border-b border-[#E2E8F0] py-3.5 px-4 sm:px-8 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

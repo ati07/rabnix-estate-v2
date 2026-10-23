@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeFeaturedProject } from '@/lib/serialize';
-import { getProjectById, type FeaturedProjectItem } from '@/lib/homeSectionsData';
+import { type FeaturedProjectItem } from '@/lib/homeSectionsData';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,11 +26,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: true, project: serializeFeaturedProject(row) });
     }
   } catch (err: any) {
-    console.warn('Prisma project fallback for', id, err?.message || err);
+    console.error('GET /api/projects/[id] error for', id, err?.message || err);
   }
-
-  const fallback = getProjectById(id);
-  if (fallback) return NextResponse.json({ success: true, project: fallback });
 
   return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
 }

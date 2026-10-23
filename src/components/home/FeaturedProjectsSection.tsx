@@ -4,7 +4,8 @@ import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, Building, MapPin, Sparkles } from 'lucide-react';
-import { HOME_FEATURED_PROJECTS, FeaturedProjectItem } from '@/lib/homeSectionsData';
+import { FeaturedProjectItem } from '@/lib/homeSectionsData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 interface FeaturedProjectsSectionProps {
   cityName?: string;
@@ -18,24 +19,17 @@ export function FeaturedProjectsSection({
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Live, city-scoped featured projects from the API. The server returns only
-  // this city's approved projects (or this city's static demo fallback when the
-  // DB has none), so there's no client-side city mixing. Seed with the static
-  // subset for the active city for first paint.
-  const [projects, setProjects] = useState<FeaturedProjectItem[]>(
-    () => HOME_FEATURED_PROJECTS.filter((p) => p.city.toLowerCase() === cityName.toLowerCase())
-  );
+  // Live, city-scoped featured projects from the API (approved only). No static
+  // demo fallback — an empty result renders a "Space available" placeholder.
+  const [projects, setProjects] = useState<FeaturedProjectItem[]>([]);
   useEffect(() => {
     let active = true;
     fetch(`/api/projects?section=featured&city=${encodeURIComponent(cityName)}`)
       .then((r) => r.json())
       .then((d) => { if (active && d?.success && Array.isArray(d.projects)) setProjects(d.projects); })
-      .catch(() => { /* keep static fallback */ });
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, [cityName]);
-
-  // Nothing to show for this city → don't render the section at all.
-  if (projects.length === 0) return null;
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -75,7 +69,13 @@ export function FeaturedProjectsSection({
         </button>
       </div>
 
-      {/* Carousel Container */}
+      {projects.length === 0 ? (
+        <SpaceAvailable
+          title="Space available"
+          message={`Featured projects in ${cityName} will appear here once listed.`}
+        />
+      ) : (
+      /* Carousel Container */
       <div className="relative group">
         {/* Left Arrow */}
         <button
@@ -174,6 +174,7 @@ export function FeaturedProjectsSection({
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
+      )}
     </section>
   );
 }

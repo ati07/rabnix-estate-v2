@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { serializeCollection } from '@/lib/serialize';
-import { CURATED_COLLECTIONS } from '@/lib/collectionsData';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// GET /api/collections — all curated collections. Falls back to static data.
+// GET /api/collections — all curated collections from the DB. Returns an empty
+// list when none exist (UI shows a "Space available" placeholder); no fallback.
 export async function GET() {
   try {
     const rows = await prisma.collection.findMany({ orderBy: { createdAt: 'asc' } });
-    if (rows.length > 0) {
-      return NextResponse.json({ success: true, collections: rows.map(serializeCollection) });
-    }
+    return NextResponse.json({ success: true, collections: rows.map(serializeCollection) });
   } catch (err: any) {
-    console.warn('Prisma collections fallback to static data:', err?.message || err);
+    console.error('GET /api/collections error:', err?.message || err);
+    return NextResponse.json({ success: true, collections: [] });
   }
-  return NextResponse.json({ success: true, collections: CURATED_COLLECTIONS });
 }

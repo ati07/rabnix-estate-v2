@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, Camera, Sparkles } from 'lucide-react';
 import { Property } from '@/lib/types';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 interface FreshPropertiesSectionProps {
   cityName?: string;
@@ -30,7 +31,7 @@ export function FreshPropertiesSection({
 
   // Newly added listings in the active city, newest first. Strict city scope so
   // the "in {cityName}" heading stays truthful — no cross-city mixing. Empty →
-  // the section hides itself (see early return below).
+  // a "Space available" placeholder (see below).
   const freshProperties = React.useMemo(
     () =>
       properties
@@ -38,8 +39,6 @@ export function FreshPropertiesSection({
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
     [properties, cityName]
   );
-
-  if (freshProperties.length === 0) return null;
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -71,7 +70,13 @@ export function FreshPropertiesSection({
         </button>
       </div>
 
-      {/* Carousel Container */}
+      {freshProperties.length === 0 ? (
+        <SpaceAvailable
+          title="Space available"
+          message={`Fresh listings in ${cityName} will appear here once posted.`}
+        />
+      ) : (
+      /* Carousel Container */
       <div className="relative group">
         {/* Left Arrow */}
         <button
@@ -158,6 +163,7 @@ export function FreshPropertiesSection({
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
+      )}
     </section>
   );
 }

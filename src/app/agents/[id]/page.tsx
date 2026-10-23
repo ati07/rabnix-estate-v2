@@ -26,7 +26,7 @@ import {
   Filter,
   CheckCircle
 } from 'lucide-react';
-import { getAgentById, getAgentProperties, HOME_PREFERRED_AGENTS } from '@/lib/homeSectionsData';
+import { getAgentProperties } from '@/lib/homeSectionsData';
 import type { PreferredAgentItem } from '@/lib/homeSectionsData';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
@@ -39,21 +39,25 @@ export default function AgentDetailsPage({ params }: { params: Promise<{ id: str
   const { user } = useAuth();
   const { properties } = useProperties();
 
-  // Seed from static data, then hydrate agent + their live listings from the API.
-  const [agent, setAgent] = useState<PreferredAgentItem>(
-    () => getAgentById(agentId) || HOME_PREFERRED_AGENTS[0]
-  );
+  // Live agent + their listings from the API. No static fallback: null while
+  // loading, and a "not found" state when the API has no such agent.
+  const [agent, setAgent] = useState<PreferredAgentItem | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [liveAgentProperties, setLiveAgentProperties] = useState<Property[] | null>(null);
   useEffect(() => {
     let active = true;
     fetch(`/api/agents/${agentId}`)
       .then((r) => r.json())
       .then((d) => {
-        if (!active || !d?.success) return;
-        if (d.agent) setAgent(d.agent);
-        if (Array.isArray(d.properties)) setLiveAgentProperties(d.properties);
+        if (!active) return;
+        if (d?.success && d.agent) {
+          setAgent(d.agent);
+          if (Array.isArray(d.properties)) setLiveAgentProperties(d.properties);
+        } else {
+          setLoadFailed(true);
+        }
       })
-      .catch(() => { /* keep static fallback */ });
+      .catch(() => { if (active) setLoadFailed(true); });
     return () => { active = false; };
   }, [agentId]);
 
@@ -77,19 +81,26 @@ export default function AgentDetailsPage({ params }: { params: Promise<{ id: str
   if (!agent) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl border border-[#E2E8F0] text-center max-w-md space-y-4 shadow-lg">
-          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
-          <h2 className="text-xl font-bold text-[#0F2A43]">Agent Profile Not Found</h2>
-          <p className="text-sm text-[#64748B]">
-            The requested real estate consultant profile is not available.
-          </p>
-          <Link
-            href="/"
-            className="inline-block px-6 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold rounded-xl"
-          >
-            Back to Home
-          </Link>
-        </div>
+        {loadFailed ? (
+          <div className="bg-white p-8 rounded-2xl border border-[#E2E8F0] text-center max-w-md space-y-4 shadow-lg">
+            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+            <h2 className="text-xl font-bold text-[#0F2A43]">Agent Profile Not Found</h2>
+            <p className="text-sm text-[#64748B]">
+              The requested real estate consultant profile is not available.
+            </p>
+            <Link
+              href="/"
+              className="inline-block px-6 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold rounded-xl"
+            >
+              Back to Home
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm font-bold text-[#0F2A43]">
+            <div className="w-4 h-4 border-2 border-[#18A67D] border-t-transparent rounded-full animate-spin" />
+            <span>Loading agent profile...</span>
+          </div>
+        )}
       </div>
     );
   }

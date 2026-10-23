@@ -29,10 +29,11 @@ import {
   Clock,
   Send
 } from 'lucide-react';
-import { CURATED_COLLECTIONS, CuratedCollection, collectionPriceRange } from '@/lib/collectionsData';
+import { CuratedCollection, collectionPriceRange } from '@/lib/collectionsData';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 import type { Property } from '@/lib/types';
 
 const ICON_MAP: Record<string, any> = {
@@ -49,21 +50,34 @@ export default function SingleCollectionPage({ params }: { params: Promise<{ id:
   const collectionId = resolvedParams.id;
   const router = useRouter();
 
-  // Seed from static data, then hydrate the collection + its live matched listings from the API.
-  const [collection, setCollection] = useState<CuratedCollection>(
-    () => CURATED_COLLECTIONS.find((c) => c.id === collectionId) || CURATED_COLLECTIONS[0]
-  );
+  // Live collection + its matched listings from the API. No static fallback:
+  // null while loading, and a "not found" state when the API has no such collection.
+  const [collection, setCollection] = useState<CuratedCollection | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [liveProperties, setLiveProperties] = useState<Property[] | null>(null);
+  const [otherCollections, setOtherCollections] = useState<CuratedCollection[]>([]);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/collections')
+      .then((r) => r.json())
+      .then((d) => { if (active && d?.success && Array.isArray(d.collections)) setOtherCollections(d.collections); })
+      .catch(() => { /* leave empty */ });
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     let active = true;
     fetch(`/api/collections/${collectionId}`)
       .then((r) => r.json())
       .then((d) => {
-        if (!active || !d?.success) return;
-        if (d.collection) setCollection(d.collection);
-        if (Array.isArray(d.properties)) setLiveProperties(d.properties);
+        if (!active) return;
+        if (d?.success && d.collection) {
+          setCollection(d.collection);
+          if (Array.isArray(d.properties)) setLiveProperties(d.properties);
+        } else {
+          setLoadFailed(true);
+        }
       })
-      .catch(() => { /* keep static fallback */ });
+      .catch(() => { if (active) setLoadFailed(true); });
     return () => { active = false; };
   }, [collectionId]);
 
@@ -83,7 +97,7 @@ export default function SingleCollectionPage({ params }: { params: Promise<{ id:
   // Quick Inquiry Form State
   const [inquiryName, setInquiryName] = useState(user?.name || '');
   const [inquiryPhone, setInquiryPhone] = useState(user?.phone || '');
-  const [inquiryCity, setInquiryCity] = useState(collection.recommendedCities[0] || 'Bangalore');
+  const [inquiryCity, setInquiryCity] = useState(collection?.recommendedCities[0] || 'Bangalore');
   const [isInquirySent, setIsInquirySent] = useState(false);
 
   // Toggle BHK
@@ -97,6 +111,7 @@ export default function SingleCollectionPage({ params }: { params: Promise<{ id:
 
   // Filter properties matching collection criteria
   const matchingProperties = useMemo(() => {
+    if (!collection) return [];
     return properties.filter((p) => {
       // 1. Apply Collection-specific constraints
       if (collection.filters.isOwnerOnly && p.postedBy.type !== 'Owner' && !p.isExclusiveOwner) {
@@ -151,11 +166,39 @@ export default function SingleCollectionPage({ params }: { params: Promise<{ id:
     }, 4000);
   };
 
+  // Loading / not-found states — no static fallback.
+  if (!collection) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
+        {loadFailed ? (
+          <div className="bg-white p-8 rounded-2xl border border-[#E2E8F0] text-center max-w-md space-y-4 shadow-lg">
+            <SlidersHorizontal className="w-10 h-10 text-[#CBD5E1] mx-auto" />
+            <h2 className="text-xl font-bold text-[#0F2A43]">Collection Not Found</h2>
+            <p className="text-sm text-[#64748B]">
+              This curated collection isn&apos;t available. Browse all collections instead.
+            </p>
+            <Link
+              href="/collections"
+              className="inline-block px-6 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold rounded-xl"
+            >
+              All Collections
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm font-bold text-[#0F2A43]">
+            <div className="w-4 h-4 border-2 border-[#18A67D] border-t-transparent rounded-full animate-spin" />
+            <span>Loading collection...</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const Icon = ICON_MAP[collection.iconName] || Sparkles;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between">
-      
+
       {/* Top Header */}
       <header className="w-full bg-white border-b border-[#E2E8F0] py-3.5 px-4 sm:px-8 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -599,22 +642,24 @@ export default function SingleCollectionPage({ params }: { params: Promise<{ id:
             </div>
 
             {/* Other Collections Pill Links */}
-            <div className="pt-4 space-y-2">
-              <span className="text-xs font-bold text-[#0F2A43] block">
-                Explore Other Curated Portfolios:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {CURATED_COLLECTIONS.filter((c) => c.id !== collection.id).map((other) => (
-                  <Link
-                    key={other.id}
-                    href={`/collections/${other.id}`}
-                    className="px-3 py-1.5 bg-white hover:bg-[#E7F6F1] text-[#0F2A43] hover:text-[#0E7C5D] border border-[#E2E8F0] hover:border-[#18A67D] rounded-xl text-xs font-bold transition-all shadow-2xs"
-                  >
-                    {other.title}
-                  </Link>
-                ))}
+            {otherCollections.filter((c) => c.id !== collection.id).length > 0 && (
+              <div className="pt-4 space-y-2">
+                <span className="text-xs font-bold text-[#0F2A43] block">
+                  Explore Other Curated Portfolios:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {otherCollections.filter((c) => c.id !== collection.id).map((other) => (
+                    <Link
+                      key={other.id}
+                      href={`/collections/${other.id}`}
+                      className="px-3 py-1.5 bg-white hover:bg-[#E7F6F1] text-[#0F2A43] hover:text-[#0E7C5D] border border-[#E2E8F0] hover:border-[#18A67D] rounded-xl text-xs font-bold transition-all shadow-2xs"
+                    >
+                      {other.title}
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
         </div>

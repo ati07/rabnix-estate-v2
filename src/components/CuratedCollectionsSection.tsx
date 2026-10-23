@@ -5,7 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, CheckCircle2, Crown, Sparkles, IndianRupee } from 'lucide-react';
 import { SearchFilters } from '@/lib/types';
-import { CURATED_COLLECTIONS, CuratedCollection } from '@/lib/collectionsData';
+import { CuratedCollection } from '@/lib/collectionsData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 interface CuratedCollectionsProps {
   cityName: string;
@@ -13,19 +14,20 @@ interface CuratedCollectionsProps {
 }
 
 export function CuratedCollectionsSection({ cityName, onApplyPreset }: CuratedCollectionsProps) {
-  // Static data is the first-paint fallback; overwrite with live DB data if present.
-  const [allCollections, setAllCollections] = useState<CuratedCollection[]>(CURATED_COLLECTIONS);
+  // Live collections from the DB. No static fallback — an empty result renders a
+  // "Space available" placeholder.
+  const [allCollections, setAllCollections] = useState<CuratedCollection[]>([]);
 
   useEffect(() => {
     let active = true;
     fetch('/api/collections')
       .then((r) => r.json())
       .then((d) => {
-        if (active && d?.success && Array.isArray(d.collections) && d.collections.length) {
+        if (active && d?.success && Array.isArray(d.collections)) {
           setAllCollections(d.collections);
         }
       })
-      .catch(() => { /* keep static fallback */ });
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, []);
 
@@ -58,6 +60,12 @@ export function CuratedCollectionsSection({ cityName, onApplyPreset }: CuratedCo
         </div>
 
         {/* Collections Grid */}
+        {collections.length === 0 ? (
+          <SpaceAvailable
+            title="Space available"
+            message="Curated property collections will appear here once published."
+          />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {collections.map((item) => {
             return (
@@ -107,6 +115,7 @@ export function CuratedCollectionsSection({ cityName, onApplyPreset }: CuratedCo
             );
           })}
         </div>
+        )}
 
       </div>
     </section>

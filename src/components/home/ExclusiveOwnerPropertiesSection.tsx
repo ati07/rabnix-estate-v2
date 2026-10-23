@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, Camera, CheckCircle } from 'lucide-react';
 import { Property } from '@/lib/types';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 interface ExclusiveOwnerPropertiesSectionProps {
   cityName?: string;
@@ -29,8 +30,8 @@ export function ExclusiveOwnerPropertiesSection({
   };
 
   // Strictly direct-owner listings in the active city. No other-city mixing and
-  // no non-owner fallback — the owner badges must stay truthful. Empty → the
-  // section hides itself (see early return below).
+  // no non-owner fallback — the owner badges must stay truthful. Empty → a
+  // "Space available" placeholder (see below).
   const ownerProperties = React.useMemo(
     () =>
       properties.filter(
@@ -38,8 +39,6 @@ export function ExclusiveOwnerPropertiesSection({
       ),
     [properties, cityName]
   );
-
-  if (ownerProperties.length === 0) return null;
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -71,7 +70,13 @@ export function ExclusiveOwnerPropertiesSection({
         </button>
       </div>
 
-      {/* Carousel Container */}
+      {ownerProperties.length === 0 ? (
+        <SpaceAvailable
+          title="Space available"
+          message={`Verified owner-direct listings in ${cityName} will appear here once posted.`}
+        />
+      ) : (
+      /* Carousel Container */
       <div className="relative group">
         {/* Left Arrow */}
         <button
@@ -157,6 +162,7 @@ export function ExclusiveOwnerPropertiesSection({
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
+      )}
     </section>
   );
 }

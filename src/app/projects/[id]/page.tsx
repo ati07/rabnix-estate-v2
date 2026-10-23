@@ -29,7 +29,7 @@ import {
   ExternalLink,
   Users
 } from 'lucide-react';
-import { getProjectById, getAllProjects } from '@/lib/homeSectionsData';
+import { FeaturedProjectItem } from '@/lib/homeSectionsData';
 import { useAuth } from '@/lib/authContext';
 
 export default function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -38,14 +38,20 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   const router = useRouter();
   const { user } = useAuth();
 
-  // Seed from static data for instant paint, then hydrate from the live API.
-  const [project, setProject] = useState(() => getProjectById(projectId) || getAllProjects()[0]);
+  // Live project from the API. No static fallback: null while loading, and a
+  // "not found" state when the API has no such project.
+  const [project, setProject] = useState<FeaturedProjectItem | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
     let active = true;
     fetch(`/api/projects/${projectId}`)
       .then((r) => r.json())
-      .then((d) => { if (active && d?.success && d.project) setProject(d.project); })
-      .catch(() => { /* keep static fallback */ });
+      .then((d) => {
+        if (!active) return;
+        if (d?.success && d.project) setProject(d.project);
+        else setLoadFailed(true);
+      })
+      .catch(() => { if (active) setLoadFailed(true); });
     return () => { active = false; };
   }, [projectId]);
 
@@ -68,19 +74,26 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ id: s
   if (!project) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl border border-[#E2E8F0] text-center max-w-md space-y-4 shadow-lg">
-          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
-          <h2 className="text-xl font-bold text-[#0F2A43]">Project Not Found</h2>
-          <p className="text-sm text-[#64748B]">
-            The requested residential or commercial project could not be found.
-          </p>
-          <Link
-            href="/properties"
-            className="inline-block px-6 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold rounded-xl"
-          >
-            Explore Active Properties
-          </Link>
-        </div>
+        {loadFailed ? (
+          <div className="bg-white p-8 rounded-2xl border border-[#E2E8F0] text-center max-w-md space-y-4 shadow-lg">
+            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+            <h2 className="text-xl font-bold text-[#0F2A43]">Project Not Found</h2>
+            <p className="text-sm text-[#64748B]">
+              The requested residential or commercial project could not be found.
+            </p>
+            <Link
+              href="/properties"
+              className="inline-block px-6 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold rounded-xl"
+            >
+              Explore Active Properties
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm font-bold text-[#0F2A43]">
+            <div className="w-4 h-4 border-2 border-[#18A67D] border-t-transparent rounded-full animate-spin" />
+            <span>Loading project...</span>
+          </div>
+        )}
       </div>
     );
   }

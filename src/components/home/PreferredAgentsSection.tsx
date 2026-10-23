@@ -4,7 +4,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, Award, ShieldCheck, PhoneCall } from 'lucide-react';
-import { HOME_PREFERRED_AGENTS, PreferredAgentItem } from '@/lib/homeSectionsData';
+import { PreferredAgentItem } from '@/lib/homeSectionsData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 interface PreferredAgentsSectionProps {
   cityName?: string;
@@ -18,14 +19,15 @@ export function PreferredAgentsSection({
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Live preferred agents from the API; seed with static data for first paint + offline.
-  const [allAgents, setAllAgents] = useState<PreferredAgentItem[]>(HOME_PREFERRED_AGENTS);
+  // Live preferred agents from the API. No static fallback — an empty result
+  // renders a "Space available" placeholder.
+  const [allAgents, setAllAgents] = useState<PreferredAgentItem[]>([]);
   useEffect(() => {
     let active = true;
     fetch('/api/agents')
       .then((r) => r.json())
-      .then((d) => { if (active && d?.success && Array.isArray(d.agents) && d.agents.length) setAllAgents(d.agents); })
-      .catch(() => { /* keep static fallback */ });
+      .then((d) => { if (active && d?.success && Array.isArray(d.agents)) setAllAgents(d.agents); })
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, []);
 
@@ -80,7 +82,13 @@ export function PreferredAgentsSection({
         </button>
       </div>
 
-      {/* Carousel Container */}
+      {agents.length === 0 ? (
+        <SpaceAvailable
+          title="Space available"
+          message={`Preferred agents in ${cityName} will appear here once onboarded.`}
+        />
+      ) : (
+      /* Carousel Container */
       <div className="relative group">
         {/* Left Arrow */}
         <button
@@ -192,6 +200,7 @@ export function PreferredAgentsSection({
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
+      )}
     </section>
   );
 }

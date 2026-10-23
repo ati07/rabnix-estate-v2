@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { serializeCollection, serializeProperty, stripPropertyContact } from '@/lib/serialize';
-import { getCollectionById } from '@/lib/collectionsData';
-import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
+import { serializeCollection, serializeProperty } from '@/lib/serialize';
 import type { CuratedCollection } from '@/lib/collectionsData';
 import type { Property } from '@/lib/types';
 
@@ -27,24 +25,9 @@ function whereFromFilters(f: CuratedCollection['filters']) {
   return where;
 }
 
-// Resolve a collection's filter against the static catalogue (DB-unavailable path).
-function filterStatic(f: CuratedCollection['filters']): Property[] {
-  return INITIAL_PROPERTIES.filter((p) => {
-    if (p.verificationStatus && p.verificationStatus !== 'approved') return false;
-    if (f.isOwnerOnly && !p.isExclusiveOwner) return false;
-    if (f.isVerifiedOnly && !p.isVerified) return false;
-    if (f.isReraApprovedOnly && !p.reraApproved) return false;
-    if (f.constructionStatus && p.constructionStatus !== f.constructionStatus) return false;
-    if (f.category && p.category !== f.category) return false;
-    if (f.listingType && p.listingType !== f.listingType) return false;
-    if (Array.isArray(f.bhk) && f.bhk.length && (p.bhk == null || !f.bhk.includes(p.bhk))) return false;
-    if (f.minPrice != null && p.price < f.minPrice) return false;
-    if (f.maxPrice != null && p.price > f.maxPrice) return false;
-    return true;
-  });
-}
-
-// GET /api/collections/:id — collection + the *live* properties matching its filter.
+// GET /api/collections/:id — collection + the *live* properties matching its
+// filter. 404 when the collection does not exist; empty property list when
+// nothing matches (no demo fallback).
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -53,9 +36,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const row = await prisma.collection.findUnique({ where: { id } });
     if (row) collection = serializeCollection(row);
   } catch (err: any) {
-    console.warn('Prisma collection fallback for', id, err?.message || err);
+    console.error('GET /api/collections/[id] error for', id, err?.message || err);
   }
-  if (!collection) collection = getCollectionById(id);
   if (!collection) return NextResponse.json({ success: false, error: 'Collection not found' }, { status: 404 });
 
   let properties: Property[] = [];
@@ -65,11 +47,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       orderBy: { createdAt: 'desc' },
     });
     // Public collection — contact numbers are withheld (gated reveal only).
-    properties = rows.length > 0
-      ? rows.map((p) => serializeProperty(p))
-      : filterStatic(collection.filters).map(stripPropertyContact);
-  } catch {
-    properties = filterStatic(collection.filters).map(stripPropertyContact);
+    properties = rows.map((p) => serializeProperty(p));
+  } catch (err: any) {
+    console.error('GET /api/collections/[id] properties error for', id, err?.message || err);
   }
 
   return NextResponse.json({ success: true, collection, properties, matchedCount: properties.length });

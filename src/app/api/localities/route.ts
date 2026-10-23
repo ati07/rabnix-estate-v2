@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getPopularLocalitiesForCity, PopularLocalityCardItem } from '@/lib/homeSectionsData';
+import { PopularLocalityCardItem } from '@/lib/homeSectionsData';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,13 +18,11 @@ function priceRangeLabel(min: number | null, max: number | null): string {
 // rows whose `locality` matches the tile name (case-insensitive). Tiles with
 // zero matching approved listings are hidden (inventory-gated / "option 4").
 // If the admin has curated nothing for the city — or nothing currently has
-// inventory — we fall back to the static hardcoded tiles so the section is
-// never blank. Any DB error also falls back to static.
+// inventory — we return an empty list (the UI shows a "Space available"
+// placeholder). No static/demo fallback.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const city = searchParams.get('city') || '';
-
-  const staticTiles = getPopularLocalitiesForCity(city);
 
   try {
     const curated = await prisma.locality.findMany({
@@ -33,7 +31,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (curated.length === 0) {
-      return NextResponse.json({ success: true, localities: staticTiles, source: 'static' });
+      return NextResponse.json({ success: true, localities: [], source: 'live' });
     }
 
     // Live stats per locality (approved inventory only) for this city.
@@ -65,14 +63,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Keep the fallback if nothing curated currently has inventory.
-    if (localities.length === 0) {
-      return NextResponse.json({ success: true, localities: staticTiles, source: 'static' });
-    }
-
     return NextResponse.json({ success: true, localities, source: 'live' });
   } catch (err: any) {
-    console.warn('Prisma localities fallback to static tiles:', err?.message || err);
-    return NextResponse.json({ success: true, localities: staticTiles, source: 'static' });
+    console.error('GET /api/localities error:', err?.message || err);
+    return NextResponse.json({ success: true, localities: [], source: 'live' });
   }
 }

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
-import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
+import { serializeProperty } from '@/lib/serialize';
 import { coordinateColumns } from '@/lib/maps/config';
 import type { Property, VerificationStatus } from '@/lib/types';
 
@@ -21,11 +20,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: true, property: serializeProperty(p, includeContact) });
     }
   } catch (err: any) {
-    console.warn('Prisma DB query fallback to INITIAL_PROPERTIES for id', id, err?.message);
+    console.error('GET /api/properties/[id] error for id', id, err?.message);
   }
-
-  const fallback = INITIAL_PROPERTIES.find((prop) => prop.id === id);
-  if (fallback) return NextResponse.json({ success: true, property: stripPropertyContact(fallback) });
 
   return NextResponse.json({ success: false, error: 'Property not found' }, { status: 404 });
 }

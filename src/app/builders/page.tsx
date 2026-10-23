@@ -21,8 +21,9 @@ import {
   Sparkles,
   Phone
 } from 'lucide-react';
-import { BUILDERS_DATA, Builder, BuilderProject } from '@/lib/buildersData';
+import { Builder, BuilderProject } from '@/lib/buildersData';
 import { CITIES_DATA } from '@/lib/realEstateData';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 function BuildersDirectoryContent() {
   const searchParams = useSearchParams();
@@ -32,14 +33,15 @@ function BuildersDirectoryContent() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [minExperience, setMinExperience] = useState<number>(0);
 
-  // Live builders from the API; seed with static data so first paint + offline still work.
-  const [builders, setBuilders] = useState<Builder[]>(BUILDERS_DATA);
+  // Live builders from the API. No static fallback — an empty result renders a
+  // "Space available" placeholder.
+  const [builders, setBuilders] = useState<Builder[]>([]);
   useEffect(() => {
     let active = true;
     fetch('/api/builders')
       .then((r) => r.json())
       .then((d) => { if (active && d?.success && Array.isArray(d.builders)) setBuilders(d.builders); })
-      .catch(() => { /* keep static fallback */ });
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, []);
 
@@ -205,6 +207,12 @@ function BuildersDirectoryContent() {
         </div>
 
         {/* Builder Cards Grid */}
+        {filteredBuilders.length === 0 ? (
+          <SpaceAvailable
+            title="Space available"
+            message="No builders are listed yet. Verified developers will appear here as they are onboarded."
+          />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredBuilders.map((builder) => {
             return (
@@ -328,6 +336,7 @@ function BuildersDirectoryContent() {
             );
           })}
         </div>
+        )}
 
         {/* Builder Verification Guarantee */}
         <section className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8 space-y-6 shadow-xs">

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { serializeProperty, stripPropertyContact } from '@/lib/serialize';
-import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
+import { serializeProperty } from '@/lib/serialize';
 import { getEntitlement, canCreateInCity, consumeListingCredit, billingKeyForCity } from '@/lib/billing';
 import { coordinateColumns } from '@/lib/maps/config';
 import type { Property } from '@/lib/types';
@@ -51,18 +50,15 @@ export async function GET(req: NextRequest) {
     const canSeeContact = (row: { postedByUserId: string | null }) =>
       isAdmin || (!!user && row.postedByUserId === user.id);
 
-    if (!rows || rows.length === 0) {
-      const fallback = isAdmin ? INITIAL_PROPERTIES : INITIAL_PROPERTIES.map(stripPropertyContact);
-      return NextResponse.json({ success: true, properties: fallback });
-    }
-
+    // No listings yet → return an empty catalog (the UI renders a
+    // "Space available" placeholder). No demo/mock fallback.
     return NextResponse.json({
       success: true,
       properties: rows.map((r) => serializeProperty(r, canSeeContact(r))),
     });
   } catch (err: any) {
-    console.warn('Prisma DB query fallback to INITIAL_PROPERTIES:', err?.message || err);
-    return NextResponse.json({ success: true, properties: INITIAL_PROPERTIES.map(stripPropertyContact) });
+    console.error('GET /api/properties error:', err?.message || err);
+    return NextResponse.json({ success: true, properties: [] });
   }
 }
 

@@ -23,9 +23,10 @@ import {
   PhoneCall,
   Check
 } from 'lucide-react';
-import { CURATED_COLLECTIONS, CuratedCollection, matchesCollectionFilters, collectionPriceRange } from '@/lib/collectionsData';
+import { CuratedCollection, matchesCollectionFilters, collectionPriceRange } from '@/lib/collectionsData';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import { useProperties } from '@/lib/propertyContext';
+import { SpaceAvailable } from '@/components/SpaceAvailable';
 
 const ICON_MAP: Record<string, any> = {
   CheckCircle2,
@@ -46,14 +47,15 @@ function CollectionsHubContent() {
 
   const { properties } = useProperties();
 
-  // Live collections from the API; seed with static data for first paint + offline.
-  const [collections, setCollections] = useState<CuratedCollection[]>(CURATED_COLLECTIONS);
+  // Live collections from the API. No static fallback — an empty result renders
+  // a "Space available" placeholder.
+  const [collections, setCollections] = useState<CuratedCollection[]>([]);
   useEffect(() => {
     let active = true;
     fetch('/api/collections')
       .then((r) => r.json())
       .then((d) => { if (active && d?.success && Array.isArray(d.collections)) setCollections(d.collections); })
-      .catch(() => { /* keep static fallback */ });
+      .catch(() => { /* leave empty → Space available */ });
     return () => { active = false; };
   }, []);
 
@@ -226,6 +228,12 @@ function CollectionsHubContent() {
         </div>
 
         {/* Big Interactive Grid */}
+        {filteredCollections.length === 0 ? (
+          <SpaceAvailable
+            title="Space available"
+            message="No curated collections are published yet. Handpicked portfolios will appear here soon."
+          />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredCollections.map((col) => {
             const Icon = ICON_MAP[col.iconName] || Sparkles;
@@ -329,6 +337,7 @@ function CollectionsHubContent() {
             );
           })}
         </div>
+        )}
 
         {/* Why Curated Section */}
         <section className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8 space-y-6 shadow-xs">

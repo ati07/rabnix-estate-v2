@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { serializeAgentUser, serializeProperty, stripPropertyContact } from '@/lib/serialize';
-import { getAgentById, getAgentProperties, HOME_PREFERRED_AGENTS } from '@/lib/homeSectionsData';
-import { INITIAL_PROPERTIES } from '@/lib/realEstateData';
+import { serializeAgentUser, serializeProperty } from '@/lib/serialize';
 import type { PreferredAgentItem } from '@/lib/homeSectionsData';
-import type { Property } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,10 +9,9 @@ export const dynamic = 'force-dynamic';
 const RENT_TYPES = new Set(['rent', 'pg']);
 
 // GET /api/agents/:id — the agent (a preferred-agent User) plus the listings
-// they actually posted. For a real agent account we return ONLY their own
-// approved properties (postedByUserId === agent id). Legacy/static agents
-// (resolved from the seed catalogue, no real account) fall back to the old
-// re-badging helper since there is no user to attribute listings to.
+// they actually posted. Returns ONLY their own approved properties
+// (postedByUserId === agent id). 404 when there is no such agent account; no
+// demo fallback.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -43,26 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: true, agent, properties });
     }
   } catch (err: any) {
-    console.warn('Prisma agent fallback for', id, err?.message || err);
+    console.error('GET /api/agents/[id] error for', id, err?.message || err);
   }
 
-  // --- Static / legacy fallback (no real account) ---
-  if (!agent) agent = getAgentById(id) ?? HOME_PREFERRED_AGENTS.find((a) => a.id === id);
-  if (!agent) return NextResponse.json({ success: false, error: 'Agent not found' }, { status: 404 });
-
-  let allProperties: Property[] = [];
-  try {
-    const rows = await prisma.property.findMany({
-      where: { verificationStatus: 'approved' },
-      orderBy: { createdAt: 'desc' },
-    });
-    allProperties = rows.length > 0
-      ? rows.map((p) => serializeProperty(p))
-      : INITIAL_PROPERTIES.map(stripPropertyContact);
-  } catch {
-    allProperties = INITIAL_PROPERTIES.map(stripPropertyContact);
-  }
-
-  const properties = getAgentProperties(agent, allProperties);
-  return NextResponse.json({ success: true, agent, properties });
+  return NextResponse.json({ success: false, error: 'Agent not found' }, { status: 404 });
 }
