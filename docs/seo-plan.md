@@ -127,8 +127,16 @@ titles and real server-rendered content.
 Verified: `tsc` clean; every route returns 200 with its own `<title>`, correct
 JSON-LD types, real seeded content in the SSR HTML, and no phone in the markup.
 
-**Remaining polish (optional):** descriptive `<Image alt>` sweep and a dynamic
-`/opengraph-image.tsx`; `generateStaticParams` + ISR on detail routes.
+- **Polish (done):** `src/lib/seoText.ts` produces keyword-rich, per-photo
+  `<Image alt>` ("3 BHK Apartment for Sale in <locality>, <city> — photo N")
+  across the indexable property surfaces (detail main/thumbnails/similar,
+  PropertyCard, quick-view modal, properties list, home Fresh/Owner rails);
+  project detail alts carry name/builder/locality. A branded 1200×630
+  `src/app/opengraph-image.tsx` is auto-applied as the default
+  og:image/twitter:image (detail pages still override with the real listing photo).
+
+**Remaining polish (optional):** `generateStaticParams` + ISR on detail routes;
+city landing pages (`/properties/pune`).
 
 ## Phasing, Risks & Open Questions
 
