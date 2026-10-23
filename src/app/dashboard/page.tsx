@@ -124,6 +124,7 @@ import {
 } from '@/lib/types';
 import LocationPicker, { type LatLng } from '@/components/LocationPicker';
 import { LocationSelect } from '@/components/location/LocationSelect';
+import { MediaUploadFields, type PropertyMediaValue } from '@/components/media/MediaUploadFields';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { formatIndianCurrency } from '@/lib/formatters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
@@ -362,6 +363,11 @@ export default function UserDashboardPage() {
     SAMPLE_PHOTO_PRESETS[1]
   ]);
   const [customPhotoInput, setCustomPhotoInput] = useState<string>('');
+  const [uploadMedia, setUploadMedia] = useState<PropertyMediaValue>({ panoramaImages: [], videoUrl: '', virtualTourUrl: '' });
+  // When set, the Upload tab is editing an existing listing (PATCH) rather than
+  // creating a new one. Cleared when starting a fresh upload.
+  const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
+  const TAB_UPLOAD = 'upload' as const;
   const [hasEncumbranceDoc, setHasEncumbranceDoc] = useState(true);
   const [hasPlanDoc, setHasPlanDoc] = useState(true);
   const [hasTaxDoc, setHasTaxDoc] = useState(true);
@@ -902,14 +908,84 @@ export default function UserDashboardPage() {
     }
   };
 
+  // Blank the free-text / media fields back to create defaults (mirrors the
+  // "Upload Another" reset). Used when leaving an edit to start a fresh upload.
+  const resetUploadFormFields = () => {
+    setUploadStep(1);
+    setUploadTitle('');
+    setUploadLocality('');
+    setUploadSubLocality('');
+    setUploadAddress('');
+    setUploadCoordinates(undefined);
+    setUploadImages([SAMPLE_PHOTO_PRESETS[0], SAMPLE_PHOTO_PRESETS[1]]);
+    setUploadMedia({ panoramaImages: [], videoUrl: '', virtualTourUrl: '' });
+  };
+
+  // Open the Upload tab in create mode. If we were editing, wipe the prefilled
+  // fields so the user starts from a clean slate.
+  const openCreateUpload = () => {
+    if (editingPropertyId) resetUploadFormFields();
+    setEditingPropertyId(null);
+    setUploadSuccessId(null);
+    setUploadError(null);
+    setActiveTab(TAB_UPLOAD);
+  };
+
+  // Load an existing listing into the Upload form for editing (saves via PATCH).
+  const startEditProperty = (p: Property) => {
+    setEditingPropertyId(p.id);
+    setUploadError(null);
+    setUploadSuccessId(null);
+    setUploadStep(1);
+    setUploadListingType(p.listingType);
+    setUploadCommercialListingType((p.commercialListingType as CommercialListingType) || 'sale');
+    setUploadCategory(p.category);
+    setUploadCountry(p.country || DEFAULT_COUNTRY);
+    setUploadState(p.state || '');
+    setUploadCity(p.city);
+    setUploadLocality(p.locality || '');
+    setUploadSubLocality(p.subLocality || '');
+    setUploadAddress(p.address || '');
+    setUploadCoordinates(p.coordinates);
+    setUploadTitle(p.title || '');
+    setUploadBhk(p.bhk || 2);
+    setUploadBathrooms(p.bathrooms || 2);
+    setUploadBalconies(p.balconies || 1);
+    setUploadCarpetArea(p.carpetAreaSqFt || 0);
+    setUploadSuperArea(p.superBuiltUpAreaSqFt || 0);
+    setUploadPrice(p.price || 0);
+    setUploadMaintenance(p.maintenance || 0);
+    setUploadFurnishing(p.furnishing);
+    setUploadFloor(p.floor || 0);
+    setUploadTotalFloors(p.totalFloors || 0);
+    setUploadFacing((p.facing as FacingDirection) || 'East');
+    setUploadConstruction(p.constructionStatus);
+    setUploadPossession(p.possessionDate || 'Immediate');
+    setUploadReraId(p.reraId || '');
+    setUploadImages(p.images && p.images.length > 0 ? p.images : [SAMPLE_PHOTO_PRESETS[0]]);
+    setUploadDescription(p.description || '');
+    setUploadAmenities(p.amenities || []);
+    setUploadMedia({
+      panoramaImages: p.panoramaImages || [],
+      videoUrl: p.videoUrl || '',
+      virtualTourUrl: p.virtualTourUrl || '',
+    });
+    const docs = p.documentsSubmitted || [];
+    setHasEncumbranceDoc(docs.some((d) => d.toLowerCase().includes('encumbrance')));
+    setHasPlanDoc(docs.some((d) => /plan|sanction/i.test(d)));
+    setHasTaxDoc(docs.some((d) => d.toLowerCase().includes('tax')));
+    setActiveTab(TAB_UPLOAD);
+  };
+
   const handleInlineUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setUploadError(null);
 
     // Listing quota: block before posting if the user is out of listings FOR THIS
     // CITY (quota is city-scoped). Admins (unlimited) and not-yet-loaded billing
-    // skip this client guard; the server enforces the limit either way.
-    if (entitlement && !entitlement.unlimited && remainingInCity(uploadCity) <= 0) {
+    // skip this client guard; the server enforces the limit either way. Editing
+    // an existing listing never consumes quota, so skip the check in edit mode.
+    if (!editingPropertyId && entitlement && !entitlement.unlimited && remainingInCity(uploadCity) <= 0) {
       setUploadError(`You have no listings left for ${uploadCity}. Open Plans & Billing to buy a ${uploadCity} pack.`);
       setBillingCity(uploadCity);
       setActiveTab('billing');
@@ -943,7 +1019,7 @@ export default function UserDashboardPage() {
     if (hasPlanDoc) docs.push('Approved Sanction Plan');
     if (hasTaxDoc) docs.push('Property Tax Clearance');
 
-    const newProp = addProperty({
+    const payload: Partial<Property> = {
       title: finalTitle,
       tagline: isCommercialUpload
         ? `${commercialCategoryLabel} • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`
@@ -974,6 +1050,9 @@ export default function UserDashboardPage() {
       reraId: uploadReraId,
       reraApproved: !!uploadReraId,
       images: uploadImages,
+      panoramaImages: uploadMedia.panoramaImages,
+      videoUrl: uploadMedia.videoUrl || undefined,
+      virtualTourUrl: uploadMedia.virtualTourUrl || undefined,
       description: uploadDescription,
       amenities: uploadAmenities,
       documentsSubmitted: docs,
@@ -986,8 +1065,17 @@ export default function UserDashboardPage() {
         responseTime: 'Within 2 hours',
         rating: 5.0
       }
-    });
+    };
 
+    if (editingPropertyId) {
+      // Edit mode: PATCH the existing listing. The server sends an owner-edited
+      // listing back to the verification queue, so no quota is consumed.
+      updateProperty(editingPropertyId, payload);
+      setUploadSuccessId(editingPropertyId);
+      return;
+    }
+
+    const newProp = addProperty(payload);
     setUploadSuccessId(newProp.id);
     // The POST resolves shortly after this optimistic update; refresh the
     // listing balance so the sidebar / billing tab reflect the consumed credit.
@@ -1091,7 +1179,7 @@ export default function UserDashboardPage() {
             <button
               id="dashboard-upload-cta-btn"
               onClick={() => {
-                setActiveTab('upload');
+                openCreateUpload();
                 setUploadSuccessId(null);
               }}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"
@@ -1181,7 +1269,7 @@ export default function UserDashboardPage() {
             <button
               id="sidebar-tab-upload"
               onClick={() => {
-                setActiveTab('upload');
+                openCreateUpload();
                 setUploadSuccessId(null);
                 setMobileSidebarOpen(false);
               }}
@@ -1532,7 +1620,7 @@ export default function UserDashboardPage() {
 
                 <button
                   onClick={() => {
-                    setActiveTab('upload');
+                    openCreateUpload();
                     setUploadSuccessId(null);
                   }}
                   className="px-4 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer shrink-0"
@@ -1648,7 +1736,7 @@ export default function UserDashboardPage() {
 
                   <button
                     onClick={() => {
-                      setActiveTab('upload');
+                      openCreateUpload();
                       setUploadSuccessId(null);
                     }}
                     className="w-full py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold rounded-xl text-xs transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer"
@@ -1672,31 +1760,30 @@ export default function UserDashboardPage() {
                     <CheckCircle className="w-10 h-10" />
                   </div>
                   <h2 className="text-2xl font-extrabold text-[#0F2A43]">
-                    Property Uploaded Successfully!
+                    {editingPropertyId ? 'Changes Saved!' : 'Property Uploaded Successfully!'}
                   </h2>
                   <p className="text-xs sm:text-sm text-[#64748B]">
-                    Your property has been submitted and is currently in the verification queue. It is now visible under <strong>My Listings</strong>.
+                    {editingPropertyId
+                      ? <>Your updated listing has been sent back to the verification queue for re-approval. It remains visible under <strong>My Listings</strong>.</>
+                      : <>Your property has been submitted and is currently in the verification queue. It is now visible under <strong>My Listings</strong>.</>}
                   </p>
-                  
+
                   <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                     <button
-                      onClick={() => setActiveTab('listings')}
+                      onClick={() => { setEditingPropertyId(null); setActiveTab('listings'); }}
                       className="px-5 py-2.5 bg-[#0F2A43] hover:bg-[#163b5c] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
                     >
                       View in My Listings
                     </button>
                     <button
                       onClick={() => {
+                        setEditingPropertyId(null);
                         setUploadSuccessId(null);
-                        setUploadStep(1);
-                        setUploadTitle('');
-                        setUploadLocality('');
-                        setUploadAddress('');
-                        setUploadCoordinates(undefined);
+                        resetUploadFormFields();
                       }}
                       className="px-5 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
                     >
-                      + Upload Another Property
+                      + Upload a New Property
                     </button>
                   </div>
                 </div>
@@ -1708,14 +1795,16 @@ export default function UserDashboardPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="bg-[#E7F6F1] text-[#0E7C5D] text-[10px] font-black uppercase px-2 py-0.5 rounded">
-                          Direct Dashboard Upload
+                          {editingPropertyId ? 'Editing Listing' : 'Direct Dashboard Upload'}
                         </span>
                         <h2 className="text-lg sm:text-xl font-extrabold text-[#0F2A43]">
-                          Upload a New Property Listing
+                          {editingPropertyId ? 'Edit Property Listing' : 'Upload a New Property Listing'}
                         </h2>
                       </div>
                       <p className="text-xs text-[#64748B]">
-                        Fill the specifications below. Once submitted, your property will be indexed for verified buyers.
+                        {editingPropertyId
+                          ? 'Update the details below. Saving sends the listing back to the verification queue for re-approval.'
+                          : 'Fill the specifications below. Once submitted, your property will be indexed for verified buyers.'}
                       </p>
                     </div>
                   </div>
@@ -2113,6 +2202,8 @@ export default function UserDashboardPage() {
                       </div>
                     </div>
 
+                    <MediaUploadFields value={uploadMedia} onChange={setUploadMedia} />
+
                     {/* Description */}
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-[#172033]">Description</label>
@@ -2132,7 +2223,7 @@ export default function UserDashboardPage() {
                       className="px-8 py-3 bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold rounded-xl text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Publish Listing to Marketplace</span>
+                      <span>{editingPropertyId ? 'Save Changes' : 'Publish Listing to Marketplace'}</span>
                     </button>
                   </div>
 
@@ -2160,7 +2251,7 @@ export default function UserDashboardPage() {
 
                   <button
                     onClick={() => {
-                      setActiveTab('upload');
+                      openCreateUpload();
                       setUploadSuccessId(null);
                     }}
                     className="px-4 py-2 bg-[#18A67D] hover:bg-[#0E7C5D] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
@@ -2220,7 +2311,7 @@ export default function UserDashboardPage() {
                   </p>
                   <button
                     onClick={() => {
-                      setActiveTab('upload');
+                      openCreateUpload();
                       setUploadSuccessId(null);
                     }}
                     className="px-5 py-2.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
@@ -2320,6 +2411,14 @@ export default function UserDashboardPage() {
                           </Link>
 
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => startEditProperty(p)}
+                              className="flex items-center gap-1 text-xs font-bold text-[#0F2A43] hover:text-[#18A67D] px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] cursor-pointer"
+                              title="Edit Property"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
                             <button
                               onClick={() => {
                                 deleteProperty(p.id);

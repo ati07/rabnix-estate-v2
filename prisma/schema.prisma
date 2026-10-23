@@ -169,6 +169,9 @@ model Property {
   priceDrop             Boolean  @default(false)
   images                String[]
   floorPlanImage        String?
+  panoramaImages        String[] // 360° equirectangular photos (Photo Sphere Viewer)
+  videoUrl              String?  // walkthrough: uploaded Blob URL or YouTube/Vimeo link
+  virtualTourUrl        String?  // external 360° tour embed (e.g. Matterport)
   description           String
   amenities             String[]
   postedBy              Json // embedded contact { name, type, phone, ... }

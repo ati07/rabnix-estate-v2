@@ -28,7 +28,9 @@ import {
   Clock,
   Car,
   Home,
-  UserCheck
+  UserCheck,
+  Images,
+  Video
 } from 'lucide-react';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
@@ -36,6 +38,18 @@ import { useGenie } from '@/lib/genieContext';
 import { OtpVerifyModal } from '@/components/OtpVerifyModal';
 import PropertyLocationMap from '@/components/map/PropertyLocationMap';
 import NearbyProperties from '@/components/map/NearbyProperties';
+import dynamic from 'next/dynamic';
+import VideoPlayer from '@/components/media/VideoPlayer';
+
+// 360° viewer is WebGL-only — load it client-side, never on the server.
+const PanoramaViewer = dynamic(() => import('@/components/media/PanoramaViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full aspect-2/1 rounded-2xl bg-[#0F2A43] flex items-center justify-center text-white text-sm font-bold">
+      Loading 360° view…
+    </div>
+  ),
+});
 
 export default function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -50,6 +64,10 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
 
   // Active image gallery index
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  // Which media surface is showing: standard photos, 360° panoramas, or video.
+  const [mediaMode, setMediaMode] = useState<'photos' | '360' | 'video'>('photos');
+  const hasPanorama = (property?.panoramaImages?.length ?? 0) > 0;
+  const hasVideo = !!property?.videoUrl;
 
   // Inquiry form states — start blank so the customer enters their own details.
   const [inquiryName, setInquiryName] = useState('');
@@ -331,43 +349,99 @@ export default function PropertyDetailsPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
 
-        {/* Image Showcase Grid */}
+        {/* Media Showcase */}
         <div className="space-y-3">
-          <div className="rounded-2xl overflow-hidden shadow-md border border-[#E2E8F0] aspect-21/9 sm:aspect-2/1 lg:aspect-21/9 bg-[#0F2A43] relative">
-            <Image
-              src={property.images[activeImageIndex] || property.images[0]}
-              alt={property.title}
-              fill
-              className="object-cover transition-all duration-300"
-              referrerPolicy="no-referrer"
-              priority
-            />
-            <div className="absolute bottom-4 right-4 bg-[#0F2A43]/80 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1.5 z-10">
-              <span>Photo {activeImageIndex + 1} of {property.images.length}</span>
-            </div>
-          </div>
-
-          {/* Thumbnails */}
-          {property.images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {property.images.map((img, idx) => (
+          {/* Mode toggles — only shown when richer media exists */}
+          {(hasPanorama || hasVideo) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMediaMode('photos')}
+                className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                  mediaMode === 'photos' ? 'bg-[#0F2A43] text-white border-[#0F2A43]' : 'bg-white text-[#0F2A43] border-[#E2E8F0] hover:border-[#18A67D]'
+                }`}
+              >
+                <Images className="w-4 h-4" /> Photos
+              </button>
+              {hasPanorama && (
                 <button
-                  key={idx}
-                  onClick={() => setActiveImageIndex(idx)}
-                  className={`w-24 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer relative ${
-                    activeImageIndex === idx ? 'border-[#18A67D] scale-102 ring-2 ring-[#18A67D]/40' : 'border-transparent opacity-70 hover:opacity-100'
+                  type="button"
+                  onClick={() => setMediaMode('360')}
+                  className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                    mediaMode === '360' ? 'bg-[#0F2A43] text-white border-[#0F2A43]' : 'bg-white text-[#0F2A43] border-[#E2E8F0] hover:border-[#18A67D]'
                   }`}
                 >
-                  <Image
-                    src={img}
-                    alt={`Thumbnail ${idx + 1}`}
-                    fill
-                    className="object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+                  <Compass className="w-4 h-4" /> 360° View
                 </button>
-              ))}
+              )}
+              {hasVideo && (
+                <button
+                  type="button"
+                  onClick={() => setMediaMode('video')}
+                  className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                    mediaMode === 'video' ? 'bg-[#0F2A43] text-white border-[#0F2A43]' : 'bg-white text-[#0F2A43] border-[#E2E8F0] hover:border-[#18A67D]'
+                  }`}
+                >
+                  <Video className="w-4 h-4" /> Video
+                </button>
+              )}
             </div>
+          )}
+
+          {mediaMode === '360' && hasPanorama ? (
+            <PanoramaViewer images={property.panoramaImages ?? []} />
+          ) : mediaMode === 'video' && hasVideo ? (
+            <VideoPlayer url={property.videoUrl ?? ''} />
+          ) : (
+            <>
+              <div className="rounded-2xl overflow-hidden shadow-md border border-[#E2E8F0] aspect-21/9 sm:aspect-2/1 lg:aspect-21/9 bg-[#0F2A43] relative">
+                <Image
+                  src={property.images[activeImageIndex] || property.images[0]}
+                  alt={property.title}
+                  fill
+                  className="object-cover transition-all duration-300"
+                  referrerPolicy="no-referrer"
+                  priority
+                />
+                <div className="absolute bottom-4 right-4 bg-[#0F2A43]/80 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1.5 z-10">
+                  <span>Photo {activeImageIndex + 1} of {property.images.length}</span>
+                </div>
+              </div>
+
+              {/* Thumbnails */}
+              {property.images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {property.images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`w-24 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer relative ${
+                        activeImageIndex === idx ? 'border-[#18A67D] scale-102 ring-2 ring-[#18A67D]/40' : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <Image
+                        src={img}
+                        alt={`Thumbnail ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {property.virtualTourUrl && (
+            <a
+              href={property.virtualTourUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0E7C5D] bg-[#E7F6F1] border border-[#18A67D]/30 rounded-xl px-3 py-2 hover:bg-[#d7f0e8] transition-colors"
+            >
+              <Compass className="w-4 h-4" /> Open Virtual Tour
+            </a>
           )}
         </div>
 

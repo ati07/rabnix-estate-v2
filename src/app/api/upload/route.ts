@@ -7,8 +7,23 @@ import crypto from 'crypto';
 
 export const runtime = 'nodejs';
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
+// NOTE: in production, Vercel caps the request body at ~4.5MB, so this route is
+// only reliable for regular photos. Large media (360° panoramas, videos) goes
+// through client-side direct-to-Blob uploads instead (see /api/upload/blob and
+// src/lib/clientUpload.ts). The 200MB cap below mainly benefits the local-dev
+// fallback, where files are written to public/uploads with no platform limit.
+const MAX_BYTES = 200 * 1024 * 1024; // 200MB
+const ALLOWED = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/x-matroska',
+];
 
 // Use Vercel Blob in production (the serverless filesystem is ephemeral/
 // read-only); write to public/uploads in local development so no Blob token
@@ -45,7 +60,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: `Unsupported file type: ${file.type}` }, { status: 400 });
       }
       if (file.size > MAX_BYTES) {
-        return NextResponse.json({ success: false, error: `${file.name} exceeds 5MB.` }, { status: 400 });
+        return NextResponse.json({ success: false, error: `${file.name} exceeds 200MB.` }, { status: 400 });
       }
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
       const name = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;

@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/lib/authContext';
 import { Property, ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, FacingDirection, ConstructionStatus } from '@/lib/types';
 import { LocationSelect } from '@/components/location/LocationSelect';
+import { MediaUploadFields, type PropertyMediaValue } from '@/components/media/MediaUploadFields';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { formatIndianCurrency } from '@/lib/formatters';
 
@@ -89,6 +90,7 @@ export function PostPropertyModal({
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80'
   );
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [media, setMedia] = useState<PropertyMediaValue>({ panoramaImages: [], videoUrl: '', virtualTourUrl: '' });
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -204,6 +206,9 @@ export function PostPropertyModal({
             'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
             'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=80'
           ],
+      panoramaImages: media.panoramaImages,
+      videoUrl: media.videoUrl || undefined,
+      virtualTourUrl: media.virtualTourUrl || undefined,
       description: description || (isCommercial
         ? `Direct owner commercial listing (${commercialCategoryLabel}) for ${commercialListingType === 'rent' ? 'rent' : 'sale'} in ${locality}, ${city}. Prime location, ${carpetAreaSqFt} sq.ft, 24/7 security and full power backup. Connect directly with the owner.`
         : `Direct owner listing for ${bhk} BHK in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Connect directly with the owner.`),
@@ -686,6 +691,8 @@ export function PostPropertyModal({
                     className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
                   />
                 </div>
+
+                <MediaUploadFields value={media} onChange={setMedia} />
 
                 {/* Owner Contact */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

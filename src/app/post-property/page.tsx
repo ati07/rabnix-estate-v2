@@ -32,6 +32,7 @@ import { ListingType, CommercialListingType, PropertyCategory, FurnishingStatus,
 import { CITIES_DATA } from '@/lib/realEstateData';
 import LocationPicker, { type LatLng } from '@/components/LocationPicker';
 import { LocationSelect } from '@/components/location/LocationSelect';
+import { MediaUploadFields, type PropertyMediaValue } from '@/components/media/MediaUploadFields';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/listingDraft';
 
@@ -150,6 +151,7 @@ export default function PostPropertyPage() {
     SAMPLE_PHOTO_PRESETS[1]
   ]);
   const [customImageUrl, setCustomImageUrl] = useState<string>('');
+  const [media, setMedia] = useState<PropertyMediaValue>({ panoramaImages: [], videoUrl: '', virtualTourUrl: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -366,6 +368,9 @@ export default function PostPropertyPage() {
         reraId,
         reraApproved: !!reraId,
         images: images.length > 0 ? images : [SAMPLE_PHOTO_PRESETS[0]],
+        panoramaImages: media.panoramaImages,
+        videoUrl: media.videoUrl || undefined,
+        virtualTourUrl: media.virtualTourUrl || undefined,
         description,
         amenities: selectedAmenities,
         documentsSubmitted: documents,
@@ -1115,6 +1120,8 @@ export default function PostPropertyPage() {
                       </div>
                     </div>
                   </div>
+
+                  <MediaUploadFields value={media} onChange={setMedia} />
 
                   {/* Amenities Multi-picker */}
                   <div className="space-y-3 pt-2">

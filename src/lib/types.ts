@@ -64,6 +64,9 @@ export interface Property {
   priceDrop?: boolean;
   images: string[];
   floorPlanImage?: string;
+  panoramaImages?: string[];
+  videoUrl?: string;
+  virtualTourUrl?: string;
   description: string;
   amenities: string[];
   postedBy: {

@@ -107,6 +107,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       'price', 'priceFormatted', 'pricePerSqFt', 'maintenance', 'bhk', 'bathrooms', 'balconies',
       'carpetAreaSqFt', 'superBuiltUpAreaSqFt', 'furnishing', 'floor', 'totalFloors', 'facing',
       'constructionStatus', 'possessionDate', 'reraId', 'images', 'floorPlanImage', 'description',
+      'panoramaImages', 'videoUrl', 'virtualTourUrl',
       'amenities',
     ];
     for (const key of editable) {
@@ -117,6 +118,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // nearby queries stay consistent with the canonical coordinates JSON.
     if (b.coordinates !== undefined) {
       Object.assign(data, coordinateColumns(b.coordinates));
+    }
+
+    // An owner editing their own listing sends it back to the verification queue
+    // — they must not keep the Verified seal after changing price, photos, media,
+    // etc. Admin edits don't trigger this (admins set verificationStatus
+    // explicitly above). Only fires when editable fields actually changed.
+    if (isOwner && !isAdmin && b.verificationStatus === undefined && Object.keys(data).length > 0) {
+      data.isVerified = false;
+      data.verificationStatus = 'pending';
+      await prisma.activityLog.create({
+        data: {
+          action: 'property_created',
+          actorName: user.name,
+          actorRole: user.role.toUpperCase(),
+          details: `Edited "${existing.title}" — returned to the verification queue.`,
+          targetTitle: existing.title,
+          targetId: existing.id,
+          severity: 'info',
+        },
+      });
     }
 
     const updated = await prisma.property.update({ where: { id }, data });

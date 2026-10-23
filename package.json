@@ -21,6 +21,7 @@
     "@google/genai": "^2.4.0",
     "@googlemaps/markerclusterer": "^2.6.2",
     "@hookform/resolvers": "^5.2.1",
+    "@photo-sphere-viewer/core": "^5.15.1",
     "@prisma/client": "^6.19.3",
     "@vercel/blob": "^2.8.0",
     "@vis.gl/react-google-maps": "^1.10.1",
