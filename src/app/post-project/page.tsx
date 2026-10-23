@@ -828,7 +828,7 @@ export default function PostProjectPage() {
 
       <footer className="w-full border-t border-[#E2E8F0] bg-white py-4 px-4 text-center text-xs text-[#64748B]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>&copy; {new Date().getFullYear()} BayBayt Technologies India Pvt Ltd.</span>
+          <span>&copy; {new Date().getFullYear()} BayBayt.</span>
           <div className="flex items-center gap-4 text-xs font-medium">
             <Link href="/" className="hover:text-[#18A67D]">Home</Link>
             <span className="text-slate-300">•</span>

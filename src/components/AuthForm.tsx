@@ -13,8 +13,7 @@ import {
   Building, 
   Home, 
   Briefcase, 
-  Sparkles, 
-  ArrowRight, 
+  ArrowRight,
   Key, 
   Check, 
   AlertCircle,
@@ -894,14 +893,10 @@ export function AuthForm({ initialMode = 'signin', onSuccess, isModal = false }:
         )}
 
         {/* Trust Badges Footer */}
-        <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-[11px] text-[#64748B]">
+        <div className="pt-3 border-t border-[#E2E8F0] flex items-center text-[11px] text-[#64748B]">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-[#18A67D]" />
             <span>256-Bit SSL Encrypted & Private</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Trusted by 2.5M+ Users</span>
           </div>
         </div>
 
