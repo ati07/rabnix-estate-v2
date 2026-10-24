@@ -34,6 +34,11 @@ export const metadata: Metadata = {
     icon: '/icon.png',
     apple: '/icon.png',
   },
+  // Google Search Console domain/URL-prefix verification. Next.js renders this
+  // as <meta name="google-site-verification"> in every page's <head>.
+  verification: {
+    google: 'XKAl5bom-d9e9RqIynlnnbdI89gjEZz_MCtb-vaKfsI',
+  },
   openGraph: {
     // Images intentionally omitted: the branded card from
     // src/app/opengraph-image.tsx is auto-applied as the default og:image.
