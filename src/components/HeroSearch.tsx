@@ -25,6 +25,7 @@ import { CityInfo, CommercialListingType, ListingType, PropertyCategory, SearchF
 import { CITY_SEARCH_LOCALITIES } from '@/lib/realEstateData';
 import { isMapsEnabled, type LatLngLiteral } from '@/lib/maps/config';
 import { HeroMiniMap } from '@/components/map/HeroMiniMap';
+import { LazyVisible } from '@/components/util/LazyVisible';
 
 const MIN_SIZE_SQFT = 80;
 
@@ -1016,7 +1017,19 @@ export function HeroSearch({
             </div>
             {showMiniMap && (
               <div className="relative h-[260px] sm:h-[320px]">
-                <HeroMiniMap city={selectedCity.name} focus={selectedGeo} />
+                {/* Defer the Google Maps SDK until the map scrolls into view —
+                    keeps ~250KiB of Maps JS out of the initial mobile load
+                    (better LCP/TBT). The fixed-height parent means no CLS. */}
+                <LazyVisible
+                  placeholder={
+                    <div className="h-full w-full flex flex-col items-center justify-center gap-2 bg-[#Eef2f6] text-[#64748B]">
+                      <MapPin className="w-6 h-6 text-[#94A3B8]" />
+                      <span className="text-xs font-semibold">Loading map…</span>
+                    </div>
+                  }
+                >
+                  <HeroMiniMap city={selectedCity.name} focus={selectedGeo} />
+                </LazyVisible>
                 {/* Click-through CTA so the map itself opens the full experience. */}
                 <button
                   type="button"

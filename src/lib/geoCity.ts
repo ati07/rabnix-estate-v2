@@ -31,6 +31,33 @@ function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: numb
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/**
+ * Resolve a supported city NAME from request geo signals (Vercel edge headers),
+ * given a header accessor. Pure and framework-free so it can run in the API
+ * route, middleware, or a server component. Returns `null` when no usable
+ * signal exists (e.g. local dev / loopback IP). Prefers precise lat/lng, then
+ * falls back to the reported IP city name.
+ */
+export function cityNameFromGeoHeaders(get: (name: string) => string | null | undefined): string | null {
+  const lat = get('x-vercel-ip-latitude');
+  const lng = get('x-vercel-ip-longitude');
+  if (lat && lng) {
+    const c = nearestCity({ lat: parseFloat(lat), lng: parseFloat(lng) });
+    if (c) return c.name;
+  }
+  const ipCity = get('x-vercel-ip-city');
+  if (ipCity) {
+    const decoded = decodeURIComponent(ipCity).toLowerCase();
+    const match = CITIES_DATA.find(
+      (c) =>
+        c.name.toLowerCase().includes(decoded) ||
+        decoded.includes(c.name.toLowerCase().split(' ')[0])
+    );
+    if (match) return match.name;
+  }
+  return null;
+}
+
 /** Return the supported CityInfo whose centre is closest to the given coordinates. */
 export function nearestCity(coords: { lat: number; lng: number }): CityInfo | null {
   let best: CityInfo | null = null;
