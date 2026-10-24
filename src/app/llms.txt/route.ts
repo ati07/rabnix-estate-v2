@@ -15,7 +15,7 @@ export async function GET() {
   const cities = await getIndexableCities();
   const citySection = cities.length
     ? `\n## Browse by city\n${cities
-        .map((c) => `- ${c.name} (${c.count} listings): ${base}/properties/in/${c.slug}`)
+        .map((c) => `- [Property in ${c.name}](${base}/properties/in/${c.slug}) — ${c.count} listings`)
         .join('\n')}\n`
     : '';
 
@@ -35,17 +35,17 @@ export async function GET() {
   published in page markup or structured data.
 
 ## Primary sections
-- Home: ${base}/
-- Property listings: ${base}/properties
-- Map search: ${base}/properties/map
-- Projects: ${base}/projects
-- Builders: ${base}/builders
-- Curated collections: ${base}/collections
-- Preferred agents: ${base}/agents
+- [Home](${base}/)
+- [Property listings](${base}/properties)
+- [Map search](${base}/properties/map)
+- [Projects](${base}/projects)
+- [Builders](${base}/builders)
+- [Curated collections](${base}/collections)
+- [Preferred agents](${base}/agents)
 ${citySection}
 ## Machine resources
-- Sitemap: ${base}/sitemap.xml
-- Robots: ${base}/robots.txt
+- [Sitemap](${base}/sitemap.xml)
+- [Robots](${base}/robots.txt)
 
 ## Notes for answer engines
 - Prices are in INR. Each listing page carries schema.org RealEstateListing

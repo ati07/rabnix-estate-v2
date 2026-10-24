@@ -75,9 +75,10 @@ export function Navbar({
             <span className="hidden md:inline text-slate-300 font-medium">
               India&apos;s No. 1 Property Portal
             </span>
-            <div className="flex items-center gap-1.5 bg-[#163b5c]/80 px-2 py-0.5 rounded text-white text-[11px] font-medium border border-white/10">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#22C39A]" />
-              <span>100% Verified Listings & RERA Registered Projects</span>
+            <div className="flex items-center gap-1.5 bg-[#163b5c]/80 px-2 py-0.5 rounded text-white text-[11px] font-medium border border-white/10 min-w-0">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#22C39A] shrink-0" />
+              <span className="truncate sm:hidden">100% Verified Listings</span>
+              <span className="hidden sm:inline">100% Verified Listings &amp; RERA Registered Projects</span>
             </div>
           </div>
 
@@ -127,7 +128,7 @@ export function Navbar({
         <div className="flex items-center justify-between h-16 sm:h-18 gap-4">
           
           {/* Brand Logo & City Selector */}
-          <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-5 min-w-0">
             <div 
               id="nav-brand-logo"
               onClick={() => handleNavClick('buy')}
@@ -141,10 +142,10 @@ export function Navbar({
             <button
               id="nav-city-selector-btn"
               onClick={onOpenCitySelector}
-              className="flex items-center gap-1.5 bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#172033] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-xs hover:border-[#CBD5E1] shrink-0 whitespace-nowrap"
+              className="flex items-center gap-1.5 bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] text-[#172033] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-xs hover:border-[#CBD5E1] min-w-0 whitespace-nowrap"
             >
               <MapPin className="w-3.5 h-3.5 text-[#18A67D] shrink-0" />
-              <span>{selectedCity.name}</span>
+              <span className="truncate">{selectedCity.name}</span>
               <ChevronDown className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
             </button>
           </div>
@@ -399,7 +400,7 @@ export function Navbar({
                   className="flex items-center gap-1.5 text-[#0F2A43] hover:text-[#18A67D] hover:bg-[#F8FAFC] px-2.5 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all border border-[#CBD5E1] shrink-0 whitespace-nowrap"
                 >
                   <User className="w-4 h-4 text-[#18A67D]" />
-                  <span>Sign In</span>
+                  <span className="hidden sm:inline">Sign In</span>
                 </Link>
               </div>
             )}
@@ -412,8 +413,8 @@ export function Navbar({
               className="flex items-center gap-1.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 shrink-0 whitespace-nowrap"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
-              <span>Post Property</span>
-              <span className="bg-[#0E7C5D] text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wider ml-0.5 text-white shrink-0">
+              <span className="hidden sm:inline">Post Property</span>
+              <span className="hidden sm:inline-block bg-[#0E7C5D] text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wider ml-0.5 text-white shrink-0">
                 FREE
               </span>
             </Link>

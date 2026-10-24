@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Property, SearchFilters, CityInfo, ListingType } from '@/lib/types';
 import { CITIES_DATA, resolveCityInfo } from '@/lib/realEstateData';
-import { detectNearestCity, detectCityByIp } from '@/lib/geoCity';
+import { detectCityByIp } from '@/lib/geoCity';
 import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
 import { useGenie } from '@/lib/genieContext';
@@ -110,10 +110,12 @@ export default function HomeView() {
   };
 
   // Resolve the active city on mount if the user has no saved preference.
-  // Order: precise browser geolocation (needs permission) → permission-free
-  // IP geolocation (Vercel edge headers). The resolved city is persisted so it
-  // carries across every page (which all read the same localStorage key) and we
-  // don't re-prompt on subsequent visits.
+  // Uses permission-free IP geolocation (Vercel edge headers) only — we do NOT
+  // trigger a browser geolocation prompt on page load (it hurts UX and trips
+  // Lighthouse "requests geolocation on page load"). Precise GPS is reserved
+  // for an explicit user action. The resolved city is persisted so it carries
+  // across every page (all read the same localStorage key) and we don't
+  // re-detect on subsequent visits.
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -122,19 +124,12 @@ export default function HomeView() {
 
     let cancelled = false;
 
-    const applyCity = (city: CityInfo | null): boolean => {
-      if (cancelled || !city) return false;
-      setSelectedCity(city);
-      setFilters((prev) => ({ ...prev, city: city.name, locality: '' }));
-      localStorage.setItem(CITY_STORAGE_KEY, city.name);
-      return true;
-    };
-
     (async () => {
-      const gps = await detectNearestCity();
-      if (applyCity(gps)) return;
       const ip = await detectCityByIp();
-      applyCity(ip);
+      if (cancelled || !ip) return;
+      setSelectedCity(ip);
+      setFilters((prev) => ({ ...prev, city: ip.name, locality: '' }));
+      localStorage.setItem(CITY_STORAGE_KEY, ip.name);
     })();
 
     return () => { cancelled = true; };
@@ -233,7 +228,11 @@ export default function HomeView() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col selection:bg-[#18A67D] selection:text-white font-sans text-[#172033]">
-      
+
+      {/* Warm up the connection to Google Maps — the hero mini-map pulls tiles
+          from here, so preconnecting shaves ~80ms off their first request. */}
+      <link rel="preconnect" href="https://maps.googleapis.com" />
+
       {/* 1. TOP NAVBAR */}
       <Navbar
         selectedCity={selectedCity}
@@ -253,6 +252,9 @@ export default function HomeView() {
           setIsAuthModalOpen(true);
         }}
       />
+
+      {/* Primary page content landmark (one <main> per document for a11y). */}
+      <main className="flex-1">
 
       {/* 2. HERO SEARCH MODULE */}
       <HeroSearch
@@ -344,6 +346,8 @@ export default function HomeView() {
         }}
         onOpenAiValuation={() => setIsAiValuationOpen(true)}
       />
+
+      </main>
 
       {/* 7. FOOTER */}
       <Footer

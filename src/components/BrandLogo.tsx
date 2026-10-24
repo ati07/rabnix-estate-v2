@@ -21,6 +21,9 @@ export function BrandLogo({ variant = 'onLight', className = 'h-9 w-auto', prior
       width={isDark ? 692 : 991}
       height={isDark ? 167 : 231}
       priority={priority}
+      // The wordmark renders ~150–175px wide (h-9/h-10). Cap the generated
+      // variant so Next doesn't ship the full-resolution asset for a tiny slot.
+      sizes="180px"
       className={className}
     />
   );

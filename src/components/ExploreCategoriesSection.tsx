@@ -142,6 +142,10 @@ export function ExploreCategoriesSection({ cityName, properties, onSelectCategor
                     alt={item.title}
                     fill
                     referrerPolicy="no-referrer"
+                    // Grid is 5-up on lg, 2-up on sm, 1-up on mobile. Declaring
+                    // the real rendered width lets Next serve a small variant
+                    // instead of a full-viewport image (saves ~240 KiB).
+                    sizes="(min-width: 1024px) 20vw, (min-width: 640px) 50vw, 100vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0F2A43]/80 via-[#0F2A43]/20 to-transparent" />
