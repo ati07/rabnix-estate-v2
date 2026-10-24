@@ -74,11 +74,16 @@ export default function PostPropertyPage() {
   const { user, isAuthenticated, isAuthReady } = useAuth();
   const { addProperty } = useProperties();
 
-  // Protected page: once the session resolves, send signed-out users (including
-  // someone who just logged out) to sign-in. The loader guard below renders
-  // meanwhile so the page never flashes a signed-out gatekeeper.
+  // This standalone page is superseded by the dashboard upload form. Once the
+  // session resolves we route the user to the right place: signed-out visitors
+  // (including someone who just logged out) go to sign-in; signed-in visitors go
+  // straight to the dashboard upload form. The loader guard below renders
+  // meanwhile so the inline form never flashes. Any Genie draft stashed in
+  // sessionStorage is left untouched here for the dashboard to consume.
   useEffect(() => {
-    if (isAuthReady && !user) router.replace('/auth');
+    if (!isAuthReady) return;
+    if (!user) router.replace('/auth');
+    else router.replace('/dashboard?tab=upload');
   }, [isAuthReady, user, router]);
 
   // Multi-step progression
@@ -212,10 +217,12 @@ export default function PostPropertyPage() {
     if (draft.description) setDescription(draft.description);
   }, []);
 
-  // Prefill from a BayBayt Genie conversation. The drawer stashes a draft in
-  // sessionStorage and routes here; we apply it once, then clear it so a manual
-  // revisit starts clean. The user still reviews, adds photos and submits.
+  // Prefill from a BayBayt Genie conversation. This page now redirects to the
+  // dashboard upload form, which is where the stashed draft is consumed — so we
+  // must NOT read or clear it here (that would strip the key before the
+  // dashboard mounts). Kept guarded for the rare case the inline form renders.
   useEffect(() => {
+    if (isAuthReady) return; // signed-in → dashboard consumes the draft; signed-out → /auth
     let raw: string | null = null;
     try {
       raw = sessionStorage.getItem(GENIE_LISTING_DRAFT_KEY);
@@ -230,7 +237,7 @@ export default function PostPropertyPage() {
     } catch {
       /* malformed draft — ignore */
     }
-  }, [applyDraft]);
+  }, [applyDraft, isAuthReady]);
 
   // AI price-estimate note shown under the price field (indicative range).
   const [priceEstimateNote, setPriceEstimateNote] = useState<string | null>(null);
@@ -404,10 +411,11 @@ export default function PostPropertyPage() {
     }
   };
 
-  // While the session resolves, or while redirecting a signed-out user (incl.
-  // just after logout) to sign-in, render a loader instead of the post form or
-  // a gatekeeper flash.
-  if (!isAuthReady || !user) {
+  // While the session resolves, or while redirecting away (signed-out → sign-in,
+  // signed-in → dashboard upload form), render a loader instead of flashing the
+  // superseded inline form. isAuthenticated mirrors `user`, so a resolved
+  // session always lands here and the form below stays a never-reached fallback.
+  if (!isAuthReady || !user || isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="flex items-center gap-3 text-[#64748B] text-sm font-bold">

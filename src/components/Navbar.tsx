@@ -348,7 +348,7 @@ export function Navbar({
                     </button>
 
                     <Link
-                      href="/post-property"
+                      href="/dashboard?tab=upload"
                       onClick={() => setIsUserMenuOpen(false)}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-[#172033] hover:bg-[#F8FAFC] hover:text-[#18A67D] rounded-lg transition-colors font-semibold"
                     >
@@ -404,10 +404,11 @@ export function Navbar({
               </div>
             )}
 
-            {/* Post Property FREE Button */}
+            {/* Post Property FREE Button — signed-in users skip the standalone
+                page and go straight to the dashboard upload form. */}
             <Link
               id="nav-post-property-btn"
-              href="/post-property"
+              href={isAuthenticated ? '/dashboard?tab=upload' : '/post-property'}
               className="flex items-center gap-1.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 shrink-0 whitespace-nowrap"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />

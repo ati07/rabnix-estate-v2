@@ -128,7 +128,7 @@ import { MediaUploadFields, type PropertyMediaValue } from '@/components/media/M
 import { ListingGenieBox } from '@/components/genie/ListingGenieBox';
 import { GenieAssistButton } from '@/components/genie/GenieAssistButton';
 import { generateListingCopy, estimateListingPrice, formatInr } from '@/lib/genie/listingAssist';
-import type { GenieListingDraft } from '@/lib/genie/listingDraft';
+import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/listingDraft';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { formatIndianCurrency } from '@/lib/formatters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
@@ -281,12 +281,15 @@ export default function UserDashboardPage() {
 
   useEffect(() => { loadMyProjects(); }, [loadMyProjects]);
 
-  // Deep-link support: /dashboard?tab=projects (from the post-project success page).
+  // Deep-link support: /dashboard?tab=projects (from the post-project success
+  // page) and /dashboard?tab=upload (every "Post Property" entry point across
+  // the app now routes signed-in users straight to the upload form here).
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab === 'projects' && isBuilderAccount) setActiveTab('projects');
     else if (tab === 'billing') setActiveTab('billing');
+    else if (tab === 'upload') setActiveTab('upload');
   }, [isBuilderAccount]);
 
   const deleteMyProject = async (id: string) => {
@@ -944,6 +947,28 @@ export default function UserDashboardPage() {
     if (draft.constructionStatus) setUploadConstruction(draft.constructionStatus as ConstructionStatus);
     if (draft.description) setUploadDescription(draft.description);
   }, []);
+
+  // Consume a BayBayt Genie conversation draft on mount. The chat drawer stashes
+  // a draft in sessionStorage and routes to "Post Property"; signed-in users are
+  // redirected here, so this is where the draft gets applied. We apply it once,
+  // open the Upload tab, then clear the key so a manual revisit starts clean.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(GENIE_LISTING_DRAFT_KEY);
+      if (raw) sessionStorage.removeItem(GENIE_LISTING_DRAFT_KEY);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    try {
+      applyUploadDraft(JSON.parse(raw) as GenieListingDraft);
+      setActiveTab(TAB_UPLOAD);
+    } catch {
+      /* malformed draft — ignore */
+    }
+  }, [applyUploadDraft]);
 
   // Blank the free-text / media fields back to create defaults (mirrors the
   // "Upload Another" reset). Used when leaving an edit to start a fresh upload.

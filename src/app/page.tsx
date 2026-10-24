@@ -89,6 +89,13 @@ export default function HomeView() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
 
+  // "Post Property" entry points: signed-in users go straight to the dashboard
+  // upload form; guests get the sign-in gatekeeper popup (which prompts auth).
+  const handleOpenPostProperty = () => {
+    if (user) router.push('/dashboard?tab=upload');
+    else setIsPostPropertyOpen(true);
+  };
+
   // Sync city selection to filter (and remember the user's explicit choice)
   const handleSelectCity = (city: CityInfo) => {
     setSelectedCity(city);
@@ -238,7 +245,7 @@ export default function HomeView() {
         currentListingType={navListingType}
         shortlistCount={shortlistIds.length}
         onOpenShortlist={() => setIsShortlistDrawerOpen(true)}
-        onOpenPostProperty={() => setIsPostPropertyOpen(true)}
+        onOpenPostProperty={handleOpenPostProperty}
         onOpenAiValuation={() => setIsAiValuationOpen(true)}
         onOpenAiGenie={() => openGenie(null)}
         onOpenAuthModal={(mode) => {
@@ -256,7 +263,7 @@ export default function HomeView() {
         onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters }))}
         onExecuteSearch={() => handleExecuteSearch()}
         onExploreMap={handleExploreMap}
-        onOpenPostProperty={() => setIsPostPropertyOpen(true)}
+        onOpenPostProperty={handleOpenPostProperty}
       />
 
       {/* 3. EXPLORE POPULAR LOCALITIES IN [CITY] (Reference Screenshot 5 Top) */}
@@ -342,7 +349,7 @@ export default function HomeView() {
       <Footer
         onSelectCity={handleSelectCity}
         onOpenAiValuation={() => setIsAiValuationOpen(true)}
-        onOpenPostProperty={() => setIsPostPropertyOpen(true)}
+        onOpenPostProperty={handleOpenPostProperty}
       />
 
       {/* 8. FLOATING AI GENIE CHAT BUTTON */}
