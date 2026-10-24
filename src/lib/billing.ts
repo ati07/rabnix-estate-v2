@@ -1,7 +1,7 @@
 import 'server-only';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, Subscription } from '@prisma/client';
 import { CITIES_DATA } from '@/lib/realEstateData';
 
 // ---------------------------------------------------------------------------
@@ -369,4 +369,80 @@ export function verifyRazorpaySignature(params: {
   const a = Buffer.from(expected);
   const b = Buffer.from(params.signature || '');
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+export function razorpayWebhookConfigured(): boolean {
+  return Boolean(process.env.RAZORPAY_WEBHOOK_SECRET);
+}
+
+/**
+ * Verifies a Razorpay webhook. The signature is an HMAC-SHA256 of the RAW
+ * request body keyed by the webhook secret (a different secret from the API
+ * key secret — set it to match the one configured on the Razorpay webhook).
+ * The body MUST be the exact bytes received; do not re-serialize parsed JSON.
+ */
+export function verifyRazorpayWebhookSignature(rawBody: string, signature: string): boolean {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!secret || !signature) return false;
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/**
+ * Activates a paid subscription and logs it — the single source of truth shared
+ * by the client-driven verify route and the Razorpay webhook. Idempotent: if the
+ * subscription is already active (e.g. verify won the race, or the webhook fires
+ * twice) it returns success without double-activating or double-logging. Uses a
+ * conditional updateMany so concurrent callers can't both activate.
+ */
+export async function activatePaidSubscription(
+  subscriptionId: string,
+  paymentId: string | null,
+): Promise<{ ok: boolean; alreadyActive: boolean; notFound?: boolean; subscription?: Subscription }> {
+  const sub = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!sub) return { ok: false, alreadyActive: false, notFound: true };
+  if (sub.status === 'active') return { ok: true, alreadyActive: true, subscription: sub };
+
+  const pack = getPack(sub.planId);
+  if (!pack) return { ok: false, alreadyActive: false };
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + pack.durationDays * 24 * 60 * 60 * 1000);
+
+  // Only this call that flips a non-active row to active "wins" and logs; a
+  // concurrent verify/webhook sees count 0 and treats it as already active.
+  const res = await prisma.subscription.updateMany({
+    where: { id: sub.id, status: { not: 'active' } },
+    data: {
+      status: 'active',
+      activatedAt: now,
+      expiresAt,
+      razorpayPaymentId: paymentId ?? sub.razorpayPaymentId ?? null,
+    },
+  });
+
+  if (res.count === 0) {
+    const fresh = await prisma.subscription.findUnique({ where: { id: sub.id } });
+    return { ok: true, alreadyActive: true, subscription: fresh ?? sub };
+  }
+
+  const actor = await prisma.user.findUnique({
+    where: { id: sub.userId },
+    select: { name: true, role: true },
+  });
+  await prisma.activityLog.create({
+    data: {
+      action: 'plan_purchased',
+      actorName: actor?.name ?? 'Unknown',
+      actorRole: (actor?.role ?? 'user').toUpperCase(),
+      details: `Purchased ${pack.name} (${pack.listings} listings${sub.city ? ` in ${sub.city}` : ''}) for ₹${(sub.amount / 100).toLocaleString('en-IN')}.`,
+      targetId: sub.id,
+      severity: 'success',
+    },
+  });
+
+  const fresh = await prisma.subscription.findUnique({ where: { id: sub.id } });
+  return { ok: true, alreadyActive: false, subscription: fresh ?? sub };
 }

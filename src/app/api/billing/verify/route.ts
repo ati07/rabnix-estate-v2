@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { getPack, verifyRazorpaySignature, devBypassEnabled } from '@/lib/billing';
+import { getPack, verifyRazorpaySignature, devBypassEnabled, activatePaidSubscription } from '@/lib/billing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,32 +59,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + pack.durationDays * 24 * 60 * 60 * 1000);
-
-    const activated = await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: {
-        status: 'active',
-        activatedAt: now,
-        expiresAt,
-        razorpayPaymentId: body.razorpay_payment_id ?? (bypass ? 'dev_bypass' : null),
-      },
-    });
-
-    await prisma.activityLog.create({
-      data: {
-        action: 'plan_purchased',
-        actorName: user.name,
-        actorRole: user.role.toUpperCase(),
-        details: `Purchased ${pack.name} (${pack.listings} listings${activated.city ? ` in ${activated.city}` : ''}) for ₹${(activated.amount / 100).toLocaleString('en-IN')}.`,
-        targetId: activated.id,
-        severity: 'success',
-      },
-    });
+    const paymentId = body.razorpay_payment_id ?? (bypass ? 'dev_bypass' : null);
+    const result = await activatePaidSubscription(subscription.id, paymentId);
+    if (!result.ok || !result.subscription) {
+      return NextResponse.json({ success: false, error: 'Could not activate the pack.' }, { status: 500 });
+    }
+    const activated = result.subscription;
 
     return NextResponse.json({
       success: true,
+      alreadyActive: result.alreadyActive,
       subscription: {
         id: activated.id,
         planId: activated.planId,
