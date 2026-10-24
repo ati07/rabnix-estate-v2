@@ -360,6 +360,7 @@ export default function HomeView() {
       <button
         id="floating-genie-btn"
         onClick={() => openGenie(null)}
+        aria-label="Open BayBayt Genie AI assistant"
         className="fixed bottom-6 right-6 z-40 bg-[#0F2A43] hover:bg-[#163b5c] text-white p-3 sm:px-4 sm:py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 border border-[#163b5c] cursor-pointer group"
       >
         <div className="w-7 h-7 rounded-md bg-[#18A67D] flex items-center justify-center text-white shadow-sm transform rotate-45">

@@ -266,8 +266,9 @@ export function Navbar({
               onClick={onOpenShortlist}
               className="relative p-2 text-[#172033] hover:text-[#18A67D] hover:bg-[#F8FAFC] rounded-lg transition-colors border border-transparent hover:border-[#E2E8F0] cursor-pointer shrink-0"
               title="View Shortlisted Properties"
+              aria-label="View shortlisted properties"
             >
-              <Heart className="w-5 h-5" />
+              <Heart className="w-5 h-5" aria-hidden="true" />
               {shortlistCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-[#18A67D] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                   {shortlistCount}
@@ -281,6 +282,9 @@ export function Navbar({
                 <button
                   id="nav-user-profile-menu-btn"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  aria-label="Account menu"
+                  aria-expanded={isUserMenuOpen}
+                  aria-haspopup="menu"
                   className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] hover:bg-white hover:border-[#18A67D] transition-all cursor-pointer"
                 >
                   <div className="w-7 h-7 rounded-full bg-[#0F2A43] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
@@ -397,9 +401,10 @@ export function Navbar({
                 <Link
                   id="nav-signin-btn"
                   href="/auth?mode=signin"
+                  aria-label="Sign In"
                   className="flex items-center gap-1.5 text-[#0F2A43] hover:text-[#18A67D] hover:bg-[#F8FAFC] px-2.5 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all border border-[#CBD5E1] shrink-0 whitespace-nowrap"
                 >
-                  <User className="w-4 h-4 text-[#18A67D]" />
+                  <User className="w-4 h-4 text-[#18A67D]" aria-hidden="true" />
                   <span className="hidden sm:inline">Sign In</span>
                 </Link>
               </div>
@@ -410,9 +415,10 @@ export function Navbar({
             <Link
               id="nav-post-property-btn"
               href={isAuthenticated ? '/dashboard?tab=upload' : '/post-property'}
+              aria-label="Post a property for free"
               className="flex items-center gap-1.5 bg-[#18A67D] hover:bg-[#0E7C5D] text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 shrink-0 whitespace-nowrap"
             >
-              <PlusCircle className="w-4 h-4 shrink-0" />
+              <PlusCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">Post Property</span>
               <span className="hidden sm:inline-block bg-[#0E7C5D] text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wider ml-0.5 text-white shrink-0">
                 FREE
@@ -423,9 +429,11 @@ export function Navbar({
             <button
               id="nav-mobile-toggle-btn"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
               className="lg:hidden p-2 text-[#172033] hover:text-[#0F2A43] rounded-lg hover:bg-[#F1F5F9] shrink-0 cursor-pointer"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
             </button>
           </div>
         </div>
