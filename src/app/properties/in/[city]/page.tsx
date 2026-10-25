@@ -2,15 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { MapPin, ShieldCheck, BedDouble, Maximize2, ArrowRight } from 'lucide-react';
+import { MapPin, ShieldCheck, BedDouble, Maximize2, ArrowRight, Building2 } from 'lucide-react';
 import {
   getIndexableCities,
   resolveCitySlug,
   getCityProperties,
+  cityToSlug,
 } from '@/lib/cityLoader';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { propertyDescriptor, propertyImageAlt, dealPhrase } from '@/lib/seoText';
 import { resolveCityInfo } from '@/lib/realEstateData';
+import { availableTypes } from '@/lib/seoLandings';
 import {
   JsonLd,
   cityCollectionJsonLd,
@@ -118,6 +120,7 @@ export default async function CityLandingPage({ params }: Params) {
 
   const { forSale, forRent } = splitByDeal(properties);
   const localities = topLocalities(properties);
+  const types = availableTypes(properties).slice(0, 12);
   const faqs = buildFaqs(city, properties);
 
   const title = `Property for Sale & Rent in ${city}`;
@@ -195,10 +198,29 @@ export default async function CityLandingPage({ params }: Params) {
               {localities.map((loc) => (
                 <Link
                   key={loc}
-                  href={`/properties?city=${encodeURIComponent(city)}&locality=${encodeURIComponent(loc)}`}
+                  href={`/properties/in/${slug}/${cityToSlug(loc)}`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-sm text-[#334155] hover:border-[#18A67D] hover:text-[#148a67]"
                 >
                   <MapPin className="w-3.5 h-3.5 text-[#94A3B8]" /> {loc}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Browse by property type */}
+        {types.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-bold text-[#0F2A43] mb-3">Browse {city} property by type</h2>
+            <div className="flex flex-wrap gap-2">
+              {types.map((t) => (
+                <Link
+                  key={t.def.slug}
+                  href={`/properties/in/${slug}/${t.def.slug}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-sm text-[#334155] hover:border-[#18A67D] hover:text-[#148a67]"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-[#94A3B8]" /> {t.def.label}
+                  <span className="text-[#94A3B8]">({t.count})</span>
                 </Link>
               ))}
             </div>

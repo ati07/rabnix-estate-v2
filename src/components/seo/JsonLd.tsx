@@ -240,6 +240,33 @@ export function cityCollectionJsonLd(
   };
 }
 
+/** A locality or property-type landing page (/properties/in/[city]/[...filters]):
+ * a CollectionPage whose mainEntity is an ItemList of the matching listings, so
+ * engines read the page as a curated set of properties for that query. */
+export function landingCollectionJsonLd(
+  base: string,
+  args: { url: string; name: string; description: string; about?: string; properties: Property[] },
+) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    url: args.url,
+    name: args.name,
+    description: args.description,
+    ...(args.about ? { about: { '@type': 'Place', name: args.about } } : {}),
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: args.properties.length,
+      itemListElement: args.properties.slice(0, 50).map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `${base}/properties/${p.id}`,
+        name: p.title,
+      })),
+    },
+  };
+}
+
 /** FAQ structured data — an AEO lever: lets engines answer questions directly
  * with BayBayt's own copy. Pass genuine on-page Q&A only. */
 export function faqJsonLd(faqs: { question: string; answer: string }[]) {

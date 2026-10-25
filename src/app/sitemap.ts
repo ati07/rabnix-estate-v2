@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getSiteUrl } from '@/lib/siteUrl';
-import { getIndexableCities } from '@/lib/cityLoader';
+import { getIndexableCities, getCityProperties } from '@/lib/cityLoader';
+import { singleSegmentPaths } from '@/lib/seoLandings';
 
 export const runtime = 'nodejs';
 // Regenerate at most hourly so freshly approved listings surface without a
@@ -65,6 +66,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const cities = await getIndexableCities();
     for (const c of cities)
       entries.push({ url: `${base}/properties/in/${c.slug}`, lastModified: now, changeFrequency: 'daily', priority: 0.8 });
+
+    // Locality & property-type landing pages below each city (single-segment,
+    // inventory-backed only). Two-segment combos are reached via internal links.
+    for (const c of cities) {
+      try {
+        const cityProps = await getCityProperties(c.name);
+        for (const seg of singleSegmentPaths(cityProps))
+          entries.push({ url: `${base}/properties/in/${c.slug}/${seg}`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 });
+      } catch (e) {
+        console.error('sitemap landing paths error for', c.name, e);
+      }
+    }
   } catch (err) {
     // A DB hiccup must not 500 the sitemap; serve the static routes at least.
     console.error('sitemap generation error', err);
