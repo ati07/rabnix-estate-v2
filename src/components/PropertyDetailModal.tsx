@@ -8,10 +8,8 @@ import {
   X, 
   MapPin, 
   Heart, 
-  Share2, 
-  ShieldCheck, 
-  Award, 
-  Building, 
+  Share2,
+  Building,
   Compass, 
   Calendar, 
   CheckCircle2, 
@@ -30,6 +28,7 @@ import {
 import { Property, AiValuationResult } from '@/lib/types';
 import { formatIndianCurrency, formatIndianNumber } from '@/lib/formatters';
 import { OtpVerifyModal } from '@/components/OtpVerifyModal';
+import { TrustBadges } from '@/components/TrustBadges';
 
 interface PropertyDetailModalProps {
   property: Property;
@@ -219,12 +218,7 @@ export function PropertyDetailModal({
                 <span className="bg-[#F8FAFC] text-[#172033] font-semibold text-xs px-2.5 py-0.5 rounded-full border border-[#E2E8F0]">
                   {property.category}
                 </span>
-                {property.reraApproved && (
-                  <span className="bg-[#E7F6F1] text-[#0E7C5D] font-bold text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <Award className="w-3 h-3 text-[#18A67D]" />
-                    <span>RERA: {property.reraId || 'Verified'}</span>
-                  </span>
-                )}
+                <TrustBadges property={property} tone="light" />
               </div>
 
               <h1 className="text-xl sm:text-2xl font-black text-[#0F2A43] leading-snug">

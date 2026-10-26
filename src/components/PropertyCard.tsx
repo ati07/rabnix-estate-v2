@@ -4,25 +4,23 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { propertyImageAlt } from '@/lib/seoText';
-import { 
-  Heart, 
-  MapPin, 
-  Maximize2, 
-  ShieldCheck, 
-  Building2, 
-  Compass, 
-  Calendar, 
-  CheckCircle, 
-  Sparkles, 
-  ChevronLeft, 
-  ChevronRight, 
-  Phone, 
+import {
+  Heart,
+  MapPin,
+  Maximize2,
+  Building2,
+  Compass,
+  Calendar,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
   MessageSquare,
-  Award,
   Layers,
   ArrowRight
 } from 'lucide-react';
 import { Property } from '@/lib/types';
+import { TrustBadges } from '@/components/TrustBadges';
 import { formatIndianCurrency, formatIndianNumber } from '@/lib/formatters';
 
 interface PropertyCardProps {
@@ -76,25 +74,8 @@ export function PropertyCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
 
         {/* Top Badges */}
-        <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
-          {property.isExclusiveOwner && (
-            <span className="bg-[#0E7C5D] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
-              <span>OWNER DIRECT</span>
-            </span>
-          )}
-          {property.isVerified && !property.isExclusiveOwner && (
-            <span className="bg-[#0F2A43] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1 border border-white/10">
-              <ShieldCheck className="w-3 h-3 text-[#22C39A]" />
-              <span>VERIFIED ON SITE</span>
-            </span>
-          )}
-          {property.reraApproved && (
-            <span className="bg-[#0F2A43]/95 text-[#22C39A] text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-sm flex items-center gap-1 border border-white/10">
-              <Award className="w-3 h-3" />
-              <span>RERA REGISTERED</span>
-            </span>
-          )}
+        <div className="absolute top-3 left-3 z-10">
+          <TrustBadges property={property} tone="overlay" className="flex-col items-start" />
         </div>
 
         {/* Shortlist Heart Button */}

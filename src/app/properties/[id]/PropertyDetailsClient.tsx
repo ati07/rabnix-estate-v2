@@ -38,6 +38,7 @@ import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
 import { useGenie } from '@/lib/genieContext';
 import { OtpVerifyModal } from '@/components/OtpVerifyModal';
+import { TrustBadges } from '@/components/TrustBadges';
 import PropertyLocationMap from '@/components/map/PropertyLocationMap';
 import NearbyProperties from '@/components/map/NearbyProperties';
 import dynamic from 'next/dynamic';
@@ -312,17 +313,7 @@ export default function PropertyDetailsClient({ id, initialProperty }: { id: str
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E2E8F0] text-[#0F2A43]">
                 {property.category}
               </span>
-              {property.isVerified && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E7F6F1] text-[#0E7C5D] flex items-center gap-1 border border-[#18A67D]/30">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#18A67D]" />
-                  Verified RERA Listing
-                </span>
-              )}
-              {property.postedBy.type === 'Owner' && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  Owner Direct
-                </span>
-              )}
+              <TrustBadges property={property} tone="light" size="md" />
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0F2A43] tracking-tight">
