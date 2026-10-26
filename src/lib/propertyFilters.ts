@@ -118,6 +118,40 @@ export function filtersToParams(f: PropertyFilterState): URLSearchParams {
   return q;
 }
 
+/** The neutral filter state (nothing active) — matches every property. */
+export function defaultFilterState(): PropertyFilterState {
+  return {
+    city: 'All',
+    listingType: 'all',
+    commercialDealType: 'all',
+    category: 'All',
+    bhk: [],
+    minSize: MIN_SIZE_SQFT,
+    maxSize: 0,
+    minPrice: 0,
+    maxPrice: DEFAULT_MAX_PRICE,
+    verifiedOnly: false,
+    ownerOnly: false,
+    reraOnly: false,
+    furnishing: 'All',
+    constructionStatus: 'All',
+    searchQuery: '',
+    sortBy: 'recommended',
+  };
+}
+
+/** Fill a possibly-partial/persisted filter object with defaults, so a stored
+ * SavedSearch (or legacy JSON missing fields) is always safe to match against. */
+export function normalizeFilterState(partial: Partial<PropertyFilterState> | null | undefined): PropertyFilterState {
+  const base = defaultFilterState();
+  if (!partial || typeof partial !== 'object') return base;
+  return {
+    ...base,
+    ...partial,
+    bhk: Array.isArray(partial.bhk) ? partial.bhk.filter((n) => typeof n === 'number') : base.bhk,
+  };
+}
+
 /** Does a property satisfy every active filter? */
 export function matchesFilters(p: Property, f: PropertyFilterState): boolean {
   const isCommercial = f.listingType === 'commercial';

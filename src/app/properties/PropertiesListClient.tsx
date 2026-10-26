@@ -34,6 +34,8 @@ import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
 import { useGenie } from '@/lib/genieContext';
 import { ListingType, CommercialListingType } from '@/lib/types';
+import type { PropertyFilterState } from '@/lib/propertyFilters';
+import { SavedSearchesBar } from '@/components/SavedSearchesBar';
 import { CITIES_DATA } from '@/lib/realEstateData';
 
 const ALL_CATEGORIES: { label: string; value: string; icon: any }[] = [
@@ -372,6 +374,46 @@ function PropertiesCatalogContent() {
     maxPrice,
     activeSearchQuery
   ]);
+
+  // Current filter state as a PropertyFilterState, for saving as a search.
+  const currentFilters: PropertyFilterState = useMemo(() => ({
+    city: selectedCity,
+    listingType,
+    commercialDealType,
+    category: selectedCategory,
+    bhk: selectedBhk,
+    minSize,
+    maxSize,
+    minPrice,
+    maxPrice,
+    verifiedOnly,
+    ownerOnly,
+    reraOnly,
+    furnishing,
+    constructionStatus,
+    searchQuery,
+    sortBy,
+  }), [selectedCity, listingType, commercialDealType, selectedCategory, selectedBhk, minSize, maxSize, minPrice, maxPrice, verifiedOnly, ownerOnly, reraOnly, furnishing, constructionStatus, searchQuery, sortBy]);
+
+  // Apply a saved search back onto the live filter controls.
+  const applyFilters = (f: PropertyFilterState) => {
+    setSelectedCity(f.city);
+    setListingType(f.listingType);
+    setCommercialDealType(f.commercialDealType);
+    setSelectedCategory(f.category);
+    setSelectedBhk(f.bhk);
+    setMinSize(f.minSize);
+    setMaxSize(f.maxSize);
+    setMinPrice(f.minPrice);
+    setMaxPrice(f.maxPrice);
+    setVerifiedOnly(f.verifiedOnly);
+    setOwnerOnly(f.ownerOnly);
+    setReraOnly(f.reraOnly);
+    setFurnishing(f.furnishing);
+    setConstructionStatus(f.constructionStatus);
+    setSearchQuery(f.searchQuery);
+    setSortBy(f.sortBy);
+  };
 
   // Sidebar Filter Form Component
   const FilterSidebarContent = (
@@ -839,6 +881,13 @@ function PropertiesCatalogContent() {
               </Link>
 
             </div>
+
+            {/* Saved searches (save current filters, reapply, new-match badges, alerts) */}
+            <SavedSearchesBar
+              currentFilters={currentFilters}
+              activeFilterCount={activeFiltersCount}
+              onApply={applyFilters}
+            />
 
             {/* Active Filter Badges */}
             {activeFiltersCount > 0 && (

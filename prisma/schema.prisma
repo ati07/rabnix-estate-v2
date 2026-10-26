@@ -55,9 +55,51 @@ model User {
   inquiriesSent     Inquiry[]         @relation("BuyerInquiries")
   inquiriesRecv     Inquiry[]         @relation("SellerInquiries")
   subscriptions     Subscription[]
+  shortlists        Shortlist[]
+  savedSearches     SavedSearch[]
 
   @@index([role])
   @@index([isPreferredAgent])
+}
+
+// A buyer's saved/shortlisted property. One row per (user, property). Replaces
+// the old localStorage-only shortlist so it survives device/browser switches.
+// The guest's local shortlist is merged into this table on first login.
+model Shortlist {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
+}
+
+// A buyer's saved search: a stored snapshot of the /properties filter state
+// (serialized PropertyFilterState) plus a human label. Powers "new listing"
+// email alerts — the cron matches freshly approved listings against `filters`
+// and emails a digest, advancing `lastNotifiedAt`. `lastCheckedAt` tracks how
+// far the matcher has scanned so each new listing is considered exactly once.
+model SavedSearch {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  // Serialized PropertyFilterState (see src/lib/propertyFilters.ts).
+  filters       Json
+  // Whether to send new-listing email alerts for this search.
+  alertsEnabled Boolean  @default(true)
+  // Watermark: listings created at/after this instant haven't been matched yet.
+  lastCheckedAt DateTime @default(now())
+  // When we last emailed this user about this search (for digest cadence).
+  lastNotifiedAt DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([alertsEnabled])
 }
 
 // A purchased listing pack. Each row is one Razorpay payment granting
@@ -186,8 +228,9 @@ model Property {
   postedByUserId String?
   postedByUser   User?   @relation("PostedProperties", fields: [postedByUserId], references: [id], onDelete: SetNull)
 
-  inquiries Inquiry[]
-  views     PropertyView[]
+  inquiries  Inquiry[]
+  views      PropertyView[]
+  shortlists Shortlist[]
 
   @@index([city])
   @@index([state])

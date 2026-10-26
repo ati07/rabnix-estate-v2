@@ -99,15 +99,68 @@ export function PropertyProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [user]);
 
-  // --- Shortlist (client-side for now) ---
-  const persistShortlist = (next: string[]) => {
-    setShortlistIds(next);
+  // --- Shortlist ---
+  // Guests keep their shortlist in localStorage; signed-in users persist to the
+  // DB (/api/shortlist) so it follows them across devices. On login we merge the
+  // guest's local set into the server, then clear local and trust the server.
+  const writeLocal = (next: string[]) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(SHORTLIST_STORAGE_KEY, JSON.stringify(next));
     }
   };
+  const clearLocal = () => {
+    if (typeof window !== 'undefined') localStorage.removeItem(SHORTLIST_STORAGE_KEY);
+  };
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      // Logged out: drop any server-loaded list, fall back to the guest's local set.
+      let local: string[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          local = JSON.parse(localStorage.getItem(SHORTLIST_STORAGE_KEY) || '[]');
+        } catch {
+          local = [];
+        }
+      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShortlistIds(local);
+      return () => { active = false; };
+    }
+    (async () => {
+      // Merge any guest shortlist accumulated before login, else just load.
+      let local: string[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          local = JSON.parse(localStorage.getItem(SHORTLIST_STORAGE_KEY) || '[]');
+        } catch {
+          local = [];
+        }
+      }
+      const req = local.length
+        ? api('/api/shortlist', { method: 'POST', body: JSON.stringify({ propertyIds: local }) })
+        : api('/api/shortlist');
+      const { ok, data } = await req;
+      if (!active) return;
+      if (ok && Array.isArray(data?.propertyIds)) {
+        setShortlistIds(data.propertyIds);
+        if (local.length) clearLocal();
+      }
+    })();
+    return () => { active = false; };
+  }, [user]);
+
   const toggleShortlist = (id: string) => {
-    persistShortlist(shortlistIds.includes(id) ? shortlistIds.filter((x) => x !== id) : [...shortlistIds, id]);
+    const has = shortlistIds.includes(id);
+    const next = has ? shortlistIds.filter((x) => x !== id) : [...shortlistIds, id];
+    setShortlistIds(next); // optimistic for both guests and signed-in users
+    if (user) {
+      if (has) api(`/api/shortlist?propertyId=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      else api('/api/shortlist', { method: 'POST', body: JSON.stringify({ propertyId: id }) });
+    } else {
+      writeLocal(next);
+    }
   };
   const isShortlisted = (id: string) => shortlistIds.includes(id);
 
