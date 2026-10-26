@@ -644,6 +644,26 @@ export default function UserDashboardPage() {
     return () => { cancelled = true; };
   }, [graphTimeframe, user?.id]);
 
+  // Real per-listing engagement (views / unique visitors / leads / contact
+  // reveals) from the source tables, keyed by property id. The cards fall back
+  // to the denormalized counters until this resolves. Refetched after a new
+  // upload (myPostedProperties.length changes).
+  type ListingStat = { views: number; uniqueVisitors: number; leads: number; reveals: number };
+  const [listingStats, setListingStats] = useState<Record<string, ListingStat>>({});
+  const [listingTotals, setListingTotals] = useState<ListingStat | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/analytics/listings', { credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.success) return;
+        setListingStats(d.stats || {});
+        setListingTotals(d.totals || null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.id, myPostedProperties.length]);
+
   const propertyLeadsData = useMemo(() => {
     if (myPostedProperties.length === 0) {
       return [
@@ -652,12 +672,15 @@ export default function UserDashboardPage() {
         { name: 'Golf Course Villa', views: 220, leads: 31 }
       ];
     }
-    return myPostedProperties.slice(0, 5).map((p) => ({
-      name: p.title.length > 18 ? p.title.substring(0, 18) + '...' : p.title,
-      views: p.viewsCount ?? 0,
-      leads: p.inquiriesCount ?? 0
-    }));
-  }, [myPostedProperties]);
+    return myPostedProperties.slice(0, 5).map((p) => {
+      const st = listingStats[p.id];
+      return {
+        name: p.title.length > 18 ? p.title.substring(0, 18) + '...' : p.title,
+        views: st?.views ?? p.viewsCount ?? 0,
+        leads: st?.leads ?? p.inquiriesCount ?? 0
+      };
+    });
+  }, [myPostedProperties, listingStats]);
 
   const categoryDistributionData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -2382,6 +2405,30 @@ export default function UserDashboardPage() {
                   </button>
                 </div>
 
+                {/* Aggregate engagement across all listings (real data). */}
+                {listingTotals && myPostedProperties.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
+                        <Eye className="w-3.5 h-3.5 text-[#18A67D]" /> Views
+                      </div>
+                      <div className="text-lg font-extrabold text-[#0F2A43] mt-0.5">{listingTotals.views}</div>
+                    </div>
+                    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
+                        <Unlock className="w-3.5 h-3.5 text-[#18A67D]" /> Reveals
+                      </div>
+                      <div className="text-lg font-extrabold text-[#0F2A43] mt-0.5">{listingTotals.reveals}</div>
+                    </div>
+                    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
+                        <MessageSquare className="w-3.5 h-3.5 text-[#18A67D]" /> Leads
+                      </div>
+                      <div className="text-lg font-extrabold text-[#0F2A43] mt-0.5">{listingTotals.leads}</div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Filter & Search Bar */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <div className="relative flex-1">
@@ -2507,17 +2554,29 @@ export default function UserDashboardPage() {
                               <div><strong>{p.furnishing}</strong></div>
                             </div>
 
-                            {/* Views and Leads counter bar */}
-                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E2E8F0] text-xs">
-                              <div className="flex items-center gap-1.5 text-[#0F2A43] font-bold">
-                                <Eye className="w-4 h-4 text-[#18A67D]" />
-                                <span>{p.viewsCount ?? 0} Views</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-[#0E7C5D] font-bold">
-                                <MessageSquare className="w-4 h-4 text-[#18A67D]" />
-                                <span>{p.inquiriesCount ?? 0} Inquiries</span>
-                              </div>
-                            </div>
+                            {/* Real engagement counters (views / contact reveals / leads). */}
+                            {(() => {
+                              const st = listingStats[p.id];
+                              const views = st?.views ?? p.viewsCount ?? 0;
+                              const reveals = st?.reveals ?? 0;
+                              const leads = st?.leads ?? p.inquiriesCount ?? 0;
+                              return (
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#E2E8F0] text-xs">
+                                  <div className="flex items-center gap-1.5 text-[#0F2A43] font-bold" title="Listing detail-page views">
+                                    <Eye className="w-4 h-4 text-[#18A67D]" />
+                                    <span>{views} Views</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-[#0F2A43] font-bold" title="Times your contact number was revealed to a verified buyer">
+                                    <Unlock className="w-4 h-4 text-[#18A67D]" />
+                                    <span>{reveals} Reveals</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-[#0E7C5D] font-bold" title="Direct buyer inquiries received">
+                                    <MessageSquare className="w-4 h-4 text-[#18A67D]" />
+                                    <span>{leads} Leads</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
 
