@@ -696,14 +696,40 @@ export default function UserDashboardPage() {
 
   const PIE_COLORS = ['#18A67D', '#0F2A43', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'];
 
+  // Real benchmark: the owner's average asking ₹/sq.ft. in each locality they
+  // list in, vs. the market average ₹/sq.ft. for the same locality across all
+  // known sale listings. Only localities where the owner actually has a
+  // sale listing with a rate — and where we have a market figure to compare —
+  // are shown; no synthetic rows.
   const priceBenchmarkData = useMemo(() => {
-    return [
-      { locality: 'Whitefield', myRate: 7800, marketAvg: 7200 },
-      { locality: 'Indiranagar', myRate: 14500, marketAvg: 13800 },
-      { locality: 'Bandra West', myRate: 48000, marketAvg: 46500 },
-      { locality: 'Golf Course Rd', myRate: 19200, marketAvg: 18500 }
-    ];
-  }, []);
+    const isSale = (lt: string) => lt !== 'rent' && lt !== 'pg';
+    const avgByLocality = (list: Property[]) => {
+      const agg: Record<string, { sum: number; n: number }> = {};
+      for (const p of list) {
+        const rate = p.pricePerSqFt;
+        if (!rate || rate <= 0 || !isSale(p.listingType)) continue;
+        const key = p.locality?.trim();
+        if (!key) continue;
+        (agg[key] ??= { sum: 0, n: 0 });
+        agg[key].sum += rate;
+        agg[key].n += 1;
+      }
+      return agg;
+    };
+
+    const market = avgByLocality(properties);
+    const mine = avgByLocality(myPostedProperties);
+
+    return Object.keys(mine)
+      .map((loc) => ({
+        locality: loc,
+        myRate: Math.round(mine[loc].sum / mine[loc].n),
+        marketAvg: market[loc] ? Math.round(market[loc].sum / market[loc].n) : 0,
+      }))
+      .filter((d) => d.marketAvg > 0)
+      .sort((a, b) => b.marketAvg - a.marketAvg)
+      .slice(0, 8);
+  }, [myPostedProperties, properties]);
 
   // Admin Memoized Lists & Computations
   const adminPendingProperties = useMemo(() => {
@@ -765,16 +791,30 @@ export default function UserDashboardPage() {
     });
   }, [activityLogs, adminActivityCategoryFilter, adminActivitySearch]);
 
+  // Real last-7-days platform throughput, bucketed by calendar day from the
+  // source timestamps: new listings (Property.createdAt), verifications and
+  // user blocks (ActivityLog), and buyer inquiries (Inquiry.createdAt).
   const adminActivityTrendData = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days.map((d, i) => ({
-      date: d,
-      newUploads: 4 + (i * 3) % 7 + Math.floor(properties.length / 4),
-      verifiedCount: 3 + (i * 2) % 5 + Math.floor(properties.filter(p => p.verificationStatus === 'approved').length / 5),
-      inquiriesCount: 8 + (i * 5) % 12 + Math.floor(inquiries.length / 2),
-      blockedAttempts: i === 3 ? 2 : i === 6 ? 1 : 0
+    const dayKey = (iso?: string) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+    };
+    const now = new Date();
+    const buckets = Array.from({ length: 7 }, (_, idx) => {
+      const d = new Date(now);
+      d.setDate(now.getDate() - (6 - idx));
+      return { date: d.toLocaleDateString('en-US', { weekday: 'short' }), key: d.toISOString().slice(0, 10) };
+    });
+
+    return buckets.map((b) => ({
+      date: b.date,
+      newUploads: properties.filter((p) => dayKey(p.createdAt) === b.key).length,
+      verifiedCount: (activityLogs || []).filter((l) => l.action === 'property_verified' && dayKey(l.timestamp) === b.key).length,
+      inquiriesCount: (inquiries || []).filter((i) => dayKey(i.createdAt) === b.key).length,
+      blockedAttempts: (activityLogs || []).filter((l) => l.action === 'user_blocked' && dayKey(l.timestamp) === b.key).length,
     }));
-  }, [properties, inquiries]);
+  }, [properties, inquiries, activityLogs]);
 
   const adminUserRoleDistribution = useMemo(() => {
     const counts: Record<string, number> = { owner: 0, agent: 0, builder: 0, buyer: 0, admin: 0 };
@@ -2842,11 +2882,17 @@ export default function UserDashboardPage() {
                     <p className="text-[11px] text-[#64748B]">Assessing whether listings are priced competitively for fast conversion</p>
                   </div>
                   <span className="text-xs font-bold text-[#0F2A43] bg-slate-100 px-3 py-1 rounded-full">
-                    AI Market Grounding
+                    Live listing benchmark
                   </span>
                 </div>
 
-                <PriceBenchmarkBarChart data={priceBenchmarkData} />
+                {priceBenchmarkData.length > 0 ? (
+                  <PriceBenchmarkBarChart data={priceBenchmarkData} />
+                ) : (
+                  <p className="text-xs text-[#64748B] py-8 text-center">
+                    Add a sale listing with a per-sq.ft. rate to benchmark it against the locality market average.
+                  </p>
+                )}
               </div>
 
             </div>
