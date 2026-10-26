@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/listing-alerts",
-      "schedule": "0 */6 * * *"
+      "schedule": "30 3 * * *"
     }
   ]
 }
