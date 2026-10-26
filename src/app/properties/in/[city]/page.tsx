@@ -12,7 +12,7 @@ import {
 import { getSiteUrl } from '@/lib/siteUrl';
 import { propertyDescriptor, propertyImageAlt, dealPhrase } from '@/lib/seoText';
 import { resolveCityInfo } from '@/lib/realEstateData';
-import { availableTypes } from '@/lib/seoLandings';
+import { availableTypes, isIndexableLanding } from '@/lib/seoLandings';
 import {
   JsonLd,
   cityCollectionJsonLd,
@@ -93,17 +93,22 @@ function buildFaqs(city: string, properties: Property[]) {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { city: slug } = await params;
-  const city = await resolveCitySlug(slug);
-  if (!city) return { title: 'City not found', robots: { index: false, follow: true } };
+  const cities = await getIndexableCities();
+  const match = cities.find((c) => c.slug === slug);
+  if (!match) return { title: 'City not found', robots: { index: false, follow: true } };
+  const city = match.name;
 
   const title = `Property for Sale & Rent in ${city}`;
   const description = `Browse verified, owner-direct properties for sale and rent in ${city} on BayBayt — flats, villas, plots and commercial spaces with zero brokerage.`;
   const canonical = `/properties/in/${slug}`;
+  // Keep a near-empty city page out of the index until it has real depth.
+  const index = isIndexableLanding(match.count);
 
   return {
     title,
     description,
     alternates: { canonical },
+    robots: { index, follow: true },
     openGraph: { title, description, type: 'website', url: canonical },
     twitter: { card: 'summary_large_image', title, description },
   };

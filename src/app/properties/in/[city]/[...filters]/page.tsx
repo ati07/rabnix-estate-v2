@@ -13,6 +13,7 @@ import {
   availableLocalities,
   availableTypes,
   singleSegmentPaths,
+  isIndexableLanding,
   type Resolved,
 } from '@/lib/seoLandings';
 import { getSiteUrl } from '@/lib/siteUrl';
@@ -115,11 +116,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = headline(resolved, city);
   const description = describe(resolved, city);
   const canonical = canonicalPath(slug, filters);
+  // Thin pages stay crawlable (follow) but out of the index until they have
+  // enough real inventory to be worth ranking.
+  const index = isIndexableLanding(resolved.properties.length);
 
   return {
     title,
     description,
     alternates: { canonical },
+    robots: { index, follow: true },
     openGraph: { title, description, type: 'website', url: canonical },
     twitter: { card: 'summary_large_image', title, description },
   };

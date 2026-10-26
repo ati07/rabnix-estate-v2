@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { getIndexableCities, getCityProperties } from '@/lib/cityLoader';
-import { singleSegmentPaths } from '@/lib/seoLandings';
+import { indexableSingleSegmentPaths, isIndexableLanding } from '@/lib/seoLandings';
 
 export const runtime = 'nodejs';
 // Regenerate at most hourly so freshly approved listings surface without a
@@ -62,17 +62,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const a of agents)
       entries.push({ url: `${base}/agents/${a.id}`, lastModified: a.createdAt, changeFrequency: 'monthly', priority: 0.6 });
 
-    // City landing pages — one per city with approved inventory.
+    // City landing pages — one per city, but only those with enough inventory
+    // to be indexable (thin city pages are noindex, so we omit them here).
     const cities = await getIndexableCities();
     for (const c of cities)
-      entries.push({ url: `${base}/properties/in/${c.slug}`, lastModified: now, changeFrequency: 'daily', priority: 0.8 });
+      if (isIndexableLanding(c.count))
+        entries.push({ url: `${base}/properties/in/${c.slug}`, lastModified: now, changeFrequency: 'daily', priority: 0.8 });
 
-    // Locality & property-type landing pages below each city (single-segment,
-    // inventory-backed only). Two-segment combos are reached via internal links.
+    // Locality & property-type landing pages below each city — only the
+    // single-segment paths that clear the indexable threshold. Thin pages and
+    // two-segment combos are reached via internal links, never advertised here.
     for (const c of cities) {
       try {
         const cityProps = await getCityProperties(c.name);
-        for (const seg of singleSegmentPaths(cityProps))
+        for (const seg of indexableSingleSegmentPaths(cityProps))
           entries.push({ url: `${base}/properties/in/${c.slug}/${seg}`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 });
       } catch (e) {
         console.error('sitemap landing paths error for', c.name, e);

@@ -16,6 +16,22 @@ import { cityToSlug } from '@/lib/cityLoader';
 /** A property-type token: a canonical URL slug + a human label + a predicate
  * over the real listing set. One slug per concept (no synonyms) to keep each
  * landing page a unique, non-duplicate target. */
+/**
+ * Minimum matching listings before a programmatic landing page is worth
+ * indexing. Below this a page is "thin": it exists to catch a long-tail query
+ * but offers the searcher almost nothing, and a crop of such near-empty,
+ * near-duplicate pages can drag down the whole domain's quality signals and
+ * waste crawl budget. So we still render thin pages (crawlable, reachable, with
+ * their internal links intact) but mark them `noindex` until inventory grows
+ * past this line — at which point they become indexable automatically.
+ */
+export const MIN_INDEXABLE_LISTINGS = 3;
+
+/** Whether a landing with this many matching listings is substantive enough to index. */
+export function isIndexableLanding(count: number): boolean {
+  return count >= MIN_INDEXABLE_LISTINGS;
+}
+
 export type PropertyTypeDef = {
   slug: string;
   /** Used in <h1> and <title>, e.g. "2 BHK Flats". */
@@ -163,5 +179,18 @@ export function singleSegmentPaths(properties: Property[]): string[] {
   const paths: string[] = [];
   for (const l of availableLocalities(properties)) paths.push(l.slug);
   for (const t of availableTypes(properties)) paths.push(t.def.slug);
+  return paths;
+}
+
+/**
+ * Single-segment landing paths that clear the indexable threshold — the subset
+ * of singleSegmentPaths safe to advertise in the sitemap. Thin pages are still
+ * rendered (and prerendered) but kept out of the sitemap, since we shouldn't
+ * invite Google to crawl URLs we're telling it not to index.
+ */
+export function indexableSingleSegmentPaths(properties: Property[]): string[] {
+  const paths: string[] = [];
+  for (const l of availableLocalities(properties)) if (isIndexableLanding(l.count)) paths.push(l.slug);
+  for (const t of availableTypes(properties)) if (isIndexableLanding(t.count)) paths.push(t.def.slug);
   return paths;
 }
