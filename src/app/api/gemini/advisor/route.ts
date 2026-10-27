@@ -15,6 +15,17 @@ import { marketInsightsDeclaration, runMarketInsights, type MarketInsightsArgs }
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+// Optional comma-separated fallbacks tried (in order) when the primary model is
+// overloaded or out of quota, e.g.
+// GEMINI_FALLBACK_MODELS="gemini-3.5-flash-lite,gemini-3.8-flash".
+const GEMINI_FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || '')
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
+// Hard cap on each Gemini HTTP call so an overloaded model can't hang the request.
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 15000);
+
 let genAIInstance: GoogleGenAI | null = null;
 
 function getGenAI() {
@@ -23,6 +34,7 @@ function getGenAI() {
     genAIInstance = new GoogleGenAI({
       apiKey,
       httpOptions: {
+        timeout: GEMINI_TIMEOUT_MS,
         headers: {
           'User-Agent': 'aistudio-build',
         },
@@ -30,6 +42,71 @@ function getGenAI() {
     });
   }
   return genAIInstance;
+}
+
+// Classify a Gemini failure to decide how the fallback chain should react:
+//  'retry' — transient server overload/timeout; retry the SAME model after backoff.
+//  'next'  — quota/rate-limit exhausted or model unavailable; skip to the NEXT model now
+//            (retrying the same model would just fail again / burn time).
+//  'fatal' — our fault (bad key, malformed request); stop and surface it.
+function classifyGeminiError(err: any): 'retry' | 'next' | 'fatal' {
+  const code = Number(err?.status ?? err?.code);
+  const msg = (err?.message || '').toString();
+  if (code === 429 || /RESOURCE_EXHAUSTED|quota|rate limit/i.test(msg)) return 'next';
+  if (code === 404 || /not found|not available|no longer available/i.test(msg)) return 'next';
+  if (
+    code === 503 ||
+    code === 500 ||
+    code === 504 ||
+    err?.name === 'AbortError' ||
+    /UNAVAILABLE|high demand|overloaded|deadline|timeout/i.test(msg)
+  ) {
+    return 'retry';
+  }
+  return 'fatal';
+}
+
+// Whether the final failure is worth telling the user "busy, try again" (overload
+// or quota) rather than a generic error.
+function isOverloadedOrQuota(err: any): boolean {
+  const code = Number(err?.status ?? err?.code);
+  const msg = (err?.message || '').toString();
+  return (
+    code === 503 || code === 500 || code === 504 || code === 429 ||
+    err?.name === 'AbortError' ||
+    /UNAVAILABLE|high demand|overloaded|deadline|timeout|RESOURCE_EXHAUSTED|quota|rate limit/i.test(msg)
+  );
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Call Gemini across the model chain (primary + fallbacks). Each model gets a
+// short retry on transient overload; quota/unavailable jumps straight to the
+// next model; our-fault errors throw immediately.
+async function generateWithRetry(
+  ai: GoogleGenAI,
+  params: Omit<Parameters<GoogleGenAI['models']['generateContent']>[0], 'model'>,
+  retriesPerModel = 1,
+) {
+  const models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS.filter((m) => m !== GEMINI_MODEL)];
+  let lastErr: any;
+  for (const model of models) {
+    for (let attempt = 0; attempt <= retriesPerModel; attempt++) {
+      try {
+        return await ai.models.generateContent({ ...params, model });
+      } catch (err) {
+        lastErr = err;
+        const action = classifyGeminiError(err);
+        if (action === 'fatal') throw err;
+        if (action === 'next') break; // quota/unavailable — move to the next model now
+        if (attempt < retriesPerModel) {
+          await sleep(600 * 2 ** attempt); // transient overload — brief backoff, same model
+        }
+      }
+    }
+    // this model is exhausted — fall through to the next model in the chain, if any
+  }
+  throw lastErr;
 }
 
 export async function POST(req: NextRequest) {
@@ -54,8 +131,7 @@ Evaluate fair market pricing, rental yields, and investment forecast for the fol
 
 Provide accurate, realistic Indian real estate valuation metrics with INR figures, yield percentages, market drivers, pros and cons.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+      const response = await generateWithRetry(ai, {
         contents: prompt,
         config: {
           systemInstruction: 'You are BayBayt AI Property Valuation Engine. Return accurate, data-backed Indian real estate analytics in structured JSON.',
@@ -130,8 +206,7 @@ Provide accurate, realistic Indian real estate valuation metrics with INR figure
         return NextResponse.json({ success: false, error: 'Please describe your property first.' }, { status: 400 });
       }
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+      const response = await generateWithRetry(ai, {
         contents: `Extract structured BayBayt listing fields from this property owner's description. ` +
           `Only fill a field if the text clearly states or strongly implies it; OMIT anything not mentioned. ` +
           `Do NOT invent a price, area, RERA number, locality or city. Prices are absolute INR ` +
@@ -173,8 +248,7 @@ Provide accurate, realistic Indian real estate valuation metrics with INR figure
     // amenities, prices or RERA numbers, and never a phone number.
     if (action === 'listing_copy') {
       const specs = payload?.specs || {};
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+      const response = await generateWithRetry(ai, {
         contents: `Write a listing TITLE and DESCRIPTION for this BayBayt property. Be specific and ` +
           `factual to the details provided; do NOT invent amenities, prices, RERA numbers or a phone ` +
           `number.\n\nDetails (JSON):\n${JSON.stringify(specs)}`,
@@ -265,8 +339,7 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
       let reply = '';
 
       for (let turn = 0; turn < 4; turn++) {
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.7-flash',
+        const response = await generateWithRetry(ai, {
           contents,
           config: { systemInstruction, tools },
         });
@@ -352,6 +425,18 @@ Tone: Professional, friendly, highly knowledgeable about Indian cities & real es
     return NextResponse.json({ success: false, error: 'Invalid action specified' }, { status: 400 });
   } catch (error: any) {
     console.error('Error in BayBayt AI route:', error);
+    // Surface overload/timeout as a retryable 503 with a friendly message so the
+    // UI can say "busy, try again" rather than showing a generic failure.
+    if (isOverloadedOrQuota(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Genie is handling a lot of requests right now. Please try again in a moment.',
+          retryable: true,
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       {
         success: false,

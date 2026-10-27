@@ -50,11 +50,14 @@ export async function POST(req: Request) {
     // If GEMINI_API_KEY is available, enhance with Google GenAI
     if (process.env.GEMINI_API_KEY) {
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const ai = new GoogleGenAI({
+          apiKey: process.env.GEMINI_API_KEY,
+          httpOptions: { timeout: Number(process.env.GEMINI_TIMEOUT_MS || 15000) },
+        });
         const prompt = `As an expert real estate AI valuation analyst in India, write a concise 2-sentence market appraisal commentary for a ${body.bedrooms || 'Commercial'} BHK ${body.propertyType} with ${body.carpetArea} sq.ft carpet area located in ${body.locality}, ${body.city}. Current estimated price is ${formatPrice(minValuation)} to ${formatPrice(maxValuation)}. Mention buyer demand and upcoming infrastructure catalysts. Keep it under 40 words.`;
         
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
           contents: prompt,
         });
 

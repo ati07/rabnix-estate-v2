@@ -146,7 +146,7 @@ export function AiGenieChatDrawer({
           ...prev,
           {
             sender: 'bot',
-            text: 'I apologize, I encountered a temporary issue while fetching market insights. Please try again.',
+            text: data.error || 'I apologize, I encountered a temporary issue. Please try again.',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ]);
