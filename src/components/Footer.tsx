@@ -32,8 +32,8 @@ export function Footer(_props: FooterProps) {
             <div className="pt-2 text-slate-400 space-y-1 text-xs">
               <div>
                 Phone:{' '}
-                <a href="tel:+917991549436" className="hover:text-white transition-colors">
-                  +91 79915 49436
+                <a href="tel:+919919613999" className="hover:text-white transition-colors">
+                  +91 99196 13999
                 </a>
               </div>
               <div>
