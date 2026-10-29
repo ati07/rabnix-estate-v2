@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeInquiry } from '@/lib/serialize';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,7 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: true, inquiries: [] });
 
-  const where = user.role === 'admin'
+  const where = isAdminRole(user.role)
     ? {}
     : { OR: [{ sellerUserId: user.id }, { buyerUserId: user.id }] };
 

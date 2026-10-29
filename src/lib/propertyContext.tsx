@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Property, PropertyInquiry, VerificationStatus } from '@/lib/types';
 import { useAuth } from '@/lib/authContext';
+import { isAdminRole } from '@/lib/roles';
 
 interface PropertyContextType {
   properties: Property[];
@@ -63,7 +64,7 @@ export function PropertyProvider({ children }: { children: React.ReactNode }) {
 
   // Load properties (admins get everything; others get approved + their own).
   const loadProperties = useCallback(async () => {
-    const scope = user?.role === 'admin' ? 'all' : 'public';
+    const scope = isAdminRole(user?.role) ? 'all' : 'public';
     const { ok, data } = await api(`/api/properties?scope=${scope}`);
     if (ok && data?.properties) setProperties(data.properties);
   }, [user?.role]);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, getContactVerifiedPhone } from '@/lib/auth';
+import { isAdminRole } from '@/lib/roles';
 import type { Property } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -28,7 +29,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ success: false, error: 'Property not found' }, { status: 404 });
     }
 
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = isAdminRole(user?.role);
     const isOwner = !!user && property.postedByUserId === user.id;
     const isPublic = property.verificationStatus === 'approved';
 

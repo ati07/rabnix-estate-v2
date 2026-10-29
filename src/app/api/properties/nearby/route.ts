@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty } from '@/lib/serialize';
 import { haversineMeters, normalizeCoordinates, type LatLngLiteral } from '@/lib/maps/config';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const user = await getCurrentUser();
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = isAdminRole(user?.role);
 
     const where: Record<string, unknown> = {
       latitude: { gte: center.lat - latDelta, lte: center.lat + latDelta },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { getPack, resolvePrice, createRazorpayOrder, devBypassEnabled, razorpayConfigured, billingKeyForCity } from '@/lib/billing';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ success: false, error: 'Please sign in to buy a plan.' }, { status: 401 });
     }
-    if (user.role === 'admin') {
+    if (isAdminRole(user.role)) {
       return NextResponse.json(
         { success: false, error: 'Admins have unlimited listings and do not need a plan.' },
         { status: 400 },

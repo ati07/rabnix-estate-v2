@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty } from '@/lib/serialize';
 import { coordinateColumns } from '@/lib/maps/config';
+import { isAdminRole } from '@/lib/roles';
 import type { Property, VerificationStatus } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -16,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (p) {
       // Withhold the phone from the public detail payload; only the owner or an
       // admin receive it inline. Everyone else reveals it via the gated endpoint.
-      const includeContact = !!user && (user.role === 'admin' || p.postedByUserId === user.id);
+      const includeContact = !!user && (isAdminRole(user.role) || p.postedByUserId === user.id);
       return NextResponse.json({ success: true, property: serializeProperty(p, includeContact) });
     }
   } catch (err: any) {
@@ -39,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!existing) return NextResponse.json({ success: false, error: 'Property not found' }, { status: 404 });
 
     const isOwner = existing.postedByUserId === user.id;
-    const isAdmin = user.role === 'admin';
+    const isAdmin = isAdminRole(user.role);
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ success: false, error: 'Not allowed' }, { status: 403 });
     }
@@ -159,7 +160,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const existing = await prisma.property.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ success: false, error: 'Property not found' }, { status: 404 });
 
-    if (existing.postedByUserId !== user.id && user.role !== 'admin') {
+    if (existing.postedByUserId !== user.id && !isAdminRole(user.role)) {
       return NextResponse.json({ success: false, error: 'Not allowed' }, { status: 403 });
     }
 

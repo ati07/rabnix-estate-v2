@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import type { Prisma, Subscription } from '@prisma/client';
 import { CITIES_DATA } from '@/lib/realEstateData';
+import { isAdminRole } from '@/lib/roles';
 
 // ---------------------------------------------------------------------------
 // Listing packs & city-based pricing
@@ -15,6 +16,15 @@ import { CITIES_DATA } from '@/lib/realEstateData';
 
 // Free listings every new account gets before a paid pack is required.
 export const FREE_LISTINGS = 1;
+
+// Marks a Subscription row that was granted by a superadmin rather than paid for
+// via Razorpay. It behaves exactly like a paid pack in the entitlement maths
+// (active, city-scoped, stacks, consumed on posting) but carries amount 0 and a
+// friendly label. Kept out of the PackId union because it is not a sellable SKU.
+export const ADMIN_GRANT_PLAN_ID = 'admin_grant';
+
+// Default validity of a superadmin listing grant (days from activation).
+export const ADMIN_GRANT_DURATION_DAYS = 365;
 
 export type PackId =
   | 'silver_100'
@@ -187,7 +197,7 @@ export interface Entitlement {
  * post in. Active packs stack per city.
  */
 export async function getEntitlement(userId: string, role: string): Promise<Entitlement> {
-  const isAdmin = role === 'admin';
+  const isAdmin = isAdminRole(role);
   if (isAdmin) {
     return {
       isAdmin: true,
@@ -216,7 +226,9 @@ export async function getEntitlement(userId: string, role: string): Promise<Enti
   const activePacks: ActivePack[] = packs.map((p) => ({
     id: p.id,
     packId: p.planId,
-    packName: getPack(p.planId)?.name ?? p.planId,
+    packName: p.planId === ADMIN_GRANT_PLAN_ID
+      ? 'Complimentary listings (admin grant)'
+      : getPack(p.planId)?.name ?? p.planId,
     city: p.city ?? null,
     listingsQuota: p.listingsQuota,
     listingsUsed: p.listingsUsed,
@@ -445,4 +457,44 @@ export async function activatePaidSubscription(
 
   const fresh = await prisma.subscription.findUnique({ where: { id: sub.id } });
   return { ok: true, alreadyActive: false, subscription: fresh ?? sub };
+}
+
+// ---------------------------------------------------------------------------
+// Superadmin listing grants
+// ---------------------------------------------------------------------------
+
+/**
+ * Grants a user extra listing quota for a city, with no payment. Creates an
+ * already-active `admin_grant` Subscription so it flows through the exact same
+ * entitlement + consumption path as a paid pack (city-scoped, stacking). The
+ * city is normalised through billingKeyForCity so a grant lines up with how
+ * that city's listings are gated (sheet-named cities keep their name; all
+ * others collapse to the "Other" bucket). Superadmin-only — the caller must
+ * enforce authorisation.
+ */
+export async function grantListingsToUser(params: {
+  userId: string;
+  city: string;
+  listings: number;
+  durationDays?: number;
+}): Promise<Subscription> {
+  const city = billingKeyForCity(params.city);
+  const now = new Date();
+  const durationDays = params.durationDays ?? ADMIN_GRANT_DURATION_DAYS;
+  const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+  return prisma.subscription.create({
+    data: {
+      userId: params.userId,
+      planId: ADMIN_GRANT_PLAN_ID,
+      city,
+      listingsQuota: params.listings,
+      listingsUsed: 0,
+      amount: 0,
+      currency: 'INR',
+      status: 'active',
+      activatedAt: now,
+      expiresAt,
+    },
+  });
 }

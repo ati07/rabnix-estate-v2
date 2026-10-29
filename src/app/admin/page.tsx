@@ -58,6 +58,7 @@ import {
   Award
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
+import { isAdminRole, isSuperAdmin } from '@/lib/roles';
 import { useProperties } from '@/lib/propertyContext';
 import { Property, VerificationStatus, UserRole, UserProfile, SystemActivityLog } from '@/lib/types';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
@@ -79,9 +80,16 @@ export default function AdminPortalPage() {
     deleteUser,
     createUser,
     updateUser,
+    grantListings,
+    impersonateUser,
     logActivity,
     clearActivityLogs
   } = useAuth();
+
+  // Superadmin is a strict superset of admin. The master controls below
+  // (provisioning accounts, changing roles, deleting users, granting listing
+  // quota) are gated to superadmins; regular admins keep moderation duties.
+  const superAdmin = isSuperAdmin(user?.role);
 
   const router = useRouter();
 
@@ -89,7 +97,7 @@ export default function AdminPortalPage() {
   // session check resolves, bounce anyone who isn't an admin so the portal
   // shell never renders for non-admins.
   useEffect(() => {
-    if (isAuthReady && user?.role !== 'admin') {
+    if (isAuthReady && !isAdminRole(user?.role)) {
       router.replace(user ? '/dashboard' : '/auth');
     }
   }, [isAuthReady, user, router]);
@@ -127,7 +135,7 @@ export default function AdminPortalPage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthReady && user?.role === 'admin') loadProjects();
+    if (isAuthReady && isAdminRole(user?.role)) loadProjects();
   }, [isAuthReady, user?.role, loadProjects]);
 
   const updateProjectStatus = async (
@@ -170,6 +178,7 @@ export default function AdminPortalPage() {
   const [blockCustomReason, setBlockCustomReason] = useState('Multiple policy violations or duplicate spam listings reported.');
   const [createUserModalOpen, setCreateUserModalOpen] = useState(false);
   const [editUserTarget, setEditUserTarget] = useState<UserProfile | null>(null);
+  const [grantListingsTarget, setGrantListingsTarget] = useState<UserProfile | null>(null);
 
   // Preferred Agent curation. Agents are Users (role='agent'); admins decide who
   // appears in the public directory (isPreferredAgent) and edit their editorial
@@ -439,7 +448,7 @@ export default function AdminPortalPage() {
 
   // While the session resolves, or while redirecting a non-admin away, render a
   // neutral placeholder instead of the admin shell.
-  if (!isAuthReady || user?.role !== 'admin') {
+  if (!isAuthReady || !isAdminRole(user?.role)) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <div className="flex items-center gap-3 text-[#64748B] text-sm font-bold">
@@ -552,9 +561,9 @@ export default function AdminPortalPage() {
                 <span>{user?.name || 'Platform Admin'}</span>
               </div>
               <div className="text-[10px] text-slate-300 truncate">{user?.email || 'admin@baybayt.in'}</div>
-              <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-[#18A67D]/20 text-[#22C39A] border border-[#18A67D]/30">
+              <span className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider border ${superAdmin ? 'bg-amber-400/20 text-amber-300 border-amber-400/30' : 'bg-[#18A67D]/20 text-[#22C39A] border-[#18A67D]/30'}`}>
                 <ShieldCheck className="w-2.5 h-2.5" />
-                ADMIN
+                {superAdmin ? 'SUPER ADMIN' : 'ADMIN'}
               </span>
             </div>
           </div>
@@ -1635,14 +1644,20 @@ export default function AdminPortalPage() {
                   <span>REGISTERED USERS & MODERATION STANDING ({filteredUsers.length})</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="hidden md:inline text-xs text-[#64748B]">Admin has full authority to create, edit, block or remove accounts</span>
-                  <button
-                    onClick={() => setCreateUserModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>Add User</span>
-                  </button>
+                  <span className="hidden md:inline text-xs text-[#64748B]">
+                    {superAdmin
+                      ? 'Super Admin can create, edit, grant listings, block or remove accounts'
+                      : 'Admin can edit profiles and moderate accounts'}
+                  </span>
+                  {superAdmin && (
+                    <button
+                      onClick={() => setCreateUserModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-[#0F2A43] hover:bg-[#163b5c] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Add User</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1703,7 +1718,9 @@ export default function AdminPortalPage() {
                             <td className="py-3.5 px-4">
                               <div className="space-y-0.5">
                                 <span className={`inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${
-                                  u.role === 'admin'
+                                  u.role === 'superadmin'
+                                    ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300'
+                                    : u.role === 'admin'
                                     ? 'bg-purple-100 text-purple-800'
                                     : u.role === 'agent'
                                     ? 'bg-blue-100 text-blue-800'
@@ -1713,7 +1730,7 @@ export default function AdminPortalPage() {
                                     ? 'bg-emerald-100 text-emerald-800'
                                     : 'bg-slate-100 text-slate-800'
                                 }`}>
-                                  {u.role.toUpperCase()}
+                                  {u.role === 'superadmin' ? 'SUPER ADMIN' : u.role.toUpperCase()}
                                 </span>
                                 {u.companyName && (
                                   <div className="font-semibold text-[#0F2A43] text-[11px] truncate max-w-44">
@@ -1740,14 +1757,60 @@ export default function AdminPortalPage() {
                               </div>
                             </td>
 
-                            {/* Listings / Inquiries Count */}
-                            <td className="py-3.5 px-4">
-                              <div className="space-y-0.5">
-                                <div className="font-bold text-[#0F2A43]">
-                                  {u.postedListingsCount || 0} Listings posted
+                            {/* Listings / Activity */}
+                            <td className="py-3.5 px-4 align-top">
+                              <div className="space-y-2 min-w-[150px]">
+                                {/* Lifetime activity: posted listings + buyer leads */}
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1.5" title="Listings posted">
+                                    <Building2 className="w-3.5 h-3.5 text-[#18A67D]" />
+                                    <span className="font-extrabold text-[#0F2A43] text-sm leading-none">
+                                      {u.postedListingsCount || 0}
+                                    </span>
+                                    <span className="text-[10px] text-[#94A3B8] font-semibold uppercase tracking-wide">
+                                      listed
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5" title="Buyer leads received">
+                                    <MessageSquare className="w-3.5 h-3.5 text-indigo-500" />
+                                    <span className="font-extrabold text-[#0F2A43] text-sm leading-none">
+                                      {u.totalInquiriesReceived || 0}
+                                    </span>
+                                    <span className="text-[10px] text-[#94A3B8] font-semibold uppercase tracking-wide">
+                                      leads
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-[11px] text-[#64748B]">
-                                  {u.totalInquiriesReceived || 0} Buyer leads
+
+                                {/* Remaining quota pills: free tier + superadmin grants */}
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {u.freeListingsRemaining === null || u.freeListingsRemaining === undefined ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 ring-1 ring-slate-200">
+                                      <Sparkles className="w-2.5 h-2.5" />
+                                      Unlimited
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${
+                                        u.freeListingsRemaining > 0
+                                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                          : 'bg-slate-50 text-slate-400 ring-slate-200'
+                                      }`}
+                                      title="Free-tier listings remaining"
+                                    >
+                                      {u.freeListingsRemaining} free left
+                                    </span>
+                                  )}
+
+                                  {!!u.grantedListingsRemaining && u.grantedListingsRemaining > 0 && (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 ring-1 ring-amber-200"
+                                      title="Complimentary listings granted by a Super Admin"
+                                    >
+                                      <Sparkles className="w-2.5 h-2.5" />
+                                      {u.grantedListingsRemaining} granted
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -1811,21 +1874,48 @@ export default function AdminPortalPage() {
                                   </button>
                                 )}
 
-                                <button
-                                  onClick={() => {
-                                    if (confirm(`Delete user "${u.name}" permanently from the database?`)) {
-                                      deleteUser(u.id);
-                                      showBanner(`User ${u.name} removed.`);
-                                    }
-                                  }}
-                                  disabled={isCurrent}
-                                  className={`p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-colors ${
-                                    isCurrent ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
-                                  }`}
-                                  title="Delete User Record"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                {superAdmin && !isCurrent && (
+                                  <button
+                                    onClick={async () => {
+                                      const res = await impersonateUser(u.id);
+                                      if (!res.success) showBanner(res.error || 'Could not open that dashboard.');
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all cursor-pointer"
+                                    title="View this user's dashboard"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Dashboard</span>
+                                  </button>
+                                )}
+
+                                {superAdmin && (
+                                  <button
+                                    onClick={() => setGrantListingsTarget(u)}
+                                    className="px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-all cursor-pointer"
+                                    title="Grant complimentary listing quota"
+                                  >
+                                    <Sparkles className="w-3 h-3" />
+                                    <span>Grant Listings</span>
+                                  </button>
+                                )}
+
+                                {superAdmin && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Delete user "${u.name}" permanently from the database?`)) {
+                                        deleteUser(u.id);
+                                        showBanner(`User ${u.name} removed.`);
+                                      }
+                                    }}
+                                    disabled={isCurrent}
+                                    className={`p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-colors ${
+                                      isCurrent ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'
+                                    }`}
+                                    title="Delete User Record"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                               </div>
                             </td>
 
@@ -2418,6 +2508,26 @@ export default function AdminPortalPage() {
       )}
 
       {/* ---------------------------------------------------- */}
+      {/* MODAL: GRANT LISTINGS (superadmin master control)    */}
+      {/* ---------------------------------------------------- */}
+      {grantListingsTarget && (
+        <GrantListingsModal
+          key={grantListingsTarget.id}
+          target={grantListingsTarget}
+          onClose={() => setGrantListingsTarget(null)}
+          onSubmit={async (data) => {
+            const res = await grantListings(grantListingsTarget.id, data);
+            if (res.success) {
+              showBanner(
+                `Granted ${data.listings} listing${data.listings === 1 ? '' : 's'} to "${grantListingsTarget.name}" for ${data.city}.`,
+              );
+            }
+            return res;
+          }}
+        />
+      )}
+
+      {/* ---------------------------------------------------- */}
       {/* MODAL: EDIT PREFERRED AGENT (editorial fields)       */}
       {/* ---------------------------------------------------- */}
       {editAgentTarget && (
@@ -2607,6 +2717,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'agent', label: 'RERA Agent' },
   { value: 'builder', label: 'Builder / Developer' },
   { value: 'admin', label: 'Platform Admin' },
+  { value: 'superadmin', label: 'Super Admin (master portal)' },
 ];
 
 function UserFormModal({
@@ -2808,6 +2919,174 @@ function UserFormModal({
             >
               {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               <span>{mode === 'create' ? 'Create Account' : 'Save Changes'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Grant listings (superadmin master control)
+// ------------------------------------------------------------------
+// Gives a user extra listing quota for a city with no payment. The city list is
+// the same sellable-city set the billing engine prices against (fetched from
+// /api/billing so we don't import the server-only billing module into the
+// client). The grant reuses the normal entitlement path on the server.
+function GrantListingsModal({
+  target,
+  onClose,
+  onSubmit,
+}: {
+  target: UserProfile;
+  onClose: () => void;
+  onSubmit: (data: { city: string; listings: number; durationDays?: number }) => Promise<{ success: boolean; error?: string }>;
+}) {
+  const [cities, setCities] = useState<string[]>([]);
+  const [city, setCity] = useState(target.city || '');
+  const [listings, setListings] = useState('5');
+  const [durationDays, setDurationDays] = useState('365');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/billing');
+        const data = await res.json();
+        const list: string[] = data?.pricing?.cities || [];
+        if (!active) return;
+        setCities(list);
+        // Default to the user's own city if it's sellable, else the first option.
+        setCity((prev) => (list.includes(prev) ? prev : list[0] || ''));
+      } catch {
+        /* leave the city list empty; the field stays a free-text input */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const n = Number(listings);
+    if (!Number.isInteger(n) || n < 1 || n > 100000) {
+      setError('Listings must be a whole number between 1 and 100000.');
+      return;
+    }
+    if (!city.trim()) {
+      setError('Pick a city for the grant.');
+      return;
+    }
+    const d = durationDays.trim() === '' ? undefined : Number(durationDays);
+    if (d !== undefined && (!Number.isInteger(d) || d < 1 || d > 3650)) {
+      setError('Validity must be a whole number of days between 1 and 3650.');
+      return;
+    }
+
+    setSubmitting(true);
+    const res = await onSubmit({ city: city.trim(), listings: n, ...(d !== undefined ? { durationDays: d } : {}) });
+    setSubmitting(false);
+    if (res.success) onClose();
+    else setError(res.error || 'Failed to grant listings.');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b pb-3">
+          <div className="flex items-center gap-2 text-[#0F2A43] font-extrabold text-base">
+            <Sparkles className="w-5 h-5 text-amber-500" />
+            <span>Grant Complimentary Listings</span>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <p className="text-xs text-[#64748B]">
+          Add paid-equivalent listing quota to <strong className="text-[#0F2A43]">{target.name}</strong> ({target.email}) for a
+          specific city — no payment required. Quota is city-scoped and stacks with any packs the user has purchased.
+        </p>
+
+        {error && (
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[#172033] uppercase">City</label>
+            {cities.length ? (
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
+              >
+                {cities.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Bangalore"
+                className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
+              />
+            )}
+            <p className="text-[10px] text-slate-400">Non-priced cities fall into the &quot;Other&quot; billing bucket.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#172033] uppercase">No. of Listings</label>
+              <input
+                type="number"
+                min={1}
+                max={100000}
+                value={listings}
+                onChange={(e) => setListings(e.target.value)}
+                className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#172033] uppercase">Validity (days)</label>
+              <input
+                type="number"
+                min={1}
+                max={3650}
+                value={durationDays}
+                onChange={(e) => setDurationDays(e.target.value)}
+                placeholder="365"
+                className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border text-xs font-bold text-[#0F2A43] hover:bg-[#F8FAFC] cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+            >
+              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              <span>Grant Listings</span>
             </button>
           </div>
         </form>

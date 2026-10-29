@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { serializeFeaturedProject } from '@/lib/serialize';
 import { getEntitlement, canCreateInCity, consumeListingCredit } from '@/lib/billing';
 import { type FeaturedProjectItem } from '@/lib/homeSectionsData';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
       if (!user) return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
       where.submittedByUserId = user.id;
     } else if (scope === 'all') {
-      if (user?.role !== 'admin') {
+      if (!isAdminRole(user?.role)) {
         return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
       }
       // no status filter — return everything
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
     if (user.isBlocked) {
       return NextResponse.json({ success: false, error: 'Blocked accounts cannot submit projects.' }, { status: 403 });
     }
-    if (user.role !== 'builder' && user.role !== 'admin') {
+    if (user.role !== 'builder' && !isAdminRole(user.role)) {
       return NextResponse.json(
         { success: false, error: 'Only builder accounts can submit projects.' },
         { status: 403 },

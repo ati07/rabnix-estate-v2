@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { CITIES_DATA } from '@/lib/realEstateData';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic';
 // Secondary source = the canonical CITIES_DATA.popularLocalities name list.
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
-  if (user?.role !== 'admin') {
+  if (!isAdminRole(user?.role)) {
     return NextResponse.json({ success: false, error: 'Admin access required.' }, { status: 403 });
   }
 

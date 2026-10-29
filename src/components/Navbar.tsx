@@ -28,6 +28,7 @@ import {
 import { CityInfo, ListingType } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import { useAuth } from '@/lib/authContext';
+import { isAdminRole } from '@/lib/roles';
 import { BrandLogo } from '@/components/BrandLogo';
 
 interface NavbarProps {
@@ -98,9 +99,9 @@ export function Navbar({
                   <span className="w-2 h-2 rounded-full bg-[#22C39A]"></span>
                   <span>Dashboard: <strong className="text-white">{user.name.split(' ')[0]}</strong> ({user.role})</span>
                 </Link>
-                {user.role === 'admin' && (
+                {isAdminRole(user.role) && (
                   <Link href="/admin" className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold hover:bg-amber-500/30">
-                    Admin Panel
+                    {user.role === 'superadmin' ? 'Super Admin Panel' : 'Admin Panel'}
                   </Link>
                 )}
               </div>
@@ -361,7 +362,7 @@ export function Navbar({
                       <span>Post a New Listing (FREE)</span>
                     </Link>
 
-                    {(user.role === 'builder' || user.role === 'admin') && (
+                    {(user.role === 'builder' || isAdminRole(user.role)) && (
                       <Link
                         href="/post-project"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -562,7 +563,7 @@ export function Navbar({
               <span>Ask BayBayt Genie AI Assistant</span>
               <Sparkles className="w-4 h-4 text-[#22C39A]" />
             </button>
-            {isAuthenticated && (user?.role === 'builder' || user?.role === 'admin') && (
+            {isAuthenticated && (user?.role === 'builder' || isAdminRole(user?.role)) && (
               <Link
                 href="/post-project"
                 onClick={() => setMobileMenuOpen(false)}

@@ -5,6 +5,7 @@ import { PropertyProvider } from '@/lib/propertyContext';
 import { GenieProvider } from '@/lib/genieContext';
 import { getSiteUrl } from '@/lib/siteUrl';
 import { JsonLd, organizationJsonLd, websiteJsonLd } from '@/components/seo/JsonLd';
+import ImpersonationBanner from '@/components/ImpersonationBanner';
 
 // Canonical base URL; resolves relative OG/Twitter image paths into absolute
 // URLs and anchors every page's canonical link. See src/lib/siteUrl.ts.
@@ -67,6 +68,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
         <AuthProvider>
           <PropertyProvider>
             <GenieProvider>
+              <ImpersonationBanner />
               {children}
             </GenieProvider>
           </PropertyProvider>

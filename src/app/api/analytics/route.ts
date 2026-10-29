@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ success: true, points: zeroPoints });
 
-    const isAdmin = user.role === 'admin';
+    const isAdmin = isAdminRole(user.role);
 
     const [views, inquiries] = await Promise.all([
       prisma.propertyView.findMany({

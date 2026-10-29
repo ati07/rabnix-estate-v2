@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeInquiry } from '@/lib/serialize';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const inq = await prisma.inquiry.findUnique({ where: { id } });
     if (!inq) return NextResponse.json({ success: false, error: 'Inquiry not found' }, { status: 404 });
 
-    if (inq.sellerUserId !== user.id && user.role !== 'admin') {
+    if (inq.sellerUserId !== user.id && !isAdminRole(user.role)) {
       return NextResponse.json({ success: false, error: 'Not allowed' }, { status: 403 });
     }
 

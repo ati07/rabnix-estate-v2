@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeFeaturedProject } from '@/lib/serialize';
 import { type FeaturedProjectItem } from '@/lib/homeSectionsData';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (row) {
       if (row.submissionStatus !== 'approved') {
         const user = await getCurrentUser();
-        const canView = user && (user.role === 'admin' || row.submittedByUserId === user.id);
+        const canView = user && (isAdminRole(user.role) || row.submittedByUserId === user.id);
         if (!canView) {
           return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
         }
@@ -45,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!existing) return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
 
     const isOwner = existing.submittedByUserId === user.id;
-    const isAdmin = user.role === 'admin';
+    const isAdmin = isAdminRole(user.role);
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ success: false, error: 'Not allowed' }, { status: 403 });
     }
@@ -146,7 +147,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const existing = await prisma.featuredProject.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ success: false, error: 'Project not found' }, { status: 404 });
 
-    if (existing.submittedByUserId !== user.id && user.role !== 'admin') {
+    if (existing.submittedByUserId !== user.id && !isAdminRole(user.role)) {
       return NextResponse.json({ success: false, error: 'Not allowed' }, { status: 403 });
     }
 

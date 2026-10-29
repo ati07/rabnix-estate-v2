@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty } from '@/lib/serialize';
 import { getEntitlement, canCreateInCity, consumeListingCredit, billingKeyForCity } from '@/lib/billing';
 import { coordinateColumns } from '@/lib/maps/config';
+import { isAdminRole } from '@/lib/roles';
 import type { Property } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
       if (!user) return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
       where.postedByUserId = user.id;
     } else if (scope === 'all') {
-      if (user?.role !== 'admin') {
+      if (!isAdminRole(user?.role)) {
         return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
       }
       // no filter — return everything
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     // Contact numbers are only exposed to an admin or to the listing's own owner.
     // Everyone else gets the listing WITHOUT a phone — they must use the gated
     // reveal endpoint (POST /api/properties/[id]/contact) to obtain it.
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = isAdminRole(user?.role);
     const canSeeContact = (row: { postedByUserId: string | null }) =>
       isAdmin || (!!user && row.postedByUserId === user.id);
 

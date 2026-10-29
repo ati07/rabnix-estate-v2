@@ -170,7 +170,11 @@ export interface LocalityTrend {
   overview: string;
 }
 
-export type UserRole = 'buyer' | 'owner' | 'agent' | 'builder' | 'admin';
+// 'superadmin' is a strict superset of 'admin': it has every admin privilege
+// plus the master controls reserved for it (provisioning accounts, granting
+// listing quota). Use the helpers in src/lib/roles.ts to gate behaviour so
+// admin-level checks automatically include superadmins.
+export type UserRole = 'buyer' | 'owner' | 'agent' | 'builder' | 'admin' | 'superadmin';
 export type VerificationStatus = 'approved' | 'pending' | 'rejected' | 'under_review';
 
 export interface PropertyInquiry {
@@ -191,7 +195,7 @@ export interface PropertyInquiry {
 export interface SystemActivityLog {
   id: string;
   timestamp: string;
-  action: 'property_created' | 'property_verified' | 'property_rejected' | 'property_promoted' | 'user_registered' | 'user_blocked' | 'user_unblocked' | 'inquiry_received' | 'property_deleted' | 'contact_revealed';
+  action: 'property_created' | 'property_verified' | 'property_rejected' | 'property_promoted' | 'user_registered' | 'user_blocked' | 'user_unblocked' | 'inquiry_received' | 'property_deleted' | 'contact_revealed' | 'user_impersonated';
   actorName: string;
   actorRole: string;
   details: string;
@@ -223,6 +227,13 @@ export interface UserProfile {
   shortlistedCount?: number;
   postedListingsCount?: number;
   totalInquiriesReceived?: number;
+  // Free-tier listings the user can still post (FREE_LISTINGS − freeListingsUsed).
+  // null means unlimited (admins/superadmins). Populated by GET /api/users.
+  freeListingsRemaining?: number | null;
+  // Remaining listings from superadmin "Grant Listings" packs (admin_grant),
+  // summed across the user's active non-expired grants. null for admins
+  // (unlimited). Populated by GET /api/users.
+  grantedListingsRemaining?: number | null;
   // Preferred Agent directory profile (only meaningful for role='agent').
   isPreferredAgent?: boolean;
   agencyLogo?: string;
@@ -235,6 +246,10 @@ export interface UserProfile {
   areasServed?: string[];
   languages?: string[];
   agentAbout?: string;
+  // Set only when a superadmin is viewing this account via "View dashboard"
+  // (impersonation). The whole app then renders as this user; the banner reads
+  // this to offer an exit back to the superadmin's own session.
+  impersonatedBy?: { id: string; name: string };
 }
 
 export interface AiValuationResult {

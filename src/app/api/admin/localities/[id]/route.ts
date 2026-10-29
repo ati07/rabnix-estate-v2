@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // PATCH /api/admin/localities/:id  { city?, name?, thumbnail?, sortOrder? }
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
-  if (user?.role !== 'admin') {
+  if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ success: false, error: 'Admin access required.' }, { status: 403 });
   }
   const { id } = await params;
@@ -62,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // DELETE /api/admin/localities/:id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
-  if (user?.role !== 'admin') {
+  if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ success: false, error: 'Admin access required.' }, { status: 403 });
   }
   const { id } = await params;

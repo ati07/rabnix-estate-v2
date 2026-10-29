@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic';
 // (count > 0) vs. hidden (count = 0, no inventory yet).
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
-  if (user?.role !== 'admin') {
+  if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ success: false, error: 'Admin access required.' }, { status: 403 });
   }
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/localities  { city, name, thumbnail, sortOrder? }
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
-  if (user?.role !== 'admin') {
+  if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ success: false, error: 'Admin access required.' }, { status: 403 });
   }
 

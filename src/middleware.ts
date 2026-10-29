@@ -23,7 +23,8 @@ export async function middleware(req: NextRequest) {
 
   try {
     const { payload } = await jwtVerify(token, secret);
-    if (payload.role !== 'admin') {
+    // Both admin and superadmin may enter the portal; superadmin is a superset.
+    if (payload.role !== 'admin' && payload.role !== 'superadmin') {
       return NextResponse.redirect(dashboardUrl);
     }
     return NextResponse.next();

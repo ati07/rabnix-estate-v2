@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserProfile, UserRole, SystemActivityLog } from '@/lib/types';
+import { isAdminRole } from '@/lib/roles';
 
 // Lightweight demo avatars per role (used as UI fallbacks in dashboards).
 export const DEMO_USERS: Record<UserRole, { name: string; avatar: string }> = {
@@ -10,6 +11,7 @@ export const DEMO_USERS: Record<UserRole, { name: string; avatar: string }> = {
   agent:   { name: 'Vikram Deshmukh',     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
   builder: { name: 'Amit Singhal',        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80' },
   admin:   { name: 'BayBayt Master Admin', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80' },
+  superadmin: { name: 'BayBayt Super Admin', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80' },
 };
 
 interface AuthContextType {
@@ -80,6 +82,16 @@ interface AuthContextType {
       languages: string[] | string;
     }>
   ) => Promise<{ success: boolean; error?: string }>;
+  // Superadmin-only: grant a user extra listing quota for a city (no payment).
+  grantListings: (
+    userId: string,
+    data: { city: string; listings: number; durationDays?: number },
+  ) => Promise<{ success: boolean; error?: string }>;
+  // Superadmin-only: start viewing a user's dashboard (impersonation). On
+  // success the caller is navigated to /dashboard as that user.
+  impersonateUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
+  // Exit impersonation and return to the superadmin's own session.
+  stopImpersonation: () => Promise<void>;
   logActivity: (log: Omit<SystemActivityLog, 'id' | 'timestamp'>) => void;
   clearActivityLogs: () => void;
 }
@@ -125,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    if (user?.role === 'admin') {
+    if (isAdminRole(user?.role)) {
       Promise.all([api('/api/users'), api('/api/activity')]).then(([u, a]) => {
         if (!active) return;
         if (u.ok && u.data?.users) setUsers(u.data.users);
@@ -266,6 +278,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res?.error || 'Failed to update user.' };
   };
 
+  const grantListings: AuthContextType['grantListings'] = async (userId, data) => {
+    const { ok, data: res } = await api(`/api/users/${userId}/grant-listings`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (ok && res?.success) { await refreshAdminData(); return { success: true }; }
+    return { success: false, error: res?.error || 'Failed to grant listings.' };
+  };
+
+  const impersonateUser: AuthContextType['impersonateUser'] = async (userId) => {
+    const { ok, data: res } = await api('/api/auth/impersonate', {
+      method: 'POST',
+      body: JSON.stringify({ targetId: userId }),
+    });
+    if (ok && res?.success) {
+      // Hard-navigate so every provider re-reads the (now impersonated) session.
+      if (typeof window !== 'undefined') window.location.assign('/dashboard');
+      return { success: true };
+    }
+    return { success: false, error: res?.error || 'Failed to start viewing this user.' };
+  };
+
+  const stopImpersonation: AuthContextType['stopImpersonation'] = async () => {
+    await api('/api/auth/impersonate', { method: 'DELETE' });
+    // Hard-navigate back to the admin portal under the real superadmin session.
+    if (typeof window !== 'undefined') window.location.assign('/admin');
+  };
+
   // Server records activity automatically on meaningful actions. This provides
   // instant optimistic feedback in the admin feed; a refresh reconciles to truth.
   const logActivity = (log: Omit<SystemActivityLog, 'id' | 'timestamp'>) => {
@@ -296,6 +336,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateUserRole,
         createUser,
         updateUser,
+        grantListings,
+        impersonateUser,
+        stopImpersonation,
         logActivity,
         clearActivityLogs,
       }}

@@ -130,6 +130,7 @@ import { GenieAssistButton } from '@/components/genie/GenieAssistButton';
 import { generateListingCopy, estimateListingPrice, formatInr } from '@/lib/genie/listingAssist';
 import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/listingDraft';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
+import { isAdminRole } from '@/lib/roles';
 import { formatIndianCurrency } from '@/lib/formatters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
 
@@ -268,7 +269,7 @@ export default function UserDashboardPage() {
 
   // My Projects (builder-submitted projects, Option C). Builders submit at
   // /post-project; this shows their submissions and moderation status.
-  const isBuilderAccount = user?.role === 'builder' || user?.role === 'admin';
+  const isBuilderAccount = user?.role === 'builder' || isAdminRole(user?.role);
   const [myProjects, setMyProjects] = useState<FeaturedProjectItem[]>([]);
   const loadMyProjects = React.useCallback(async () => {
     if (!isBuilderAccount) { setMyProjects([]); return; }
@@ -1538,7 +1539,7 @@ export default function UserDashboardPage() {
             </button>
 
             {/* Plans & Billing — sellers only (admins get unlimited listings) */}
-            {currentRole !== 'admin' && (
+            {!isAdminRole(currentRole) && (
               <button
                 id="sidebar-tab-billing"
                 onClick={() => {
@@ -1566,7 +1567,7 @@ export default function UserDashboardPage() {
             )}
 
             {/* Admin Management Section — only for platform admins */}
-            {currentRole === 'admin' && (
+            {isAdminRole(currentRole) && (
             <div className="pt-3 pb-1 border-t border-slate-200 mt-3">
               <div className="flex items-center justify-between px-3 mb-1.5">
                 <span className="text-[10px] font-extrabold text-[#0F2A43] uppercase tracking-wider flex items-center gap-1">
@@ -1687,7 +1688,7 @@ export default function UserDashboardPage() {
             <div className="space-y-6 animate-in fade-in">
               
               {/* Admin Special Notification Card if role is Admin */}
-              {currentRole === 'admin' && (
+              {isAdminRole(currentRole) && (
                 <div className="p-4 bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-blue-500/10 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#0F2A43] text-white flex items-center justify-center shrink-0">
@@ -3864,7 +3865,7 @@ export default function UserDashboardPage() {
                           <td className="py-3 px-4">
                             <div className="space-y-1">
                               <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                                u.role === 'admin'
+                                isAdminRole(u.role)
                                   ? 'bg-purple-100 text-purple-800'
                                   : u.role === 'builder'
                                   ? 'bg-amber-100 text-amber-800'

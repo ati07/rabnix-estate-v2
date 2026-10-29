@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import type { User as DbUser } from '@prisma/client';
 import type { UserProfile, UserRole } from '@/lib/types';
+import { isSuperAdmin } from '@/lib/roles';
 
 const COOKIE_NAME = 'baybayt_session';
 const secret = new TextEncoder().encode(
@@ -97,8 +98,55 @@ export async function getContactVerifiedPhone(): Promise<string | null> {
   }
 }
 
-/** Returns the currently authenticated user (public profile) or null. */
-export async function getCurrentUser(): Promise<UserProfile | null> {
+// --- Impersonation ("View dashboard as user") --------------------------------
+// A superadmin can view any account's dashboard. We store a short-lived signed
+// cookie {adminId, targetId}; getCurrentUser() then resolves to the target so
+// the entire app (dashboard, data loaders, APIs filtering by the user id)
+// renders exactly as that user sees it. Only honored when the real session is a
+// superadmin whose id matches adminId, so the cookie can't be forged/replayed
+// by a non-superadmin.
+const IMPERSONATE_COOKIE = 'baybayt_impersonate';
+const IMPERSONATE_TTL_SECONDS = 60 * 120; // 2 hours
+
+export async function setImpersonationCookie(adminId: string, targetId: string) {
+  const token = await new SignJWT({ adminId, targetId, purpose: 'impersonate' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(`${IMPERSONATE_TTL_SECONDS}s`)
+    .sign(secret);
+  const store = await cookies();
+  store.set(IMPERSONATE_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: IMPERSONATE_TTL_SECONDS,
+  });
+}
+
+export async function clearImpersonationCookie() {
+  const store = await cookies();
+  store.delete(IMPERSONATE_COOKIE);
+}
+
+async function getImpersonation(): Promise<{ adminId: string; targetId: string } | null> {
+  const store = await cookies();
+  const token = store.get(IMPERSONATE_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    if (payload.purpose !== 'impersonate') return null;
+    if (typeof payload.adminId === 'string' && typeof payload.targetId === 'string') {
+      return { adminId: payload.adminId, targetId: payload.targetId };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Resolves the REAL signed-in user, ignoring any impersonation. */
+export async function getRealSessionUser(): Promise<UserProfile | null> {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
@@ -108,6 +156,27 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!user) return null;
   return toPublicProfile(user);
+}
+
+/**
+ * Returns the effective authenticated user (public profile) or null. When a
+ * superadmin is impersonating, this returns the impersonated user tagged with
+ * `impersonatedBy`, so the whole app operates as that account.
+ */
+export async function getCurrentUser(): Promise<UserProfile | null> {
+  const real = await getRealSessionUser();
+  if (!real) return null;
+
+  const imp = await getImpersonation();
+  if (imp && isSuperAdmin(real.role) && imp.adminId === real.id) {
+    const target = await prisma.user.findUnique({ where: { id: imp.targetId } });
+    if (target) {
+      const profile = toPublicProfile(target);
+      profile.impersonatedBy = { id: real.id, name: real.name };
+      return profile;
+    }
+  }
+  return real;
 }
 
 /** Strips passwordHash and shapes a DB user into the UserProfile the UI expects. */

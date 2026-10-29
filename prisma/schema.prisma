@@ -16,7 +16,7 @@ model User {
   email            String   @unique
   phone            String
   passwordHash     String
-  role             String   @default("buyer") // buyer | owner | agent | builder | admin
+  role             String   @default("buyer") // buyer | owner | agent | builder | admin | superadmin
   city             String?
   state            String? // e.g. "Karnataka" (nullable: legacy rows predate this field)
   country          String   @default("India")

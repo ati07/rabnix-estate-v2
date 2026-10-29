@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, hashPassword, toPublicProfile } from '@/lib/auth';
+import { isAdminRole, isSuperAdmin } from '@/lib/roles';
 import { csvToArray } from '@/lib/catalogHelpers';
 import type { UserRole } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
-const VALID_ROLES: UserRole[] = ['buyer', 'owner', 'agent', 'builder', 'admin'];
+const VALID_ROLES: UserRole[] = ['buyer', 'owner', 'agent', 'builder', 'admin', 'superadmin'];
 
-// PATCH /api/users/:id — admin only. Block/unblock or change role.
+// PATCH /api/users/:id — admin (or superadmin). Admins may block/unblock, edit
+// profile fields and curate preferred agents; changing a user's ROLE is a master
+// control reserved for superadmins (so an admin cannot escalate privileges).
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const me = await getCurrentUser();
-    if (me?.role !== 'admin') {
+    if (!me || !isAdminRole(me.role)) {
       return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
     }
 
@@ -39,8 +42,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
-    if (body.role && VALID_ROLES.includes(body.role)) {
+    if (body.role && VALID_ROLES.includes(body.role) && body.role !== target.role) {
+      // Role changes are a master control: only a superadmin may reassign roles.
+      if (!isSuperAdmin(me.role)) {
+        return NextResponse.json({ success: false, error: 'Only a Super Admin can change a user\'s role.' }, { status: 403 });
+      }
       data.role = body.role;
+      logs.push({
+        action: 'user_registered',
+        actorName: me.name, actorRole: 'Super Admin',
+        details: `Changed role of "${target.name}" (${target.email}) from ${target.role.toUpperCase()} to ${String(body.role).toUpperCase()}.`,
+        targetTitle: target.name, targetId: target.id,
+        severity: 'info',
+      });
     }
 
     // Editable profile fields (admin-managed).
@@ -107,16 +121,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-// DELETE /api/users/:id — admin only.
+// DELETE /api/users/:id — superadmin only (a master control).
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const me = await getCurrentUser();
-    if (me?.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
+    if (!me || !isSuperAdmin(me.role)) {
+      return NextResponse.json({ success: false, error: 'Super Admin access required' }, { status: 403 });
     }
     if (me.id === id) {
-      return NextResponse.json({ success: false, error: 'You cannot delete your own admin account.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'You cannot delete your own account.' }, { status: 400 });
     }
 
     const target = await prisma.user.findUnique({ where: { id } });
@@ -127,7 +141,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     await prisma.activityLog.create({
       data: {
         action: 'user_blocked',
-        actorName: me.name, actorRole: 'Admin',
+        actorName: me.name, actorRole: 'Super Admin',
         details: `Deleted user profile "${target.name}" (${target.email}) permanently.`,
         targetTitle: target.name, targetId: target.id, severity: 'danger',
       },
