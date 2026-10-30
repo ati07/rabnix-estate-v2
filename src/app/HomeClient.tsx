@@ -37,7 +37,15 @@ const CITY_STORAGE_KEY = 'baybayt_selected_city';
 // city swap, hence no layout shift (CLS) on first load.
 const CITY_COOKIE = 'bb_city';
 
-export default function HomeClient({ initialCityName }: { initialCityName?: string }) {
+export default function HomeClient({
+  initialCityName,
+  cityLinks,
+}: {
+  initialCityName?: string;
+  // Server-rendered "Browse by city" SEO links, injected from the server page
+  // so they render into the crawlable SSR HTML (see BrowseByCitySection).
+  cityLinks?: React.ReactNode;
+}) {
   const router = useRouter();
   const { properties, isLoading: propertiesLoading, addProperty, shortlistIds, toggleShortlist } = useProperties();
   const { user } = useAuth();
@@ -340,6 +348,9 @@ export default function HomeClient({ initialCityName }: { initialCityName?: stri
       />
 
       </main>
+
+      {/* SEO: server-rendered, crawlable links to the city landing pages. */}
+      {cityLinks}
 
       {/* 7. FOOTER */}
       <Footer

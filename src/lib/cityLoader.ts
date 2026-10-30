@@ -1,23 +1,18 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
 import { serializeProperty } from '@/lib/serialize';
+import { cityToSlug } from '@/lib/slug';
 import type { Property } from '@/lib/types';
+
+// Re-exported so existing `import { cityToSlug } from '@/lib/cityLoader'` call
+// sites keep working; the implementation now lives in the client-safe slug util.
+export { cityToSlug };
 
 /**
  * Server-side data for the city landing pages (/properties/in/[city]). These
  * are SEO/AEO entry points, so everything here is public: only approved
  * listings, phone always withheld (serializeProperty(p, false)).
  */
-
-/** URL slug for a city name, e.g. "New Delhi" → "new-delhi". */
-export function cityToSlug(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 export type CitySummary = { name: string; slug: string; count: number };
 
