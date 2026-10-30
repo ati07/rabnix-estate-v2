@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ExternalLink, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { PopularLocalityCardItem } from '@/lib/homeSectionsData';
 import { SpaceAvailable } from '@/components/SpaceAvailable';
+import { CarouselSkeleton } from '@/components/home/SectionSkeleton';
 
 interface ExplorePopularLocalitiesSectionProps {
   cityName?: string;
@@ -24,12 +25,16 @@ export function ExplorePopularLocalitiesSection({
   // Live localities (admin-curated tiles with approved inventory) from the API.
   // No static fallback — an empty result renders a "Space available" placeholder.
   const [localities, setLocalities] = useState<PopularLocalityCardItem[]>([]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
     fetch(`/api/localities?city=${encodeURIComponent(cityName)}`)
       .then((r) => r.json())
       .then((d) => { if (active && d?.success && Array.isArray(d.localities)) setLocalities(d.localities); })
-      .catch(() => { /* leave empty → Space available */ });
+      .catch(() => { /* leave empty → Space available */ })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [cityName, popularLocalities]);
 
@@ -67,7 +72,11 @@ export function ExplorePopularLocalitiesSection({
         </div>
 
         {/* Right Localities Carousel Track */}
-        {localities.length === 0 ? (
+        {loading ? (
+          <div className="flex-1 min-w-0">
+            <CarouselSkeleton count={3} cardWidth="w-[230px] sm:w-[260px]" />
+          </div>
+        ) : localities.length === 0 ? (
           <div className="flex-1 min-w-0">
             <SpaceAvailable
               title="Space available"

@@ -7,17 +7,20 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, Camera, Sparkles } from 'lucide-react';
 import { Property } from '@/lib/types';
 import { SpaceAvailable } from '@/components/SpaceAvailable';
+import { CarouselSkeleton } from '@/components/home/SectionSkeleton';
 import { useGenie } from '@/lib/genieContext';
 
 interface FreshPropertiesSectionProps {
   cityName?: string;
   properties: Property[];
+  isLoading?: boolean;
   onSelectProperty?: (property: Property) => void;
 }
 
 export function FreshPropertiesSection({
   cityName = 'Lucknow',
   properties,
+  isLoading = false,
   onSelectProperty
 }: FreshPropertiesSectionProps) {
   const router = useRouter();
@@ -73,7 +76,9 @@ export function FreshPropertiesSection({
         </button>
       </div>
 
-      {freshProperties.length === 0 ? (
+      {isLoading ? (
+        <CarouselSkeleton count={4} cardWidth="w-[240px] sm:w-[270px]" />
+      ) : freshProperties.length === 0 ? (
         <SpaceAvailable
           title="Space available"
           message={`Fresh listings in ${cityName} will appear here once posted.`}

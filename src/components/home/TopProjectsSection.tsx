@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Sparkles, ShieldCheck } from 'lucide-react';
 import { FeaturedProjectItem } from '@/lib/homeSectionsData';
 import { SpaceAvailable } from '@/components/SpaceAvailable';
+import { CarouselSkeleton } from '@/components/home/SectionSkeleton';
 
 interface TopProjectsSectionProps {
   cityName?: string;
@@ -22,12 +23,16 @@ export function TopProjectsSection({
   // Live, city-scoped top projects from the API (approved only). No static demo
   // fallback — an empty result renders a "Space available" placeholder.
   const [projects, setProjects] = useState<FeaturedProjectItem[]>([]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
     fetch(`/api/projects?section=top&city=${encodeURIComponent(cityName)}`)
       .then((r) => r.json())
       .then((d) => { if (active && d?.success && Array.isArray(d.projects)) setProjects(d.projects); })
-      .catch(() => { /* leave empty → Space available */ });
+      .catch(() => { /* leave empty → Space available */ })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [cityName]);
 
@@ -76,7 +81,9 @@ export function TopProjectsSection({
         </button>
       </div>
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <CarouselSkeleton count={4} cardWidth="w-[280px] sm:w-[320px]" />
+      ) : projects.length === 0 ? (
         <SpaceAvailable
           title="Space available"
           message={`Top projects in ${cityName} will appear here once listed.`}

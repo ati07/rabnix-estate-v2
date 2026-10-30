@@ -7,6 +7,7 @@ import { ArrowRight, ShieldCheck, CheckCircle2, Crown, Sparkles, IndianRupee } f
 import { SearchFilters } from '@/lib/types';
 import { CuratedCollection } from '@/lib/collectionsData';
 import { SpaceAvailable } from '@/components/SpaceAvailable';
+import { GridSkeleton } from '@/components/home/SectionSkeleton';
 
 interface CuratedCollectionsProps {
   cityName: string;
@@ -17,6 +18,7 @@ export function CuratedCollectionsSection({ cityName, onApplyPreset }: CuratedCo
   // Live collections from the DB. No static fallback — an empty result renders a
   // "Space available" placeholder.
   const [allCollections, setAllCollections] = useState<CuratedCollection[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -27,7 +29,8 @@ export function CuratedCollectionsSection({ cityName, onApplyPreset }: CuratedCo
           setAllCollections(d.collections);
         }
       })
-      .catch(() => { /* leave empty → Space available */ });
+      .catch(() => { /* leave empty → Space available */ })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
 
@@ -60,7 +63,9 @@ export function CuratedCollectionsSection({ cityName, onApplyPreset }: CuratedCo
         </div>
 
         {/* Collections Grid */}
-        {collections.length === 0 ? (
+        {loading ? (
+          <GridSkeleton count={4} />
+        ) : collections.length === 0 ? (
           <SpaceAvailable
             title="Space available"
             message="Curated property collections will appear here once published."

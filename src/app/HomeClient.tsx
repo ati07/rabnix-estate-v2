@@ -39,7 +39,7 @@ const CITY_COOKIE = 'bb_city';
 
 export default function HomeClient({ initialCityName }: { initialCityName?: string }) {
   const router = useRouter();
-  const { properties, addProperty, shortlistIds, toggleShortlist } = useProperties();
+  const { properties, isLoading: propertiesLoading, addProperty, shortlistIds, toggleShortlist } = useProperties();
   const { user } = useAuth();
   const { openGenie } = useGenie();
 
@@ -259,13 +259,13 @@ export default function HomeClient({ initialCityName }: { initialCityName?: stri
       />
 
       {/* 3. EXPLORE POPULAR LOCALITIES IN [CITY] (Reference Screenshot 5 Top) */}
-      <ExplorePopularLocalitiesSection
+      {/* <ExplorePopularLocalitiesSection
         cityName={selectedCity.name}
         popularLocalities={selectedCity.popularLocalities}
         onSelectLocality={(localityName) => {
           router.push(`/properties?city=${encodeURIComponent(selectedCity.name)}&locality=${encodeURIComponent(localityName)}`);
         }}
-      />
+      /> */}
 
       {/* 4. FEATURED PROJECTS (Reference Screenshot 1) */}
       <FeaturedProjectsSection
@@ -295,6 +295,7 @@ export default function HomeClient({ initialCityName }: { initialCityName?: stri
       <ExclusiveOwnerPropertiesSection
         cityName={selectedCity.name}
         properties={properties}
+        isLoading={propertiesLoading}
         onSelectProperty={(property) => {
           router.push(`/properties/${property.id}`);
         }}
@@ -304,6 +305,7 @@ export default function HomeClient({ initialCityName }: { initialCityName?: stri
       <FreshPropertiesSection
         cityName={selectedCity.name}
         properties={properties}
+        isLoading={propertiesLoading}
         onSelectProperty={(property) => {
           router.push(`/properties/${property.id}`);
         }}
@@ -316,12 +318,12 @@ export default function HomeClient({ initialCityName }: { initialCityName?: stri
       />
 
       {/* 11. CURATED PROPERTY COLLECTIONS (Handpicked Portfolios) */}
-      <CuratedCollectionsSection
+      {/* <CuratedCollectionsSection
         cityName={selectedCity.name}
         onApplyPreset={(presetFilters) => {
           handleExecuteSearch(presetFilters);
         }}
-      />
+      /> */}
 
       {/* 12. TOP REPUTED BUILDERS & DEVELOPER SPOTLIGHT */}
       {/* <TopBuildersSection
