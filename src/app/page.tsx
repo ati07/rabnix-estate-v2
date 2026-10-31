@@ -1,6 +1,5 @@
 import { cookies, headers } from 'next/headers';
 import { cityNameFromGeoHeaders } from '@/lib/geoCity';
-import { BrowseByCitySection } from '@/components/seo/BrowseByCitySection';
 import HomeClient from './HomeClient';
 
 // Resolve the initial city on the SERVER so the first paint already shows the
@@ -20,9 +19,5 @@ async function resolveInitialCity(): Promise<string> {
 
 export default async function Page() {
   const initialCityName = await resolveInitialCity();
-  // Pass the city links as a server-rendered node so they land in the SSR HTML
-  // (crawlable), bridging the homepage to the SEO city landing pages.
-  return (
-    <HomeClient initialCityName={initialCityName} cityLinks={<BrowseByCitySection />} />
-  );
+  return <HomeClient initialCityName={initialCityName} />;
 }

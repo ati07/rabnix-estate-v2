@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 import { CITIES_DATA } from '@/lib/realEstateData';
@@ -45,7 +44,7 @@ export function Footer(_props: FooterProps) {
             </div>
           </div>
 
-          {/* Col 2: Top Real Estate Cities */}
+          {/* Col 2: Explore Top Cities */}
           <div className="space-y-2.5">
             <div className="font-bold text-white uppercase tracking-wider text-[11px]">
               Explore Top Cities

@@ -38,7 +38,7 @@ interface Props {
 function defaultName(f: PropertyFilterState): string {
   const parts: string[] = [];
   if (f.bhk.length) parts.push(`${[...f.bhk].sort((a, b) => a - b).join('/')} BHK`);
-  if (f.category && f.category !== 'All') parts.push(f.category);
+  if (f.categories.length) parts.push(f.categories.join(' / '));
   else if (f.listingType && f.listingType !== 'all') parts.push(f.listingType);
   parts.push(`in ${f.city && f.city !== 'All' ? f.city : 'all cities'}`);
   const name = parts.join(' ').trim();

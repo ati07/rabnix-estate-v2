@@ -338,7 +338,7 @@ function MapFilterBar({
   // Switching listing type can invalidate category/bhk — reset those so we never
   // keep, say, a residential BHK while showing commercial listings.
   const changeListingType = (id: PropertyFilterState['listingType']) =>
-    onChange({ listingType: id, category: 'All', bhk: [] });
+    onChange({ listingType: id, categories: [], bhk: [] });
 
   const selectCls =
     'px-2.5 py-2 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-bold text-[#0F2A43] outline-none cursor-pointer focus:border-[#18A67D] focus:bg-white';
@@ -408,10 +408,11 @@ function MapFilterBar({
           </select>
         )}
 
-        {/* Category */}
+        {/* Category — the shared model holds a multi-select array; the map keeps
+            a single-select control, so we read/write just the first entry. */}
         <select
-          value={filters.category}
-          onChange={(e) => onChange({ category: e.target.value })}
+          value={filters.categories[0] || 'All'}
+          onChange={(e) => onChange({ categories: e.target.value === 'All' ? [] : [e.target.value] })}
           className={selectCls}
           aria-label="Property type"
         >

@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { MapPin, ShieldCheck, BedDouble, Maximize2, ArrowRight, Building2 } from 'lucide-react';
+import { MapPin, ShieldCheck, ArrowRight, Building2, ChevronDown, HelpCircle } from 'lucide-react';
 import {
   getIndexableCities,
   resolveCitySlug,
@@ -17,7 +16,7 @@ import {
   type Resolved,
 } from '@/lib/seoLandings';
 import { getSiteUrl } from '@/lib/siteUrl';
-import { propertyDescriptor, propertyImageAlt, dealPhrase } from '@/lib/seoText';
+import { dealPhrase } from '@/lib/seoText';
 import {
   JsonLd,
   landingCollectionJsonLd,
@@ -25,7 +24,54 @@ import {
   faqJsonLd,
 } from '@/components/seo/JsonLd';
 import { BrandLogo } from '@/components/BrandLogo';
+import { PropertyCatalog } from '@/components/PropertyCatalog';
 import type { Property } from '@/lib/types';
+import type { PropertyFilterState } from '@/lib/propertyFilters';
+
+// Map a landing-page type slug to the catalog filter it represents, so the
+// shared <PropertyCatalog> opens pre-set to this page's facet.
+const TYPE_SLUG_TO_CATEGORY: Record<string, string> = {
+  flats: 'Apartment',
+  villas: 'Villa',
+  'builder-floors': 'Builder Floor',
+  'studio-apartments': 'Studio',
+  penthouses: 'Penthouse',
+  'office-space': 'Commercial Office',
+  shops: 'Retail Shop',
+  warehouses: 'Warehouse',
+};
+const COMMERCIAL_CATEGORIES = new Set(['Commercial Office', 'Retail Shop', 'Warehouse', 'Commercial Land']);
+
+function initialFiltersForLanding(r: Resolved): Partial<PropertyFilterState> {
+  const f: Partial<PropertyFilterState> = {};
+  if (r.locality) f.searchQuery = r.locality.name;
+
+  const typeSlug = r.type?.slug;
+  if (typeSlug) {
+    if (typeSlug === 'for-sale') f.listingType = 'buy';
+    else if (typeSlug === 'for-rent') f.listingType = 'rent';
+    else if (typeSlug === 'pg') f.listingType = 'pg';
+    else if (typeSlug === 'plots') f.listingType = 'plot';
+    else if (typeSlug === 'commercial') f.listingType = 'commercial';
+    else {
+      const bhkFlats = typeSlug.match(/^(\d+)-bhk-flats$/);
+      const bhkOnly = typeSlug.match(/^(\d+)-bhk$/);
+      if (bhkFlats) {
+        f.bhk = [parseInt(bhkFlats[1], 10)];
+        f.categories = ['Apartment'];
+      } else if (bhkOnly) {
+        f.bhk = [parseInt(bhkOnly[1], 10)];
+      } else {
+        const cat = TYPE_SLUG_TO_CATEGORY[typeSlug];
+        if (cat) {
+          f.categories = [cat];
+          if (COMMERCIAL_CATEGORIES.has(cat)) f.listingType = 'commercial';
+        }
+      }
+    }
+  }
+  return f;
+}
 
 export const runtime = 'nodejs';
 // Matches the city page: inventory shifts as listings are approved; hourly ISR
@@ -244,10 +290,15 @@ export default async function LandingPage({ params }: Params) {
         {/* Browse by property type */}
         {otherTypes.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-lg font-bold text-[#0F2A43] mb-3">
-              {resolved.locality ? `Property types in ${resolved.locality.name}` : `Property types in ${city}`}
-            </h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-[#EAF7F2] flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5 text-[#18A67D]" />
+              </div>
+              <h2 className="text-lg font-black text-[#0F2A43] tracking-tight leading-tight">
+                {resolved.locality ? `Property types in ${resolved.locality.name}` : `Property types in ${city}`}
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
               {otherTypes.map((t) => (
                 <Link
                   key={t.def.slug}
@@ -256,10 +307,10 @@ export default async function LandingPage({ params }: Params) {
                       ? `/properties/in/${slug}/${resolved.locality.slug}/${t.def.slug}`
                       : `/properties/in/${slug}/${t.def.slug}`
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-sm text-[#334155] hover:border-[#18A67D] hover:text-[#148a67]"
+                  className="group flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#18A67D] hover:shadow-md transition-all"
                 >
-                  <Building2 className="w-3.5 h-3.5 text-[#94A3B8]" /> {t.def.label}
-                  <span className="text-[#94A3B8]">({t.count})</span>
+                  <span className="text-sm font-bold text-[#0F2A43] truncate group-hover:text-[#148a67] transition-colors">{t.def.label}</span>
+                  <span className="shrink-0 text-[11px] font-bold text-[#148a67] bg-[#EAF7F2] px-2 py-0.5 rounded-full">{t.count}</span>
                 </Link>
               ))}
             </div>
@@ -269,10 +320,15 @@ export default async function LandingPage({ params }: Params) {
         {/* Browse by locality */}
         {otherLocalities.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-lg font-bold text-[#0F2A43] mb-3">
-              {resolved.type ? `${resolved.type.label} by locality in ${city}` : `Other localities in ${city}`}
-            </h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-[#EAF7F2] flex items-center justify-center shrink-0">
+                <MapPin className="w-5 h-5 text-[#18A67D]" />
+              </div>
+              <h2 className="text-lg font-black text-[#0F2A43] tracking-tight leading-tight">
+                {resolved.type ? `${resolved.type.label} by locality in ${city}` : `Other localities in ${city}`}
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
               {otherLocalities.map((l) => (
                 <Link
                   key={l.slug}
@@ -281,67 +337,56 @@ export default async function LandingPage({ params }: Params) {
                       ? `/properties/in/${slug}/${l.slug}/${resolved.type.slug}`
                       : `/properties/in/${slug}/${l.slug}`
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-sm text-[#334155] hover:border-[#18A67D] hover:text-[#148a67]"
+                  className="group flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#18A67D] hover:shadow-md transition-all"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-[#94A3B8]" /> {l.name}
+                  <span className="flex items-center gap-2 min-w-0">
+                    <MapPin className="w-4 h-4 text-[#94A3B8] group-hover:text-[#18A67D] shrink-0 transition-colors" />
+                    <span className="text-sm font-bold text-[#0F2A43] truncate">{l.name}</span>
+                  </span>
+                  <span className="shrink-0 text-[11px] font-bold text-[#148a67] bg-[#EAF7F2] px-2 py-0.5 rounded-full">{l.count}</span>
                 </Link>
               ))}
             </div>
           </section>
         )}
 
-        {/* Listing grid */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-[#0F2A43] mb-4">{title}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {properties.slice(0, 24).map((p) => (
-              <Link
-                key={p.id}
-                href={`/properties/${p.id}`}
-                className="group bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden hover:shadow-lg transition-all"
-              >
-                <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
-                  <Image
-                    src={p.images[0] || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80'}
-                    alt={propertyImageAlt(p)}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  <span className="absolute top-2 left-2 bg-[#0F2A43]/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                    {p.category} · {dealPhrase(p)}
-                  </span>
-                </div>
-                <div className="p-4">
-                  <div className="text-base font-extrabold text-[#0F2A43]">{p.priceFormatted}</div>
-                  <h3 className="mt-1 text-sm font-semibold text-[#1E293B] line-clamp-1">{propertyDescriptor(p)}</h3>
-                  <div className="mt-1 flex items-center gap-1 text-xs text-[#64748B]">
-                    <MapPin className="w-3.5 h-3.5" /> {[p.locality, p.city].filter(Boolean).join(', ')}
-                  </div>
-                  <div className="mt-2 flex items-center gap-4 text-xs text-[#475569]">
-                    {p.bhk ? <span className="inline-flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" /> {p.bhk} BHK</span> : null}
-                    {p.carpetAreaSqFt ? <span className="inline-flex items-center gap-1"><Maximize2 className="w-3.5 h-3.5" /> {p.carpetAreaSqFt} sq.ft</span> : null}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* FAQ (AEO) */}
-        <section className="mb-12">
-          <h2 className="text-lg font-bold text-[#0F2A43] mb-4">Frequently asked questions</h2>
-          <div className="space-y-3">
-            {faqs.map((f) => (
-              <div key={f.question} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
-                <h3 className="text-sm font-semibold text-[#0F2A43]">{f.question}</h3>
-                <p className="mt-1.5 text-sm text-[#475569] leading-relaxed">{f.answer}</p>
-              </div>
-            ))}
-          </div>
-        </section>
       </main>
+
+      {/* Interactive catalog — the shared /properties filter UI, pre-set to this
+          page's facet and server-seeded with the city's listings so matching
+          cards sit in the crawlable HTML (indexable). City is locked. */}
+      <PropertyCatalog
+        properties={allProperties}
+        lockedCity={city}
+        initialFilters={initialFiltersForLanding(resolved)}
+      />
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
+        {/* FAQ (AEO) — accordion; answers stay in the HTML (crawlable) even when collapsed */}
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-[#EAF7F2] flex items-center justify-center shrink-0">
+              <HelpCircle className="w-5 h-5 text-[#18A67D]" />
+            </div>
+            <h2 className="text-lg font-black text-[#0F2A43] tracking-tight leading-tight">Frequently asked questions</h2>
+          </div>
+          <div className="space-y-2.5">
+            {faqs.map((f, i) => (
+              <details
+                key={f.question}
+                open={i === 0}
+                className="group bg-white rounded-xl border border-[#E2E8F0] open:border-[#18A67D]/40 open:shadow-sm transition-all"
+              >
+                <summary className="flex items-center justify-between gap-3 cursor-pointer list-none px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+                  <h3 className="text-sm font-bold text-[#0F2A43]">{f.question}</h3>
+                  <ChevronDown className="w-4 h-4 text-[#94A3B8] shrink-0 transition-transform duration-200 group-open:rotate-180 group-open:text-[#18A67D]" />
+                </summary>
+                <p className="px-4 pb-4 text-sm text-[#475569] leading-relaxed">{f.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      </div>
 
       <footer className="bg-[#0F2A43] text-slate-300 text-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">

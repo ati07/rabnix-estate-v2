@@ -39,12 +39,8 @@ const CITY_COOKIE = 'bb_city';
 
 export default function HomeClient({
   initialCityName,
-  cityLinks,
 }: {
   initialCityName?: string;
-  // Server-rendered "Browse by city" SEO links, injected from the server page
-  // so they render into the crawlable SSR HTML (see BrowseByCitySection).
-  cityLinks?: React.ReactNode;
 }) {
   const router = useRouter();
   const { properties, isLoading: propertiesLoading, addProperty, shortlistIds, toggleShortlist } = useProperties();
@@ -348,9 +344,6 @@ export default function HomeClient({
       />
 
       </main>
-
-      {/* SEO: server-rendered, crawlable links to the city landing pages. */}
-      {cityLinks}
 
       {/* 7. FOOTER */}
       <Footer

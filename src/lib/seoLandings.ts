@@ -104,20 +104,32 @@ export function availableTypes(properties: Property[]): Array<{ def: PropertyTyp
 
 export type LocalityInfo = { name: string; slug: string; count: number };
 
-/** Distinct localities present in this listing set, with counts, busiest first. */
+/** Distinct localities present in this listing set, with counts, busiest first.
+ * Case/spacing variants of the same name (e.g. "Khurram Nagar" vs "Khurram
+ * nagar") collapse to one entry (they share a slug), displayed with the nicest
+ * label — the most common casing, tie-broken toward proper Title Case. */
 export function availableLocalities(properties: Property[]): LocalityInfo[] {
-  const counts = new Map<string, { name: string; count: number }>();
+  const groups = new Map<string, { labels: Map<string, number>; count: number }>();
   for (const p of properties) {
     const name = (p.locality || '').trim();
     if (!name) continue;
     const slug = cityToSlug(name);
     if (!slug) continue;
-    const prev = counts.get(slug);
-    if (prev) prev.count++;
-    else counts.set(slug, { name, count: 1 });
+    const g = groups.get(slug) || { labels: new Map<string, number>(), count: 0 };
+    g.labels.set(name, (g.labels.get(name) || 0) + 1);
+    g.count++;
+    groups.set(slug, g);
   }
-  return [...counts.entries()]
-    .map(([slug, v]) => ({ slug, name: v.name, count: v.count }))
+  // Prefer the label used most often; break ties toward the one whose words are
+  // capitalised (proper Title Case reads better than a stray lower-case variant).
+  const titleScore = (s: string) => s.split(/\s+/).filter((w) => /^[A-Z]/.test(w)).length;
+  return [...groups.entries()]
+    .map(([slug, g]) => {
+      const name = [...g.labels.entries()].sort(
+        (a, b) => b[1] - a[1] || titleScore(b[0]) - titleScore(a[0]),
+      )[0][0];
+      return { slug, name, count: g.count };
+    })
     .sort((a, b) => b.count - a.count);
 }
 

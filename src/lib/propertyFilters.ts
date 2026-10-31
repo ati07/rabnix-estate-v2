@@ -20,7 +20,7 @@ export interface PropertyFilterState {
   city: string; // 'All' when unset
   listingType: ListingType | 'all';
   commercialDealType: CommercialListingType | 'all';
-  category: string; // 'All' when unset
+  categories: string[]; // empty = all categories (multi-select, MagicBricks-style)
   bhk: number[];
   minSize: number;
   maxSize: number; // 0 = no upper cap
@@ -53,12 +53,23 @@ export function parseFiltersFromParams(sp: ParamsLike): PropertyFilterState {
   const commercialDealType: CommercialListingType | 'all' =
     commercialParam === 'rent' || commercialParam === 'sale' ? commercialParam : 'all';
 
+  // Multi-value params are comma-separated (e.g. bhk=2,3 — like MagicBricks).
   const bhkParam = sp.get('bhk');
   const bhk: number[] = [];
   if (bhkParam) {
-    const n = parseInt(bhkParam, 10);
-    if (!Number.isNaN(n)) bhk.push(n);
+    for (const part of bhkParam.split(',')) {
+      const n = parseInt(part.trim(), 10);
+      if (!Number.isNaN(n) && !bhk.includes(n)) bhk.push(n);
+    }
   }
+
+  const categoryParam = sp.get('category');
+  const categories = categoryParam
+    ? categoryParam
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s && s.toLowerCase() !== 'all')
+    : [];
 
   const minSizeN = parseInt(sp.get('minSize') || '', 10);
   const maxSizeN = parseInt(sp.get('maxSize') || '', 10);
@@ -75,7 +86,7 @@ export function parseFiltersFromParams(sp: ParamsLike): PropertyFilterState {
     city: sp.get('city') || 'All',
     listingType,
     commercialDealType,
-    category: sp.get('category') || 'All',
+    categories,
     bhk,
     minSize: !Number.isNaN(minSizeN) && minSizeN >= MIN_SIZE_SQFT ? minSizeN : MIN_SIZE_SQFT,
     maxSize: !Number.isNaN(maxSizeN) && maxSizeN > 0 ? maxSizeN : 0,
@@ -102,8 +113,8 @@ export function filtersToParams(f: PropertyFilterState): URLSearchParams {
   if (f.city && f.city !== 'All') q.set('city', f.city);
   if (f.listingType !== 'all') q.set('listingType', f.listingType);
   if (isCommercial && f.commercialDealType !== 'all') q.set('commercialType', f.commercialDealType);
-  if (f.category && f.category !== 'All') q.set('category', f.category);
-  if (!isCommercial && f.bhk.length > 0) q.set('bhk', String(f.bhk[0]));
+  if (f.categories.length > 0) q.set('category', f.categories.join(','));
+  if (!isCommercial && f.bhk.length > 0) q.set('bhk', f.bhk.join(','));
   if (isCommercial && f.minSize > MIN_SIZE_SQFT) q.set('minSize', String(f.minSize));
   if (isCommercial && f.maxSize > 0) q.set('maxSize', String(f.maxSize));
   if (f.minPrice > 0) q.set('minPrice', String(f.minPrice));
@@ -124,7 +135,7 @@ export function defaultFilterState(): PropertyFilterState {
     city: 'All',
     listingType: 'all',
     commercialDealType: 'all',
-    category: 'All',
+    categories: [],
     bhk: [],
     minSize: MIN_SIZE_SQFT,
     maxSize: 0,
@@ -145,9 +156,23 @@ export function defaultFilterState(): PropertyFilterState {
 export function normalizeFilterState(partial: Partial<PropertyFilterState> | null | undefined): PropertyFilterState {
   const base = defaultFilterState();
   if (!partial || typeof partial !== 'object') return base;
+  const raw = partial as Record<string, unknown>;
+
+  // Categories: prefer the new `categories` array, but migrate a legacy single
+  // `category` string so saved searches stored before multi-select still work.
+  let categories = base.categories;
+  if (Array.isArray(raw.categories)) {
+    categories = raw.categories.filter(
+      (c): c is string => typeof c === 'string' && !!c && c.toLowerCase() !== 'all',
+    );
+  } else if (typeof raw.category === 'string' && raw.category && raw.category.toLowerCase() !== 'all') {
+    categories = [raw.category];
+  }
+
   return {
     ...base,
     ...partial,
+    categories,
     bhk: Array.isArray(partial.bhk) ? partial.bhk.filter((n) => typeof n === 'number') : base.bhk,
   };
 }
@@ -159,7 +184,7 @@ export function matchesFilters(p: Property, f: PropertyFilterState): boolean {
   if (f.city !== 'All' && p.city.toLowerCase() !== f.city.toLowerCase()) return false;
   if (f.listingType !== 'all' && p.listingType !== f.listingType) return false;
   if (isCommercial && f.commercialDealType !== 'all' && p.commercialListingType !== f.commercialDealType) return false;
-  if (f.category !== 'All' && p.category.toLowerCase() !== f.category.toLowerCase()) return false;
+  if (f.categories.length > 0 && !f.categories.some((c) => c.toLowerCase() === p.category.toLowerCase())) return false;
 
   if (isCommercial) {
     const size = p.carpetAreaSqFt || 0;
@@ -218,7 +243,7 @@ export function countActiveFilters(f: PropertyFilterState): number {
   const isCommercial = f.listingType === 'commercial';
   let c = 0;
   if (f.city !== 'All') c++;
-  if (f.category !== 'All') c++;
+  c += f.categories.length;
   if (f.listingType !== 'all') c++;
   if (isCommercial && f.commercialDealType !== 'all') c++;
   if (isCommercial && (f.minSize > MIN_SIZE_SQFT || f.maxSize > 0)) c++;
