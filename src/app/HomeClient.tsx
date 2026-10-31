@@ -271,29 +271,7 @@ export default function HomeClient({
         }}
       /> */}
 
-      {/* 4. FEATURED PROJECTS (Reference Screenshot 1) */}
-      <FeaturedProjectsSection
-        cityName={selectedCity.name}
-        onSelectProject={(project) => {
-          router.push(`/projects/${project.id}`);
-        }}
-      />
-
-      {/* 6. BAYBAYT PREFERRED AGENTS IN [CITY] (Reference Screenshot 3) */}
-      {/* <PreferredAgentsSection
-        cityName={selectedCity.name}
-        onContactAgent={(agent) => {
-          router.push(`/agents/${agent.id}`);
-        }}
-      /> */}
-
-      {/* 7. TOP PROJECTS [baybaytHomes] (Reference Screenshot 4) */}
-      <TopProjectsSection
-        cityName={selectedCity.name}
-        onSelectProject={(project) => {
-          router.push(`/projects/${project.id}`);
-        }}
-      />
+      
 
       {/* 8. EXCLUSIVE OWNER PROPERTIES (Reference Screenshot 5 Bottom) */}
       <ExclusiveOwnerPropertiesSection
@@ -335,12 +313,35 @@ export default function HomeClient({
       /> */}
 
       {/* 13. LOCALITY TRENDS & PRICE INTELLIGENCE */}
-      <LocalityTrendsSection
+      {/* <LocalityTrendsSection
         selectedCity={selectedCity}
         onSelectLocality={(loc) => {
           router.push(`/properties?city=${encodeURIComponent(selectedCity.name)}&locality=${encodeURIComponent(loc)}`);
         }}
         onOpenAiValuation={() => setIsAiValuationOpen(true)}
+      /> */}
+      {/* 4. FEATURED PROJECTS (Reference Screenshot 1) */}
+      <FeaturedProjectsSection
+        cityName={selectedCity.name}
+        onSelectProject={(project) => {
+          router.push(`/projects/${project.id}`);
+        }}
+      />
+
+      {/* 6. BAYBAYT PREFERRED AGENTS IN [CITY] (Reference Screenshot 3) */}
+      {/* <PreferredAgentsSection
+        cityName={selectedCity.name}
+        onContactAgent={(agent) => {
+          router.push(`/agents/${agent.id}`);
+        }}
+      /> */}
+
+      {/* 7. TOP PROJECTS [baybaytHomes] (Reference Screenshot 4) */}
+      <TopProjectsSection
+        cityName={selectedCity.name}
+        onSelectProject={(project) => {
+          router.push(`/projects/${project.id}`);
+        }}
       />
 
       </main>
