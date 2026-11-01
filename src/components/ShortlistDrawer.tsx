@@ -122,7 +122,7 @@ export function ShortlistDrawer({
                       ))}
                     </tr>
                     <tr>
-                      <td className="p-3 font-semibold text-[#64748B]">Carpet Area</td>
+                      <td className="p-3 font-semibold text-[#64748B]">Area</td>
                       {shortlistedProperties.map((p) => (
                         <td key={p.id} className="p-3 font-medium text-[#172033]">{p.carpetAreaSqFt} sq.ft</td>
                       ))}

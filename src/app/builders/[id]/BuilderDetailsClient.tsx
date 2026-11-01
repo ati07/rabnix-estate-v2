@@ -415,7 +415,7 @@ export default function BuilderDetailsClient({ id, initialBuilder }: { id: strin
                           <span className="font-bold text-[#0F2A43] text-[11px] truncate block">{project.bhkOptions.join(', ')}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-[#94A3B8] font-bold block">Carpet Area</span>
+                          <span className="text-[10px] text-[#94A3B8] font-bold block">Area</span>
                           <span className="font-bold text-[#0F2A43] text-[11px] truncate block">{project.carpetAreaRange}</span>
                         </div>
                         <div>

@@ -424,7 +424,7 @@ export default function ProjectDetailsClient({ id, initialProject }: { id: strin
 
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <span className="text-slate-400 block mb-0.5">Carpet Area</span>
+                          <span className="text-slate-400 block mb-0.5">Area</span>
                           <span className="font-bold text-slate-800 text-sm">
                             {project.floorPlans[selectedFloorPlan].carpetAreaSqFt} sq.ft
                           </span>

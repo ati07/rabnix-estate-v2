@@ -158,7 +158,7 @@ export function AiValuationModal({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#64748B]">Carpet Area (sq.ft)</label>
+                <label className="text-xs font-semibold text-[#64748B]">Area (sq.ft)</label>
                 <input
                   type="number"
                   required

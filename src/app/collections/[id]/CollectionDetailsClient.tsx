@@ -348,7 +348,7 @@ export default function CollectionDetailsClient({
                   <option value="recommended">Recommended & Verified</option>
                   <option value="price_asc">Price: Low to High</option>
                   <option value="price_desc">Price: High to Low</option>
-                  <option value="area_desc">Largest Carpet Area</option>
+                  <option value="area_desc">Largest Area</option>
                 </select>
               </div>
             </div>

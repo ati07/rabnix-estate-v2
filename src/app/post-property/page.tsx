@@ -182,6 +182,8 @@ export default function PostPropertyPage() {
 
   const selectedCityData = CITIES_DATA.find((c) => c.name === city) || CITIES_DATA[0];
   const isCommercial = listingType === 'commercial';
+  // Residential Plot is raw land — no BHK / bathrooms / balconies apply.
+  const isPlot = category === 'Residential Plot';
   // Commercial-rent and residential rent/pg are all monthly; everything else is a total sale price.
   const isMonthlyPrice = listingType === 'rent' || listingType === 'pg' || (isCommercial && commercialListingType === 'rent');
 
@@ -310,7 +312,7 @@ export default function PostPropertyPage() {
       }
       if (!title.trim()) {
         // Auto-generate title if empty
-        setTitle(isCommercial ? `${category} in ${locality}, ${city}` : `${bhkLabel(bhk)} ${category} in ${locality}, ${city}`);
+        setTitle(isCommercial || isPlot ? `${category} in ${locality}, ${city}` : `${bhkLabel(bhk)} ${category} in ${locality}, ${city}`);
       }
     } else if (currentStep === 2) {
       if (price <= 0) {
@@ -347,7 +349,7 @@ export default function PostPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      const generatedTitle = title.trim() || (isCommercial
+      const generatedTitle = title.trim() || (isCommercial || isPlot
         ? `${category} in ${locality}, ${city}`
         : `${bhkLabel(bhk)} ${category} in ${locality}, ${city}`);
 
@@ -358,7 +360,9 @@ export default function PostPropertyPage() {
 
       const created = addProperty({
         title: generatedTitle,
-        tagline: isCommercial
+        tagline: isPlot
+          ? `${category} • ${carpetAreaSqFt} sq.ft • ${facing} Facing`
+          : isCommercial
           ? `${category} • ${carpetAreaSqFt} sq.ft • ${furnishing}`
           : `${bhkLabel(bhk)} • ${carpetAreaSqFt} sq.ft • ${furnishing}`,
         listingType,
@@ -374,9 +378,9 @@ export default function PostPropertyPage() {
         price,
         carpetAreaSqFt,
         superBuiltUpAreaSqFt: superBuiltUpAreaSqFt || Math.round(carpetAreaSqFt * 1.2),
-        bhk: isCommercial ? undefined : bhk,
+        bhk: (isCommercial || isPlot) ? undefined : bhk,
         bathrooms,
-        balconies: isCommercial ? undefined : balconies,
+        balconies: (isCommercial || isPlot) ? undefined : balconies,
         furnishing,
         floor,
         totalFloors,
@@ -542,7 +546,7 @@ export default function PostPropertyPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-[#64748B]">Property:</span>
-                <span className="font-bold text-[#0F2A43]">{title || `${bhkLabel(bhk)} in ${locality}, ${city}`}</span>
+                <span className="font-bold text-[#0F2A43]">{title || `${isPlot ? category : bhkLabel(bhk)} in ${locality}, ${city}`}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#64748B]">Expected Price / Rent:</span>
@@ -835,8 +839,8 @@ export default function PostPropertyPage() {
               {currentStep === 2 && (
                 <div className="space-y-6 animate-in fade-in">
 
-                  {/* BHK & Bathrooms — not applicable to commercial (Size is used instead) */}
-                  {!isCommercial && (
+                  {/* BHK / Bathrooms / Balconies — not applicable to commercial or raw land (plots) */}
+                  {!isCommercial && !isPlot && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#172033] uppercase">Bedrooms (BHK)</label>
@@ -905,7 +909,7 @@ export default function PostPropertyPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#172033] uppercase">
-                        {isCommercial ? `Size (sq.ft) * — min ${MIN_COMMERCIAL_SIZE_SQFT}` : 'Carpet Area (sq.ft) *'}
+                        {isCommercial ? `Size (sq.ft) * — min ${MIN_COMMERCIAL_SIZE_SQFT}` : isPlot ? 'Size (Area) *' : 'Area (sq.ft) *'}
                       </label>
                       <input
                         type="number"
@@ -992,6 +996,7 @@ export default function PostPropertyPage() {
 
                   {/* Furnishing & Construction Status */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {!isPlot && (
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#172033] uppercase">Furnishing Status</label>
                       <div className="grid grid-cols-3 gap-2">
@@ -1011,6 +1016,7 @@ export default function PostPropertyPage() {
                         ))}
                       </div>
                     </div>
+                    )}
 
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#172033] uppercase">Construction Status</label>
@@ -1220,8 +1226,8 @@ export default function PostPropertyPage() {
                             city,
                             locality,
                             subLocality,
-                            bhk: isCommercial ? undefined : bhk,
-                            bathrooms: isCommercial ? undefined : bathrooms,
+                            bhk: (isCommercial || isPlot) ? undefined : bhk,
+                            bathrooms: (isCommercial || isPlot) ? undefined : bathrooms,
                             carpetAreaSqFt,
                             furnishing,
                             constructionStatus,

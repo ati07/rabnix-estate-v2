@@ -367,7 +367,7 @@ export function PropertyDetailModal({
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3.5 gap-x-4 text-xs">
                       <div>
-                        <span className="text-[#64748B] block font-medium">Carpet Area</span>
+                        <span className="text-[#64748B] block font-medium">Area</span>
                         <span className="text-[#172033] font-bold text-sm">{property.carpetAreaSqFt} sq.ft</span>
                       </div>
                       <div>

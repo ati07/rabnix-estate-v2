@@ -458,7 +458,7 @@ export default function PropertyDetailsClient({ id, initialProperty }: { id: str
               </div>
 
               <div className="space-y-1">
-                <span className="text-[11px] font-bold text-[#64748B] uppercase">Carpet Area</span>
+                <span className="text-[11px] font-bold text-[#64748B] uppercase">Area</span>
                 <div className="text-base font-extrabold text-[#0F2A43]">
                   {property.carpetAreaSqFt} sq.ft
                 </div>

@@ -125,6 +125,8 @@ export function PostPropertyModal({
   if (!isOpen) return null;
 
   const isCommercial = listingType === 'commercial';
+  // Residential Plot is raw land — no BHK / bathrooms apply.
+  const isPlot = category === 'Residential Plot';
   const isMonthlyPrice = listingType === 'rent' || listingType === 'pg' || (isCommercial && commercialListingType === 'rent');
 
   const handleListingTypeChange = (next: ListingType) => {
@@ -169,7 +171,7 @@ export function PostPropertyModal({
     const commercialCategoryLabel = COMMERCIAL_CATEGORIES.find((c) => c.value === category)?.label ?? 'Commercial';
     const fallbackTitle = isCommercial
       ? `${commercialCategoryLabel} for ${commercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${locality || 'Prime Locality'}, ${city}`
-      : `${bhkLabel(bhk)} ${category} in ${locality || 'Prime Locality'}, ${city}`;
+      : `${isPlot ? '' : `${bhkLabel(bhk)} `}${category} in ${locality || 'Prime Locality'}, ${city}`;
 
     const newProp: Property = {
       id: `mb-user-${Date.now()}`,
@@ -185,7 +187,7 @@ export function PostPropertyModal({
       priceFormatted: formattedPrice,
       pricePerSqFt: Math.round(price / (carpetAreaSqFt || 1000)),
       maintenance,
-      bhk: isCommercial ? undefined : bhk,
+      bhk: (isCommercial || isPlot) ? undefined : bhk,
       bathrooms,
       carpetAreaSqFt,
       superBuiltUpAreaSqFt: Math.round(carpetAreaSqFt * 1.3),
@@ -212,7 +214,7 @@ export function PostPropertyModal({
       virtualTourUrl: media.virtualTourUrl || undefined,
       description: description || (isCommercial
         ? `Direct owner commercial listing (${commercialCategoryLabel}) for ${commercialListingType === 'rent' ? 'rent' : 'sale'} in ${locality}, ${city}. Prime location, ${carpetAreaSqFt} sq.ft, 24/7 security and full power backup. Connect directly with the owner.`
-        : `Direct owner listing for ${bhkLabel(bhk)} in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Connect directly with the owner.`),
+        : `Direct owner listing for ${isPlot ? category : bhkLabel(bhk)} in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Connect directly with the owner.`),
       amenities: selectedAmenities,
       postedBy: {
         name: `${ownerName} (Owner)`,
@@ -461,7 +463,7 @@ export function PostPropertyModal({
                 
                 {/* Configuration: BHK & Bathrooms */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {!isCommercial && (
+                  {!isCommercial && !isPlot && (
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-[#172033]">BHK</label>
                       <select
@@ -476,6 +478,7 @@ export function PostPropertyModal({
                     </div>
                   )}
 
+                  {!isPlot && (
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-[#172033]">{isCommercial ? 'Washrooms' : 'Bathrooms'}</label>
                     <select
@@ -489,10 +492,11 @@ export function PostPropertyModal({
                       <option value={4}>4</option>
                     </select>
                   </div>
+                  )}
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-[#172033]">
-                      {isCommercial ? `Size (sq.ft) · min ${MIN_COMMERCIAL_SIZE_SQFT}` : 'Carpet Area (sq.ft)'}
+                      {isCommercial ? `Size (sq.ft) · min ${MIN_COMMERCIAL_SIZE_SQFT}` : isPlot ? 'Size (Area)' : 'Area (sq.ft)'}
                     </label>
                     <input
                       type="number"
@@ -504,6 +508,7 @@ export function PostPropertyModal({
                     />
                   </div>
 
+                  {!isPlot && (
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-[#172033]">Furnishing</label>
                     <select
@@ -516,6 +521,7 @@ export function PostPropertyModal({
                       <option value="Unfurnished">Unfurnished</option>
                     </select>
                   </div>
+                  )}
                 </div>
 
                 {/* Price & Maintenance */}

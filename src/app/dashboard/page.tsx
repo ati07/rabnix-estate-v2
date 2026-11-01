@@ -989,6 +989,8 @@ export default function UserDashboardPage() {
   };
 
   const isCommercialUpload = uploadListingType === 'commercial';
+  // Residential Plot is raw land — no BHK / bathrooms / balconies apply.
+  const isPlotUpload = uploadCategory === 'Residential Plot';
 
   // Switching the listing purpose keeps the selected category valid for it.
   const handleUploadListingTypeChange = (next: ListingType) => {
@@ -1163,7 +1165,7 @@ export default function UserDashboardPage() {
     const commercialCategoryLabel = COMMERCIAL_CATEGORIES.find((c) => c.value === uploadCategory)?.label ?? 'Commercial';
     const autoTitle = isCommercialUpload
       ? `${commercialCategoryLabel} for ${uploadCommercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${uploadLocality}, ${uploadCity}`
-      : `${bhkLabel(uploadBhk)} ${uploadCategory} in ${uploadLocality}, ${uploadCity}`;
+      : `${isPlotUpload ? '' : `${bhkLabel(uploadBhk)} `}${uploadCategory} in ${uploadLocality}, ${uploadCity}`;
     const finalTitle = uploadTitle.trim() || autoTitle;
     const docs: string[] = [];
     if (hasEncumbranceDoc) docs.push('Encumbrance Certificate (EC)');
@@ -1174,7 +1176,7 @@ export default function UserDashboardPage() {
       title: finalTitle,
       tagline: isCommercialUpload
         ? `${commercialCategoryLabel} • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`
-        : `${bhkLabel(uploadBhk)} • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`,
+        : `${isPlotUpload ? uploadCategory : bhkLabel(uploadBhk)} • ${uploadCarpetArea} sq.ft • ${isPlotUpload ? `${uploadFacing} Facing` : uploadFurnishing}`,
       listingType: uploadListingType,
       commercialListingType: isCommercialUpload ? uploadCommercialListingType : undefined,
       category: uploadCategory,
@@ -1188,9 +1190,9 @@ export default function UserDashboardPage() {
       price: uploadPrice,
       carpetAreaSqFt: uploadCarpetArea,
       superBuiltUpAreaSqFt: uploadSuperArea || Math.round(uploadCarpetArea * 1.25),
-      bhk: isCommercialUpload ? undefined : uploadBhk,
+      bhk: (isCommercialUpload || isPlotUpload) ? undefined : uploadBhk,
       bathrooms: uploadBathrooms,
-      balconies: isCommercialUpload ? undefined : uploadBalconies,
+      balconies: (isCommercialUpload || isPlotUpload) ? undefined : uploadBalconies,
       furnishing: uploadFurnishing,
       floor: uploadFloor,
       totalFloors: uploadTotalFloors,
@@ -2133,7 +2135,7 @@ export default function UserDashboardPage() {
                                 const label = COMMERCIAL_CATEGORIES.find((c) => c.value === uploadCategory)?.label ?? 'Commercial';
                                 setUploadTitle(`${label} for ${uploadCommercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${uploadLocality}, ${uploadCity}`);
                               } else {
-                                setUploadTitle(`${bhkLabel(uploadBhk)} ${uploadCategory} in ${uploadLocality}, ${uploadCity}`);
+                                setUploadTitle(`${isPlotUpload ? '' : `${bhkLabel(uploadBhk)} `}${uploadCategory} in ${uploadLocality}, ${uploadCity}`);
                               }
                             }
                           }}
@@ -2159,7 +2161,7 @@ export default function UserDashboardPage() {
                     </h3>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {!isCommercialUpload && (
+                      {!isCommercialUpload && !isPlotUpload && (
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-[#172033]">BHK</label>
                         <select
@@ -2174,7 +2176,7 @@ export default function UserDashboardPage() {
                       </div>
                       )}
 
-                      {!isCommercialUpload && (
+                      {!isCommercialUpload && !isPlotUpload && (
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-[#172033]">Bathrooms</label>
                         <select
@@ -2192,7 +2194,7 @@ export default function UserDashboardPage() {
 
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-[#172033]">
-                          {isCommercialUpload ? `Size (sq.ft) — min ${MIN_COMMERCIAL_SIZE_SQFT}` : 'Carpet Area (sq.ft)'}
+                          {isCommercialUpload ? `Size (sq.ft) — min ${MIN_COMMERCIAL_SIZE_SQFT}` : isPlotUpload ? 'Size (Area)' : 'Area (sq.ft)'}
                         </label>
                         <input
                           type="number"
@@ -2203,6 +2205,21 @@ export default function UserDashboardPage() {
                         />
                       </div>
 
+                      {isPlotUpload ? (
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-[#172033]">Facing</label>
+                        <select
+                          value={uploadFacing}
+                          onChange={(e) => setUploadFacing(e.target.value as FacingDirection)}
+                          className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D]"
+                        >
+                          <option value="East">East</option>
+                          <option value="West">West</option>
+                          <option value="North">North</option>
+                          <option value="South">South</option>
+                        </select>
+                      </div>
+                      ) : (
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-[#172033]">Furnishing</label>
                         <select
@@ -2215,6 +2232,7 @@ export default function UserDashboardPage() {
                           <option value="Unfurnished">Unfurnished</option>
                         </select>
                       </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2402,8 +2420,8 @@ export default function UserDashboardPage() {
                               city: uploadCity,
                               locality: uploadLocality,
                               subLocality: uploadSubLocality,
-                              bhk: isCommercialUpload ? undefined : uploadBhk,
-                              bathrooms: isCommercialUpload ? undefined : uploadBathrooms,
+                              bhk: (isCommercialUpload || isPlotUpload) ? undefined : uploadBhk,
+                              bathrooms: (isCommercialUpload || isPlotUpload) ? undefined : uploadBathrooms,
                               carpetAreaSqFt: uploadCarpetArea,
                               furnishing: uploadFurnishing,
                               constructionStatus: uploadConstruction,

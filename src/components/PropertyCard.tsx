@@ -173,7 +173,7 @@ export function PropertyCard({
         {/* Specifications Matrix */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E2E8F0] text-xs">
           <div>
-            <span className="text-[#64748B] block text-[10px] uppercase font-bold tracking-wider">Carpet Area</span>
+            <span className="text-[#64748B] block text-[10px] uppercase font-bold tracking-wider">Area</span>
             <span className="font-bold text-[#172033]">{property.carpetAreaSqFt} sq.ft</span>
           </div>
 
