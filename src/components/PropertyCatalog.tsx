@@ -588,8 +588,10 @@ export function PropertyCatalog({
       {/* Main Two-Column Layout (Left Filter Sidebar + Right Properties Area) */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-6">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-          {/* LEFT SIDEBAR FILTER (Sticky Desktop) */}
-          <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-24 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs">
+          {/* LEFT SIDEBAR FILTER (Sticky Desktop) — bounded to the viewport and
+              self-scrolling so a tall filter stack never overflows the screen or
+              causes the sticky column to jump when the result list resizes. */}
+          <aside className="hidden lg:block w-72 xl:w-80 shrink-0 self-start sticky top-24 max-h-[calc(100vh_-_7rem)] overflow-y-auto bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs">
             {FilterSidebarContent}
           </aside>
 
@@ -622,8 +624,10 @@ export function PropertyCatalog({
             </div>
           )}
 
-          {/* RIGHT MAIN CONTENT AREA */}
-          <main className="flex-1 min-w-0 w-full space-y-4">
+          {/* RIGHT MAIN CONTENT AREA — a min-height keeps the column (and the flex
+              row) from collapsing shorter than the sticky sidebar when filters
+              trim the result list, which otherwise snaps the scroll position. */}
+          <main className="flex-1 min-w-0 w-full space-y-4 min-h-[70vh]">
             {/* Mobile filter trigger — shown when this catalog isn't rendering the heading banner (landing pages). */}
             {!showHeading && (
               <button

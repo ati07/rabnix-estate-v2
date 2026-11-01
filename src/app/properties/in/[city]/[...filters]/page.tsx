@@ -235,9 +235,10 @@ export default async function LandingPage({ params }: Params) {
         ]}
       />
 
-      {/* Lightweight header */}
-      <header className="bg-white border-b border-[#E2E8F0]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      {/* Lightweight header — sticky, matching the city landing page so the
+          chrome doesn't change when drilling down into a locality/type. */}
+      <header className="bg-white border-b border-[#E2E8F0] sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
           <Link href="/" aria-label="BayBayt home">
             <BrandLogo className="h-8 w-auto" />
           </Link>
@@ -251,7 +252,7 @@ export default async function LandingPage({ params }: Params) {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="text-xs text-[#64748B] mb-4 flex flex-wrap items-center" aria-label="Breadcrumb">
           {crumbs.map((c, i) => (
@@ -361,7 +362,7 @@ export default async function LandingPage({ params }: Params) {
         initialFilters={initialFiltersForLanding(resolved)}
       />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
         {/* FAQ (AEO) — accordion; answers stay in the HTML (crawlable) even when collapsed */}
         <section>
           <div className="flex items-center gap-3 mb-4">
