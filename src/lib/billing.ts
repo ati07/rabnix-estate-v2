@@ -58,7 +58,7 @@ export interface ListingPack {
 
 export const LISTING_PACKS: ListingPack[] = [
   { id: 'starter_15', name: '15 Listings', listings: 15, durationDays: 90,  tagline: 'For individual owners getting started', priceRupees: 500 },
-  { id: 'pro_25',     name: '25 Listings', listings: 25, durationDays: 180, tagline: 'Best value for active sellers',         priceRupees: 1000 },
+  { id: 'pro_25',     name: '35 Listings', listings: 35, durationDays: 180, tagline: 'Best value for active sellers',         priceRupees: 1000 },
 ];
 
 // ---------------------------------------------------------------------------
