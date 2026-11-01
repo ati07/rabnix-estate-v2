@@ -54,7 +54,7 @@ export async function POST(req: Request) {
           apiKey: process.env.GEMINI_API_KEY,
           httpOptions: { timeout: Number(process.env.GEMINI_TIMEOUT_MS || 15000) },
         });
-        const prompt = `As an expert real estate AI valuation analyst in India, write a concise 2-sentence market appraisal commentary for a ${body.bedrooms || 'Commercial'} BHK ${body.propertyType} with ${body.carpetArea} sq.ft carpet area located in ${body.locality}, ${body.city}. Current estimated price is ${formatPrice(minValuation)} to ${formatPrice(maxValuation)}. Mention buyer demand and upcoming infrastructure catalysts. Keep it under 40 words.`;
+        const prompt = `As an expert real estate AI valuation analyst in India, write a concise 2-sentence market appraisal commentary for a ${body.bedrooms === 0 ? 'Studio' : body.bedrooms ? `${body.bedrooms} BHK` : 'Commercial'} ${body.propertyType} with ${body.carpetArea} sq.ft carpet area located in ${body.locality}, ${body.city}. Current estimated price is ${formatPrice(minValuation)} to ${formatPrice(maxValuation)}. Mention buyer demand and upcoming infrastructure catalysts. Keep it under 40 words.`;
         
         const response = await ai.models.generateContent({
           model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',

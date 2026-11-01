@@ -53,6 +53,7 @@ function initialFiltersForLanding(r: Resolved): Partial<PropertyFilterState> {
     else if (typeSlug === 'pg') f.listingType = 'pg';
     else if (typeSlug === 'plots') f.listingType = 'plot';
     else if (typeSlug === 'commercial') f.listingType = 'commercial';
+    else if (typeSlug === 'studio') f.bhk = [0];
     else {
       const bhkFlats = typeSlug.match(/^(\d+)-bhk-flats$/);
       const bhkOnly = typeSlug.match(/^(\d+)-bhk$/);

@@ -35,6 +35,7 @@ import { useProperties } from '@/lib/propertyContext';
 import { useAuth } from '@/lib/authContext';
 import { SpaceAvailable } from '@/components/SpaceAvailable';
 import type { Property } from '@/lib/types';
+import { bhkLabel } from '@/lib/propertyFilters';
 
 const ICON_MAP: Record<string, any> = {
   CheckCircle2,
@@ -144,7 +145,7 @@ export default function CollectionDetailsClient({
       if (selectedCity !== 'All' && p.city.toLowerCase() !== selectedCity.toLowerCase()) {
         return false;
       }
-      if (selectedBhk.length > 0 && p.bhk && !selectedBhk.includes(p.bhk)) {
+      if (selectedBhk.length > 0 && p.bhk != null && !selectedBhk.includes(p.bhk)) {
         return false;
       }
       if (p.price < minPrice || p.price > maxPrice) {
@@ -376,7 +377,7 @@ export default function CollectionDetailsClient({
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-[#0F2A43]">BHK:</span>
                 <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4].map((b) => {
+                  {[0, 1, 2, 3, 4].map((b) => {
                     const isSelected = selectedBhk.includes(b);
                     return (
                       <button
@@ -388,7 +389,7 @@ export default function CollectionDetailsClient({
                             : 'bg-[#F8FAFC] text-[#475569] border border-[#E2E8F0] hover:bg-[#F1F5F9]'
                         }`}
                       >
-                        {b} BHK
+                        {bhkLabel(b)}
                       </button>
                     );
                   })}
@@ -481,7 +482,7 @@ export default function CollectionDetailsClient({
                         </div>
 
                         <div className="absolute bottom-2 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded">
-                          {prop.bhk ? `${prop.bhk} BHK • ` : ''}{prop.carpetAreaSqFt} sq.ft
+                          {prop.bhk != null ? `${bhkLabel(prop.bhk)} • ` : ''}{prop.carpetAreaSqFt} sq.ft
                         </div>
                       </div>
 

@@ -72,6 +72,9 @@ function buildTypes(): PropertyTypeDef[] {
     types.push({ slug: c.slug, label: c.label, match: (p) => p.category === c.category });
   }
 
+  // Studio (0 BHK) landing page.
+  types.push({ slug: 'studio', label: 'Studio Homes', match: (p) => p.bhk === 0 });
+
   // BHK pages (1–5): bare "{n}-bhk" plus the common "{n}-bhk-flats" combo.
   for (let n = 1; n <= 5; n++) {
     types.push({ slug: `${n}-bhk`, label: `${n} BHK Homes`, match: (p) => p.bhk === n });

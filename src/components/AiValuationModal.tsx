@@ -18,6 +18,7 @@ import {
 import { AiValuationResult, PropertyCategory, FurnishingStatus } from '@/lib/types';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import { formatIndianCurrency, formatIndianNumber } from '@/lib/formatters';
+import { BHK_OPTION_VALUES, bhkLabel } from '@/lib/propertyFilters';
 
 interface AiValuationModalProps {
   isOpen: boolean;
@@ -176,11 +177,9 @@ export function AiValuationModal({
                   onChange={(e) => setBhk(Number(e.target.value))}
                   className="w-full text-xs font-semibold bg-white border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D]"
                 >
-                  <option value={1}>1 BHK</option>
-                  <option value={2}>2 BHK</option>
-                  <option value={3}>3 BHK</option>
-                  <option value={4}>4 BHK</option>
-                  <option value={5}>5+ BHK</option>
+                  {BHK_OPTION_VALUES.map((n) => (
+                    <option key={n} value={n}>{bhkLabel(n)}</option>
+                  ))}
                 </select>
               </div>
 

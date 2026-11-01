@@ -11,6 +11,7 @@ import { calculateEmiDeclaration, runEmiCalculation, type EmiArgs } from "@/lib/
 import { createInquiryDeclaration, runCreateInquiry, type CreateInquiryArgs } from "@/lib/genie/leads";
 import { draftPropertyListingDeclaration, normalizeListingDraft, normalizePartialDraft, type GenieListingDraft } from "@/lib/genie/listingDraft";
 import { marketInsightsDeclaration, runMarketInsights, type MarketInsightsArgs } from "@/lib/genie/market";
+import { bhkLabel } from "@/lib/propertyFilters";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -125,7 +126,7 @@ Evaluate fair market pricing, rental yields, and investment forecast for the fol
 - Locality: ${locality || 'Central'}
 - Category: ${category || 'Apartment'}
 - Carpet Area: ${areaSqFt || 1000} sq.ft
-- BHK: ${bhk || 2} BHK
+- BHK: ${bhk != null ? bhkLabel(bhk) : '2 BHK'}
 - Furnishing: ${furnishing || 'Semi-Furnished'}
 - Age: ${age || 'New'}
 
@@ -286,7 +287,7 @@ Provide accurate, realistic Indian real estate valuation metrics with INR figure
 
       let prompt = `User Query: ${userQuery}\n`;
       if (contextProperty) {
-        prompt += `\nCurrently viewed property context:\npropertyId: ${contextProperty.id}\nTitle: ${contextProperty.title}\nCity: ${contextProperty.city}, Locality: ${contextProperty.locality}\nPrice: ${contextProperty.priceFormatted} (${contextProperty.pricePerSqFt} / sq.ft)\nBHK: ${contextProperty.bhk || 'N/A'}, Carpet Area: ${contextProperty.carpetAreaSqFt} sq.ft\nRERA: ${contextProperty.reraId || 'Approved'}\n(Use this propertyId for create_inquiry if the user wants to contact the owner or book a visit for this listing.)\n`;
+        prompt += `\nCurrently viewed property context:\npropertyId: ${contextProperty.id}\nTitle: ${contextProperty.title}\nCity: ${contextProperty.city}, Locality: ${contextProperty.locality}\nPrice: ${contextProperty.priceFormatted} (${contextProperty.pricePerSqFt} / sq.ft)\nBHK: ${contextProperty.bhk != null ? bhkLabel(contextProperty.bhk) : 'N/A'}, Carpet Area: ${contextProperty.carpetAreaSqFt} sq.ft\nRERA: ${contextProperty.reraId || 'Approved'}\n(Use this propertyId for create_inquiry if the user wants to contact the owner or book a visit for this listing.)\n`;
       }
 
       const systemInstruction = `You are "BayBayt Genie", the official AI Real Estate Advisor at BayBayt (India's Premier Real Estate & Property Portal).

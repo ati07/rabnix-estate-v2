@@ -94,8 +94,8 @@ export async function runMarketInsights(args: MarketInsightsArgs) {
   );
   const bhkMix: Record<string, number> = {};
   for (const r of saleRows) {
-    if (r.bhk) {
-      const key = `${r.bhk}BHK`;
+    if (r.bhk != null) {
+      const key = r.bhk === 0 ? 'Studio' : `${r.bhk}BHK`;
       bhkMix[key] = (bhkMix[key] || 0) + 1;
     }
   }

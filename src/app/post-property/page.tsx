@@ -29,6 +29,7 @@ import {
 import { useAuth } from '@/lib/authContext';
 import { useProperties } from '@/lib/propertyContext';
 import { ListingType, CommercialListingType, PropertyCategory, FurnishingStatus, ConstructionStatus, FacingDirection } from '@/lib/types';
+import { BHK_OPTION_VALUES, bhkLabel } from '@/lib/propertyFilters';
 import { CITIES_DATA } from '@/lib/realEstateData';
 import LocationPicker, { type LatLng } from '@/components/LocationPicker';
 import { LocationSelect } from '@/components/location/LocationSelect';
@@ -309,7 +310,7 @@ export default function PostPropertyPage() {
       }
       if (!title.trim()) {
         // Auto-generate title if empty
-        setTitle(isCommercial ? `${category} in ${locality}, ${city}` : `${bhk} BHK ${category} in ${locality}, ${city}`);
+        setTitle(isCommercial ? `${category} in ${locality}, ${city}` : `${bhkLabel(bhk)} ${category} in ${locality}, ${city}`);
       }
     } else if (currentStep === 2) {
       if (price <= 0) {
@@ -348,7 +349,7 @@ export default function PostPropertyPage() {
     try {
       const generatedTitle = title.trim() || (isCommercial
         ? `${category} in ${locality}, ${city}`
-        : `${bhk} BHK ${category} in ${locality}, ${city}`);
+        : `${bhkLabel(bhk)} ${category} in ${locality}, ${city}`);
 
       const documents: string[] = [];
       if (hasEncumbranceCert) documents.push('Encumbrance Certificate (EC)');
@@ -359,7 +360,7 @@ export default function PostPropertyPage() {
         title: generatedTitle,
         tagline: isCommercial
           ? `${category} • ${carpetAreaSqFt} sq.ft • ${furnishing}`
-          : `${bhk} BHK • ${carpetAreaSqFt} sq.ft • ${furnishing}`,
+          : `${bhkLabel(bhk)} • ${carpetAreaSqFt} sq.ft • ${furnishing}`,
         listingType,
         commercialListingType: isCommercial ? commercialListingType : undefined,
         category,
@@ -541,7 +542,7 @@ export default function PostPropertyPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-[#64748B]">Property:</span>
-                <span className="font-bold text-[#0F2A43]">{title || `${bhk} BHK in ${locality}, ${city}`}</span>
+                <span className="font-bold text-[#0F2A43]">{title || `${bhkLabel(bhk)} in ${locality}, ${city}`}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#64748B]">Expected Price / Rent:</span>
@@ -839,19 +840,19 @@ export default function PostPropertyPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-[#172033] uppercase">Bedrooms (BHK)</label>
-                      <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((num) => (
+                      <div className="flex gap-2 flex-wrap">
+                        {BHK_OPTION_VALUES.map((num) => (
                           <button
                             key={num}
                             type="button"
                             onClick={() => setBhk(num)}
-                            className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                            className={`flex-1 min-w-[3.5rem] py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
                               bhk === num
                                 ? 'bg-[#18A67D] text-white border-[#18A67D]'
                                 : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#172033] hover:border-[#18A67D]'
                             }`}
                           >
-                            {num} BHK
+                            {bhkLabel(num)}
                           </button>
                         ))}
                       </div>

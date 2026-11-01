@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { propertyImageAlt } from '@/lib/seoText';
-import { 
-  X, 
+import { bhkLabel } from '@/lib/propertyFilters';
+import {
+  X,
   MapPin, 
   Heart, 
   Share2,
@@ -128,7 +129,7 @@ export function PropertyDetailModal({
             locality: property.locality,
             category: property.category,
             areaSqFt: property.carpetAreaSqFt,
-            bhk: property.bhk || 2,
+            bhk: property.bhk ?? 2,
             furnishing: property.furnishing,
             age: property.ageOfProperty || '1 year'
           }
@@ -378,7 +379,7 @@ export function PropertyDetailModal({
                       <div>
                         <span className="text-[#64748B] block font-medium">Configuration</span>
                         <span className="text-[#172033] font-bold text-sm">
-                          {property.bhk ? `${property.bhk} BHK` : 'Studio/Open'}
+                          {property.bhk != null ? bhkLabel(property.bhk) : 'Studio/Open'}
                         </span>
                       </div>
                       <div>

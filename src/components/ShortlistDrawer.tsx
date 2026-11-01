@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { 
-  X, 
-  Heart, 
+import { bhkLabel } from '@/lib/propertyFilters';
+import {
+  X,
+  Heart,
   Trash2, 
   ExternalLink, 
   Layers, 
@@ -138,7 +139,7 @@ export function ShortlistDrawer({
                       <td className="p-3 font-semibold text-[#64748B]">Configuration</td>
                       {shortlistedProperties.map((p) => (
                         <td key={p.id} className="p-3 font-medium text-[#172033]">
-                          {p.bhk ? `${p.bhk} BHK` : p.category}
+                          {p.bhk != null ? bhkLabel(p.bhk) : p.category}
                         </td>
                       ))}
                     </tr>

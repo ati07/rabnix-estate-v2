@@ -14,6 +14,27 @@ import type { Property, ListingType, CommercialListingType } from '@/lib/types';
 /** Minimum commercial size (sq.ft) the catalog allows — matches the catalog page. */
 export const MIN_SIZE_SQFT = 80;
 
+/**
+ * Selectable BHK configurations across the app, in display order. A Studio is
+ * modelled as 0 bedrooms (0 BHK); 5 means "5 or more". Post forms and filter
+ * chips both iterate this so "Studio" shows up everywhere consistently.
+ */
+export const BHK_OPTION_VALUES = [0, 1, 2, 3, 4, 5] as const;
+
+/** Human label for a BHK value: 0 → "Studio", 5 → "5+ BHK", else "N BHK". */
+export function bhkLabel(bhk: number): string {
+  if (bhk === 0) return 'Studio';
+  if (bhk >= 5) return '5+ BHK';
+  return `${bhk} BHK`;
+}
+
+/** Short chip label (no "BHK" suffix for numbers): 0 → "Studio", 5 → "5+". */
+export function bhkChipLabel(bhk: number): string {
+  if (bhk === 0) return 'Studio';
+  if (bhk >= 5) return '5+';
+  return `${bhk}`;
+}
+
 export type SortKey = 'recommended' | 'price_asc' | 'price_desc' | 'area_desc' | 'newest';
 
 export interface PropertyFilterState {
@@ -192,7 +213,7 @@ export function matchesFilters(p: Property, f: PropertyFilterState): boolean {
     if (f.maxSize > 0 && size > f.maxSize) return false;
   }
 
-  if (!isCommercial && f.bhk.length > 0 && p.bhk && !f.bhk.includes(p.bhk)) return false;
+  if (!isCommercial && f.bhk.length > 0 && p.bhk != null && !f.bhk.includes(p.bhk)) return false;
 
   if (p.price < f.minPrice || p.price > f.maxPrice) return false;
 

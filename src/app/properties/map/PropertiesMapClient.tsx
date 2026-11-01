@@ -30,6 +30,7 @@ import {
   sortProperties,
   countActiveFilters,
   MIN_SIZE_SQFT,
+  BHK_OPTION_VALUES,
   type PropertyFilterState,
   type SortKey,
 } from '@/lib/propertyFilters';
@@ -67,7 +68,6 @@ const LISTING_TYPE_OPTIONS: { id: PropertyFilterState['listingType']; label: str
 
 const RESIDENTIAL_CATEGORIES = ['All', 'Apartment', 'Villa', 'Builder Floor', 'Penthouse', 'Studio', 'Residential Plot', 'PG / Co-Living'];
 const COMMERCIAL_CATEGORIES = ['All', 'Commercial Office', 'Retail Shop', 'Warehouse', 'Commercial Land'];
-const BHK_OPTIONS = [1, 2, 3, 4, 5];
 
 const SORT_OPTIONS: { id: SortKey; label: string }[] = [
   { id: 'recommended', label: 'Recommended' },
@@ -424,15 +424,15 @@ function MapFilterBar({
         {/* BHK chips (residential only) */}
         {!isCommercial && (
           <div className="flex items-center gap-1">
-            {BHK_OPTIONS.map((n) => (
+            {BHK_OPTION_VALUES.map((n) => (
               <button
                 key={n}
                 onClick={() => onChange({ bhk: filters.bhk.includes(n) ? [] : [n] })}
-                className={`w-9 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
                   filters.bhk.includes(n) ? 'bg-[#18A67D] text-white' : 'bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]'
                 }`}
               >
-                {n}
+                {n === 0 ? 'Studio' : n}
               </button>
             ))}
             <span className="text-[11px] text-[#94A3B8] font-semibold">BHK</span>

@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { BrandLogo } from '@/components/BrandLogo';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { 
-  Award, 
+import { bhkLabel } from '@/lib/propertyFilters';
+import {
+  Award,
   ShieldCheck, 
   Building2, 
   MapPin, 
@@ -545,7 +546,7 @@ export default function BuilderDetailsClient({ id, initialBuilder }: { id: strin
                         </div>
 
                         <div className="absolute bottom-2 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded">
-                          {prop.bhk ? `${prop.bhk} BHK • ` : ''}{prop.carpetAreaSqFt} sq.ft
+                          {prop.bhk != null ? `${bhkLabel(prop.bhk)} • ` : ''}{prop.carpetAreaSqFt} sq.ft
                         </div>
                       </div>
 

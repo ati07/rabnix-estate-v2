@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { propertyImageAlt } from '@/lib/seoText';
+import { bhkLabel } from '@/lib/propertyFilters';
 import {
   Heart,
   MapPin,
@@ -179,7 +180,7 @@ export function PropertyCard({
           <div>
             <span className="text-[#64748B] block text-[10px] uppercase font-bold tracking-wider">Configuration</span>
             <span className="font-bold text-[#172033]">
-              {property.bhk ? `${property.bhk} BHK, ${property.bathrooms} Baths` : `${property.bathrooms} Baths`}
+              {property.bhk != null ? `${bhkLabel(property.bhk)}, ${property.bathrooms} Baths` : `${property.bathrooms} Baths`}
             </span>
           </div>
 

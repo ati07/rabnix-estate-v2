@@ -39,6 +39,8 @@ import {
   sortProperties,
   countActiveFilters,
   MIN_SIZE_SQFT,
+  BHK_OPTION_VALUES,
+  bhkLabel,
 } from '@/lib/propertyFilters';
 import { SavedSearchesBar } from '@/components/SavedSearchesBar';
 import { CITIES_DATA } from '@/lib/realEstateData';
@@ -432,21 +434,21 @@ export function PropertyCatalog({
       ) : (
         <div className="space-y-2">
           <label className="text-xs font-bold text-[#0F2A43] uppercase tracking-wider block">Bedrooms (BHK)</label>
-          <div className="flex items-center gap-1.5">
-            {[1, 2, 3, 4, 5].map((bhk) => {
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {BHK_OPTION_VALUES.map((bhk) => {
               const isSelected = activeBhk.includes(bhk);
               return (
                 <button
                   key={bhk}
                   type="button"
                   onClick={() => handleToggleBhk(bhk)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex-1 min-w-[3.5rem] py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-[#0F2A43] text-white shadow-xs'
                       : 'bg-[#F8FAFC] text-[#475569] border border-[#E2E8F0] hover:bg-[#F1F5F9]'
                   }`}
                 >
-                  {bhk} {bhk === 5 ? '5+' : 'BHK'}
+                  {bhkLabel(bhk)}
                 </button>
               );
             })}
@@ -751,7 +753,7 @@ export function PropertyCatalog({
 
                 {!isCommercial && activeBhk.map((b) => (
                   <span key={b} className="bg-slate-100 border border-slate-300 text-[#0F2A43] px-2.5 py-1 rounded-full font-bold flex items-center gap-1 shadow-2xs">
-                    <span>{b} BHK</span>
+                    <span>{bhkLabel(b)}</span>
                     <button onClick={() => handleToggleBhk(b)} className="hover:text-rose-600 ml-0.5 cursor-pointer">×</button>
                   </span>
                 ))}
@@ -859,7 +861,7 @@ export function PropertyCatalog({
                           </div>
 
                           <div className="absolute bottom-2 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded">
-                            {prop.bhk ? `${prop.bhk} BHK • ` : ''}{prop.carpetAreaSqFt} sq.ft
+                            {prop.bhk != null ? `${bhkLabel(prop.bhk)} • ` : ''}{prop.carpetAreaSqFt} sq.ft
                           </div>
                         </div>
 

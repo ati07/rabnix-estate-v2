@@ -1,4 +1,5 @@
 import 'server-only';
+import { bhkLabel } from '@/lib/propertyFilters';
 
 // Pluggable email delivery for sign-up verification codes.
 //
@@ -117,7 +118,7 @@ function listingAlertHtml(args: { searchName: string; items: ListingAlertItem[];
       (it) => `<a href="${esc(it.url)}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin:0 0 10px">
     <div style="font-size:16px;font-weight:800;color:#0E7C5D">${esc(it.priceFormatted)}</div>
     <div style="font-size:14px;font-weight:600;color:#0F2A43;margin:2px 0">${esc(it.title)}</div>
-    <div style="font-size:12px;color:#64748B">${esc([it.bhk ? `${it.bhk} BHK` : '', it.category || '', [it.locality, it.city].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</div>
+    <div style="font-size:12px;color:#64748B">${esc([it.bhk != null ? bhkLabel(it.bhk) : '', it.category || '', [it.locality, it.city].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</div>
   </a>`,
     )
     .join('');

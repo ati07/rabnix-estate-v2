@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import Image from 'next/image';
 import { propertyImageAlt } from '@/lib/seoText';
+import { bhkLabel } from '@/lib/propertyFilters';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronLeft, ChevronRight, Camera, CheckCircle, Sparkles } from 'lucide-react';
 import { Property } from '@/lib/types';
@@ -135,7 +136,7 @@ export function ExclusiveOwnerPropertiesSection({
                 <div className="p-3.5 flex flex-col justify-between flex-1 bg-white">
                   <div>
                     <div className="text-xs text-[#64748B] font-medium">
-                      {prop.bhk ? `${prop.bhk} BHK ${prop.category || 'Flat'}` : prop.category}
+                      {prop.bhk != null ? `${bhkLabel(prop.bhk)} ${prop.category || 'Flat'}` : prop.category}
                     </div>
 
                     <div className="text-sm sm:text-base font-bold text-[#172033] mt-0.5 flex items-center gap-1.5">

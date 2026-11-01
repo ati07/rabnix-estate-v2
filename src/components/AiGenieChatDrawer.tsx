@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { bhkLabel } from '@/lib/propertyFilters';
 import {
   X,
   Sparkles,
@@ -253,7 +254,7 @@ export function AiGenieChatDrawer({
                           )}
                         </div>
                         <div className="text-[11px] text-[#64748B] truncate">
-                          {prop.bhk ? `${prop.bhk} BHK ` : ''}{prop.category}
+                          {prop.bhk != null ? `${bhkLabel(prop.bhk)} ` : ''}{prop.category}
                           {prop.carpetAreaSqFt ? ` · ${prop.carpetAreaSqFt} sqft` : ''}
                         </div>
                         <div className="text-[11px] text-[#64748B] truncate flex items-center gap-0.5">

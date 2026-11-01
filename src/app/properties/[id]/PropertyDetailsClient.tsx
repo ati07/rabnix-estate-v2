@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { Property } from '@/lib/types';
 import { propertyImageAlt } from '@/lib/seoText';
+import { bhkLabel } from '@/lib/propertyFilters';
 import { BrandLogo } from '@/components/BrandLogo';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -451,7 +452,7 @@ export default function PropertyDetailsClient({ id, initialProperty }: { id: str
               <div className="space-y-1">
                 <span className="text-[11px] font-bold text-[#64748B] uppercase">Configuration</span>
                 <div className="text-base font-extrabold text-[#0F2A43]">
-                  {property.bhk ? `${property.bhk} BHK` : property.category}
+                  {property.bhk != null ? bhkLabel(property.bhk) : property.category}
                 </div>
                 <span className="text-[11px] text-[#64748B]">{property.bathrooms} Baths • {property.balconies || 1} Balcony</span>
               </div>

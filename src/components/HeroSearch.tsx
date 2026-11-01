@@ -22,6 +22,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { CityInfo, CommercialListingType, ListingType, PropertyCategory, SearchFilters } from '@/lib/types';
+import { BHK_OPTION_VALUES, bhkLabel, bhkChipLabel } from '@/lib/propertyFilters';
 import { CITY_SEARCH_LOCALITIES } from '@/lib/realEstateData';
 import { isMapsEnabled, type LatLngLiteral } from '@/lib/maps/config';
 import { HeroMiniMap } from '@/components/map/HeroMiniMap';
@@ -279,8 +280,8 @@ export function HeroSearch({
 
   const getBhkLabel = () => {
     if (!filters.bhk || filters.bhk.length === 0) return 'Bedrooms';
-    if (filters.bhk.length === 1) return `${filters.bhk[0]} BHK`;
-    return `${filters.bhk.join(', ')} BHK`;
+    if (filters.bhk.length === 1) return bhkLabel(filters.bhk[0]);
+    return `${filters.bhk.map(bhkChipLabel).join(', ')} BHK`;
   };
 
   const getSizeLabel = () => {
@@ -790,7 +791,7 @@ export function HeroSearch({
                       Select Bedrooms
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {[1, 2, 3, 4, 5].map((bhk) => {
+                      {BHK_OPTION_VALUES.map((bhk) => {
                         const isSelected = (filters.bhk || []).includes(bhk);
                         return (
                           <button
@@ -802,7 +803,7 @@ export function HeroSearch({
                                 : 'bg-[#F8FAFC] text-[#172033] border-[#E2E8F0] hover:border-[#CBD5E1]'
                             }`}
                           >
-                            {bhk} BHK
+                            {bhkLabel(bhk)}
                           </button>
                         );
                       })}

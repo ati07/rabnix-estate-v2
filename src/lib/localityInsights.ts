@@ -116,7 +116,7 @@ export function computeLocalityInsights(rows: InsightInput[], limit = 8): Locali
       if (yieldPct >= MIN_PLAUSIBLE_YIELD && yieldPct <= MAX_PLAUSIBLE_YIELD) rentalYieldPct = yieldPct;
     }
 
-    const bhkMix = [...new Set(listings.map((r) => r.bhk).filter((b): b is number => !!b && b > 0))].sort(
+    const bhkMix = [...new Set(listings.map((r) => r.bhk).filter((b): b is number => b != null && b >= 0))].sort(
       (a, b) => a - b,
     );
 

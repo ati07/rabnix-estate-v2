@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { 
-  Building2, 
-  MapPin, 
-  ShieldCheck, 
+import { bhkLabel } from '@/lib/propertyFilters';
+import {
+  Building2,
+  MapPin,
+  ShieldCheck,
   CheckCircle2, 
   Heart, 
   Share2, 
@@ -403,10 +404,10 @@ export default function AgentDetailsClient({
                         </div>
 
                         <div className="flex items-center gap-3 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium">
-                          {prop.bhk && (
+                          {prop.bhk != null && (
                             <div className="flex items-center gap-1">
                               <Bed className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{prop.bhk} BHK</span>
+                              <span>{bhkLabel(prop.bhk)}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-1">

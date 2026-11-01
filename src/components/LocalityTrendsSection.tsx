@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { TrendingUp, Sparkles, ArrowUpRight, Home, IndianRupee, Percent } from 'lucide-react';
 import { CityInfo } from '@/lib/types';
 import type { LocalityInsight } from '@/lib/localityInsights';
+import { bhkLabel } from '@/lib/propertyFilters';
 import { formatIndianCurrency, formatIndianNumber } from '@/lib/formatters';
 import { SpaceAvailable } from '@/components/SpaceAvailable';
 
@@ -150,7 +151,7 @@ function LocalityInsightCard({ insight, onSelect }: { insight: LocalityInsight; 
               key={b}
               className="text-[10px] font-bold text-[#0F2A43] bg-[#F1F5F9] rounded px-1.5 py-0.5"
             >
-              {b} BHK
+              {bhkLabel(b)}
             </span>
           ))}
         </div>

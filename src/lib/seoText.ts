@@ -1,4 +1,5 @@
 import type { Property } from '@/lib/types';
+import { bhkLabel } from '@/lib/propertyFilters';
 
 /**
  * Human- and crawler-friendly phrase describing what a listing is offered as,
@@ -29,7 +30,12 @@ export function dealPhrase(p: Pick<Property, 'listingType' | 'commercialListingT
 export function propertyDescriptor(
   p: Pick<Property, 'listingType' | 'commercialListingType' | 'category' | 'bhk' | 'locality' | 'city'>,
 ): string {
-  const head = [p.bhk ? `${p.bhk} BHK` : null, p.category].filter(Boolean).join(' ');
+  // A studio is 0 BHK → "Studio"; avoid "Studio Studio" when the category is
+  // already "Studio".
+  const bhkPart = p.bhk != null ? bhkLabel(p.bhk) : null;
+  const head = (bhkPart && bhkPart !== p.category ? [bhkPart, p.category] : [p.category])
+    .filter(Boolean)
+    .join(' ');
   const loc = [p.locality, p.city].filter(Boolean).join(', ');
   const base = `${head} ${dealPhrase(p)}`.trim();
   return loc ? `${base} in ${loc}` : base;

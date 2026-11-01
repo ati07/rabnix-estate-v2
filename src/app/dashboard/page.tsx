@@ -132,6 +132,7 @@ import { GENIE_LISTING_DRAFT_KEY, type GenieListingDraft } from '@/lib/genie/lis
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { isAdminRole } from '@/lib/roles';
 import { formatIndianCurrency } from '@/lib/formatters';
+import { BHK_OPTION_VALUES, bhkLabel } from '@/lib/propertyFilters';
 import type { FeaturedProjectItem } from '@/lib/homeSectionsData';
 
 // Commercial listings use their own category set (not BHK/residential) and a
@@ -1092,7 +1093,7 @@ export default function UserDashboardPage() {
     setUploadAddress(p.address || '');
     setUploadCoordinates(p.coordinates);
     setUploadTitle(p.title || '');
-    setUploadBhk(p.bhk || 2);
+    setUploadBhk(p.bhk ?? 2);
     setUploadBathrooms(p.bathrooms || 2);
     setUploadBalconies(p.balconies || 1);
     setUploadCarpetArea(p.carpetAreaSqFt || 0);
@@ -1162,7 +1163,7 @@ export default function UserDashboardPage() {
     const commercialCategoryLabel = COMMERCIAL_CATEGORIES.find((c) => c.value === uploadCategory)?.label ?? 'Commercial';
     const autoTitle = isCommercialUpload
       ? `${commercialCategoryLabel} for ${uploadCommercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${uploadLocality}, ${uploadCity}`
-      : `${uploadBhk} BHK ${uploadCategory} in ${uploadLocality}, ${uploadCity}`;
+      : `${bhkLabel(uploadBhk)} ${uploadCategory} in ${uploadLocality}, ${uploadCity}`;
     const finalTitle = uploadTitle.trim() || autoTitle;
     const docs: string[] = [];
     if (hasEncumbranceDoc) docs.push('Encumbrance Certificate (EC)');
@@ -1173,7 +1174,7 @@ export default function UserDashboardPage() {
       title: finalTitle,
       tagline: isCommercialUpload
         ? `${commercialCategoryLabel} • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`
-        : `${uploadBhk} BHK • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`,
+        : `${bhkLabel(uploadBhk)} • ${uploadCarpetArea} sq.ft • ${uploadFurnishing}`,
       listingType: uploadListingType,
       commercialListingType: isCommercialUpload ? uploadCommercialListingType : undefined,
       category: uploadCategory,
@@ -2132,7 +2133,7 @@ export default function UserDashboardPage() {
                                 const label = COMMERCIAL_CATEGORIES.find((c) => c.value === uploadCategory)?.label ?? 'Commercial';
                                 setUploadTitle(`${label} for ${uploadCommercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${uploadLocality}, ${uploadCity}`);
                               } else {
-                                setUploadTitle(`${uploadBhk} BHK ${uploadCategory} in ${uploadLocality}, ${uploadCity}`);
+                                setUploadTitle(`${bhkLabel(uploadBhk)} ${uploadCategory} in ${uploadLocality}, ${uploadCity}`);
                               }
                             }
                           }}
@@ -2166,11 +2167,9 @@ export default function UserDashboardPage() {
                           onChange={(e) => setUploadBhk(Number(e.target.value))}
                           className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D]"
                         >
-                          <option value={1}>1 BHK</option>
-                          <option value={2}>2 BHK</option>
-                          <option value={3}>3 BHK</option>
-                          <option value={4}>4 BHK</option>
-                          <option value={5}>5+ BHK</option>
+                          {BHK_OPTION_VALUES.map((n) => (
+                            <option key={n} value={n}>{bhkLabel(n)}</option>
+                          ))}
                         </select>
                       </div>
                       )}
@@ -2614,7 +2613,7 @@ export default function UserDashboardPage() {
                             <h4 className="font-extrabold text-sm text-[#0F2A43] line-clamp-1">{p.title}</h4>
 
                             <div className="flex items-center gap-4 text-xs font-medium text-[#64748B] pt-1">
-                              <div><strong>{p.bhk || 2}</strong> BHK</div>
+                              <div><strong>{bhkLabel(p.bhk ?? 2)}</strong></div>
                               <div><strong>{p.carpetAreaSqFt}</strong> sq.ft</div>
                               <div><strong>{p.furnishing}</strong></div>
                             </div>
@@ -3356,7 +3355,7 @@ export default function UserDashboardPage() {
                       <div className="space-y-1">
                         <div className="font-extrabold text-sm text-[#0F2A43] line-clamp-1">{p.title}</div>
                         <div className="text-xs text-[#18A67D] font-bold">{p.priceFormatted}</div>
-                        <div className="text-xs text-[#64748B]">{p.locality}, {p.city} • {p.bhk} BHK</div>
+                        <div className="text-xs text-[#64748B]">{p.locality}, {p.city}{p.bhk != null ? ` • ${bhkLabel(p.bhk)}` : ''}</div>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
@@ -3712,7 +3711,7 @@ export default function UserDashboardPage() {
                             <h3 className="font-extrabold text-sm sm:text-base text-[#0F2A43]">{prop.title}</h3>
                             <div className="text-xs text-[#64748B] flex items-center gap-2">
                               <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{prop.locality}, {prop.city} • {prop.bhk} BHK ({prop.carpetAreaSqFt} sq.ft.)</span>
+                              <span>{prop.locality}, {prop.city}{prop.bhk != null ? ` • ${bhkLabel(prop.bhk)}` : ''} ({prop.carpetAreaSqFt} sq.ft.)</span>
                             </div>
                           </div>
                         </div>

@@ -27,6 +27,7 @@ import { LocationSelect } from '@/components/location/LocationSelect';
 import { MediaUploadFields, type PropertyMediaValue } from '@/components/media/MediaUploadFields';
 import { findStateForCity, DEFAULT_COUNTRY } from '@/lib/locationData';
 import { formatIndianCurrency } from '@/lib/formatters';
+import { BHK_OPTION_VALUES, bhkLabel } from '@/lib/propertyFilters';
 
 const COMMERCIAL_CATEGORIES: { label: string; value: PropertyCategory }[] = [
   { label: 'Office', value: 'Commercial Office' },
@@ -168,7 +169,7 @@ export function PostPropertyModal({
     const commercialCategoryLabel = COMMERCIAL_CATEGORIES.find((c) => c.value === category)?.label ?? 'Commercial';
     const fallbackTitle = isCommercial
       ? `${commercialCategoryLabel} for ${commercialListingType === 'rent' ? 'Rent' : 'Sale'} in ${locality || 'Prime Locality'}, ${city}`
-      : `${bhk} BHK ${category} in ${locality || 'Prime Locality'}, ${city}`;
+      : `${bhkLabel(bhk)} ${category} in ${locality || 'Prime Locality'}, ${city}`;
 
     const newProp: Property = {
       id: `mb-user-${Date.now()}`,
@@ -211,7 +212,7 @@ export function PostPropertyModal({
       virtualTourUrl: media.virtualTourUrl || undefined,
       description: description || (isCommercial
         ? `Direct owner commercial listing (${commercialCategoryLabel}) for ${commercialListingType === 'rent' ? 'rent' : 'sale'} in ${locality}, ${city}. Prime location, ${carpetAreaSqFt} sq.ft, 24/7 security and full power backup. Connect directly with the owner.`
-        : `Direct owner listing for ${bhk} BHK in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Connect directly with the owner.`),
+        : `Direct owner listing for ${bhkLabel(bhk)} in ${locality}, ${city}. Prime location, well-ventilated, 24/7 security and full power backup. Connect directly with the owner.`),
       amenities: selectedAmenities,
       postedBy: {
         name: `${ownerName} (Owner)`,
@@ -468,11 +469,9 @@ export function PostPropertyModal({
                         onChange={(e) => setBhk(Number(e.target.value))}
                         className="w-full text-xs font-semibold bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-2.5 outline-none focus:border-[#18A67D] text-[#172033]"
                       >
-                        <option value={1}>1 BHK</option>
-                        <option value={2}>2 BHK</option>
-                        <option value={3}>3 BHK</option>
-                        <option value={4}>4 BHK</option>
-                        <option value={5}>5+ BHK</option>
+                        {BHK_OPTION_VALUES.map((n) => (
+                          <option key={n} value={n}>{bhkLabel(n)}</option>
+                        ))}
                       </select>
                     </div>
                   )}

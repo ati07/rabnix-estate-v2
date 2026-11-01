@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bookmark, BookmarkPlus, Bell, BellOff, X, Check } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
-import type { PropertyFilterState } from '@/lib/propertyFilters';
+import { bhkChipLabel, type PropertyFilterState } from '@/lib/propertyFilters';
 
 /**
  * Saved searches for the /properties catalog. Lets a signed-in user store the
@@ -37,7 +37,7 @@ interface Props {
 /** A human default name derived from the active filters. */
 function defaultName(f: PropertyFilterState): string {
   const parts: string[] = [];
-  if (f.bhk.length) parts.push(`${[...f.bhk].sort((a, b) => a - b).join('/')} BHK`);
+  if (f.bhk.length) parts.push(`${[...f.bhk].sort((a, b) => a - b).map(bhkChipLabel).join('/')} BHK`);
   if (f.categories.length) parts.push(f.categories.join(' / '));
   else if (f.listingType && f.listingType !== 'all') parts.push(f.listingType);
   parts.push(`in ${f.city && f.city !== 'All' ? f.city : 'all cities'}`);
