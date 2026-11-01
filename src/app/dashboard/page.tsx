@@ -147,15 +147,19 @@ const RESIDENTIAL_CATEGORIES: PropertyCategory[] = [
 ];
 const MIN_COMMERCIAL_SIZE_SQFT = 80;
 
-// --- Billing (listing packs, city-based pricing) ---
+// --- Billing (flat listing packs; city-scoped matrix kept as a draft) ---
 interface BillingPack {
   id: string;
   name: string;
   listings: number;
   durationDays: number;
   tagline: string;
+  /** Flat nationwide price (active model). Null under the city-scoped draft. */
+  priceRupees: number | null;
 }
 interface BillingPricing {
+  /** When false (current), pricing is flat and no city selector is shown. */
+  cityScoped: boolean;
   cities: string[];
   cityToColumn: Record<string, string>;
   priceMatrix: Record<string, Record<string, number>>;
@@ -475,7 +479,8 @@ export default function UserDashboardPage() {
 
   const handleBuyPack = async (packId: string) => {
     if (!user?.id || buyingPackId) return;
-    if (!billingCity) {
+    const cityScoped = billing?.pricing?.cityScoped;
+    if (cityScoped && !billingCity) {
       setBillingNotice({ type: 'error', text: 'Please choose a city first.' });
       return;
     }
@@ -485,7 +490,8 @@ export default function UserDashboardPage() {
       const orderRes = await fetch('/api/billing/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId, city: billingCity }),
+        // Flat billing is nationwide — the city is only sent in the draft mode.
+        body: JSON.stringify(cityScoped ? { packId, city: billingCity } : { packId }),
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok || !orderData?.success) {
@@ -501,9 +507,12 @@ export default function UserDashboardPage() {
         });
         const verifyData = await verifyRes.json();
         if (verifyRes.ok && verifyData?.success) {
+          const scopeNote = billing?.pricing?.cityScoped
+            ? ` for ${orderData.plan?.city || billingCity}`
+            : '';
           setBillingNotice({
             type: 'success',
-            text: `${orderData.plan?.name || 'Your pack'} is active for ${orderData.plan?.city || billingCity} — ${orderData.plan?.listings ?? ''} listings added.`,
+            text: `${orderData.plan?.name || 'Your pack'} is active${scopeNote} — ${orderData.plan?.listings ?? ''} listings added.`,
           });
           await refreshBilling();
         } else {
@@ -555,29 +564,38 @@ export default function UserDashboardPage() {
   const entitlement = billing?.entitlement;
   const listingsRemaining = entitlement?.unlimited ? Infinity : entitlement?.totalRemaining ?? 0;
 
-  // Price of a pack for a given city, resolved from the city matrix. Cities not
-  // named in the sheet (Pune, Lucknow, …) fall back to the `other` tier.
+  // Price of a pack. Flat billing uses the pack's own nationwide price; the
+  // city-scoped draft resolves from the matrix (Pune/Lucknow → `other` tier).
   const priceForPack = React.useCallback(
     (packId: string, city: string): number | null => {
       const pricing = billing?.pricing;
-      if (!pricing || !city) return null;
+      if (!pricing) return null;
+      if (!pricing.cityScoped) {
+        return billing?.packs.find((p) => p.id === packId)?.priceRupees ?? null;
+      }
+      if (!city) return null;
       const column = pricing.cityToColumn[city] ?? 'other';
       return pricing.priceMatrix[packId]?.[column] ?? null;
     },
-    [billing?.pricing],
+    [billing?.pricing, billing?.packs],
   );
 
-  // Listings the user can still post in a city: global free tier + packs for that city.
+  // Listings the user can still post. Under flat billing quota is pooled across
+  // all cities (free tier + every active pack); the city-scoped draft restricts
+  // packs to the given city.
   const remainingInCity = React.useCallback(
     (city: string): number => {
       if (!entitlement || entitlement.unlimited) return Infinity;
       const free = entitlement.freeRemaining ?? 0;
+      if (!billing?.pricing?.cityScoped) {
+        return entitlement.totalRemaining ?? free;
+      }
       const packs = entitlement.activePacks
         .filter((p) => p.city === city)
         .reduce((sum, p) => sum + p.remaining, 0);
       return free + packs;
     },
-    [entitlement],
+    [entitlement, billing?.pricing?.cityScoped],
   );
 
   // Shortlisted properties
@@ -1107,12 +1125,18 @@ export default function UserDashboardPage() {
     e.preventDefault();
     setUploadError(null);
 
-    // Listing quota: block before posting if the user is out of listings FOR THIS
-    // CITY (quota is city-scoped). Admins (unlimited) and not-yet-loaded billing
-    // skip this client guard; the server enforces the limit either way. Editing
-    // an existing listing never consumes quota, so skip the check in edit mode.
+    // Listing quota: block before posting if the user is out of listings. Under
+    // flat billing quota is pooled across all cities; the city-scoped draft
+    // scopes it per city. Admins (unlimited) and not-yet-loaded billing skip this
+    // client guard; the server enforces the limit either way. Editing an existing
+    // listing never consumes quota, so skip the check in edit mode.
     if (!editingPropertyId && entitlement && !entitlement.unlimited && remainingInCity(uploadCity) <= 0) {
-      setUploadError(`You have no listings left for ${uploadCity}. Open Plans & Billing to buy a ${uploadCity} pack.`);
+      const cityScoped = billing?.pricing?.cityScoped;
+      setUploadError(
+        cityScoped
+          ? `You have no listings left for ${uploadCity}. Open Plans & Billing to buy a ${uploadCity} pack.`
+          : 'You have no listings left. Open Plans & Billing to buy a pack.',
+      );
       setBillingCity(uploadCity);
       setActiveTab('billing');
       return;
@@ -1845,7 +1869,7 @@ export default function UserDashboardPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[#0E7C5D] font-extrabold text-sm">
                       <Sparkles className="w-4 h-4 text-[#18A67D]" />
-                      <span>Post Unlimited Properties 100% Free</span>
+                      <span>Post 1 Property 100% Free</span>
                     </div>
                     <p className="text-xs text-[#0F2A43] leading-relaxed">
                       Upload directly from your dashboard. Our AI automatically optimizes keywords, price comparisons, and formats your verified badges.
@@ -3365,8 +3389,10 @@ export default function UserDashboardPage() {
                       <Zap className="w-5 h-5 text-[#18A67D]" /> Listing Plans &amp; Balance
                     </h2>
                     <p className="text-xs text-[#64748B] mt-1">
-                      Every new account gets {entitlement?.freeLimit ?? 1} free listing. Pack prices and quota are
-                      per city — a pack bought for a city lets you post listings in that city only.
+                      Every new account gets {entitlement?.freeLimit ?? 1} free listing.
+                      {billing?.pricing?.cityScoped
+                        ? ' Pack prices and quota are per city — a pack bought for a city lets you post listings in that city only.'
+                        : ' Buy a pack once and use your listings in any city.'}
                     </p>
                   </div>
                   {entitlement?.unlimited ? (
@@ -3379,9 +3405,13 @@ export default function UserDashboardPage() {
                       remainingInCity(billingCity) > 0 ? 'bg-[#E7F6F1] text-[#0E7C5D]' : 'bg-rose-50 text-rose-600'
                     }`}>
                       <div className="text-[10px] uppercase tracking-wider font-bold opacity-70">
-                        Left in {billingCity || 'city'}
+                        {billing?.pricing?.cityScoped ? `Left in ${billingCity || 'city'}` : 'Listings left'}
                       </div>
-                      <div className="text-2xl font-black">{billingCity ? remainingInCity(billingCity) : 0}</div>
+                      <div className="text-2xl font-black">
+                        {billing?.pricing?.cityScoped
+                          ? (billingCity ? remainingInCity(billingCity) : 0)
+                          : (entitlement?.totalRemaining ?? 0)}
+                      </div>
                       <div className="text-[10px] font-semibold opacity-70">{entitlement?.totalRemaining ?? 0} total</div>
                     </div>
                   )}
@@ -3455,36 +3485,41 @@ export default function UserDashboardPage() {
               {/* Pack catalog (city-priced) */}
               {!entitlement?.unlimited && (
                 <div className="space-y-4">
-                  {/* City selector — pricing & quota are per city */}
-                  <div className="bg-white rounded-2xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
-                    <label htmlFor="billing-city" className="text-sm font-extrabold text-[#0F2A43] flex items-center gap-2 shrink-0">
-                      <MapPin className="w-4 h-4 text-[#18A67D]" /> Pricing for city
-                    </label>
-                    <select
-                      id="billing-city"
-                      value={billingCity}
-                      onChange={(e) => setBillingCity(e.target.value)}
-                      className="flex-1 sm:max-w-xs px-3 py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-sm font-bold text-[#172033] outline-none focus:bg-white focus:border-[#18A67D] cursor-pointer"
-                    >
-                      {(billing?.pricing?.cities ?? []).map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                    <p className="text-[11px] text-[#64748B]">
-                      Prices and listing quota apply to this city only.
-                      {billingCity === 'Other' && (
-                        <span className="block mt-0.5 text-[#0E7C5D] font-semibold">
-                          “Other” covers every city not listed above (e.g. Pune, Lucknow) at our standard rate.
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                  {/* City selector — only under the (draft) city-scoped model */}
+                  {billing?.pricing?.cityScoped && (
+                    <div className="bg-white rounded-2xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
+                      <label htmlFor="billing-city" className="text-sm font-extrabold text-[#0F2A43] flex items-center gap-2 shrink-0">
+                        <MapPin className="w-4 h-4 text-[#18A67D]" /> Pricing for city
+                      </label>
+                      <select
+                        id="billing-city"
+                        value={billingCity}
+                        onChange={(e) => setBillingCity(e.target.value)}
+                        className="flex-1 sm:max-w-xs px-3 py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-sm font-bold text-[#172033] outline-none focus:bg-white focus:border-[#18A67D] cursor-pointer"
+                      >
+                        {(billing?.pricing?.cities ?? []).map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-[#64748B]">
+                        Prices and listing quota apply to this city only.
+                        {billingCity === 'Other' && (
+                          <span className="block mt-0.5 text-[#0E7C5D] font-semibold">
+                            “Other” covers every city not listed above (e.g. Pune, Lucknow) at our standard rate.
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Pack cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {(billing?.packs ?? []).map((pack) => {
-                      const isBest = pack.id === 'silver_600';
-                      const price = billingCity ? priceForPack(pack.id, billingCity) : null;
+                      const cityScoped = billing?.pricing?.cityScoped;
+                      const isBest = pack.id === (cityScoped ? 'silver_600' : 'pro_25');
+                      const price = cityScoped
+                        ? (billingCity ? priceForPack(pack.id, billingCity) : null)
+                        : (pack.priceRupees ?? null);
                       const durationLabel =
                         pack.durationDays % 365 === 0
                           ? `${pack.durationDays / 365} year${pack.durationDays === 365 ? '' : 's'}`
@@ -3520,7 +3555,9 @@ export default function UserDashboardPage() {
                             </li>
                             <li className="flex items-center gap-2 text-sm text-[#0F2A43]">
                               <CheckCircle2 className="w-4 h-4 text-[#18A67D] shrink-0" />
-                              {billingCity || 'City'} only · stacks with city balance
+                              {cityScoped
+                                ? `${billingCity || 'City'} only · stacks with city balance`
+                                : 'Use in any city · stacks with your balance'}
                             </li>
                           </ul>
 
@@ -3535,8 +3572,10 @@ export default function UserDashboardPage() {
                           >
                             {buyingPackId === pack.id ? (
                               <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
-                            ) : (
+                            ) : cityScoped ? (
                               <>Buy for {billingCity || 'city'}</>
+                            ) : (
+                              <>Buy pack</>
                             )}
                           </button>
                         </div>

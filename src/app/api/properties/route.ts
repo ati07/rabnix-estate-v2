@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { serializeProperty } from '@/lib/serialize';
-import { getEntitlement, canCreateInCity, consumeListingCredit, billingKeyForCity } from '@/lib/billing';
+import { getEntitlement, canCreateInCity, consumeListingCredit, billingKeyForCity, CITY_SCOPED_BILLING } from '@/lib/billing';
 import { coordinateColumns } from '@/lib/maps/config';
 import { isAdminRole } from '@/lib/roles';
 import type { Property } from '@/lib/types';
@@ -95,12 +95,18 @@ export async function POST(req: NextRequest) {
     // transaction below; this is the fast, friendly pre-check.)
     const entitlement = await getEntitlement(user.id, user.role);
     if (!entitlement.unlimited && !canCreateInCity(entitlement, billingCity)) {
-      const packLabel = billingCity === city ? `a ${city}` : `an "${billingCity}"`;
+      let message: string;
+      if (CITY_SCOPED_BILLING) {
+        const packLabel = billingCity === city ? `a ${city}` : `an "${billingCity}"`;
+        message = `You have no listings left for ${city}. Buy ${packLabel} pack from your dashboard to post here.`;
+      } else {
+        message = 'You have no listings left. Buy a pack from your dashboard to post.';
+      }
       return NextResponse.json(
         {
           success: false,
           error: 'listing-quota-exceeded',
-          message: `You have no listings left for ${city}. Buy ${packLabel} pack from your dashboard to post here.`,
+          message,
         },
         { status: 402 },
       );

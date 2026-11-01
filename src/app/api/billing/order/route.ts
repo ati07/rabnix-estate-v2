@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { getPack, resolvePrice, createRazorpayOrder, devBypassEnabled, razorpayConfigured, billingKeyForCity } from '@/lib/billing';
+import { getPack, resolvePrice, createRazorpayOrder, devBypassEnabled, razorpayConfigured, billingKeyForCity, CITY_SCOPED_BILLING } from '@/lib/billing';
 import { isAdminRole } from '@/lib/roles';
 
 export const runtime = 'nodejs';
@@ -32,16 +32,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unknown pack.' }, { status: 400 });
     }
     const rawCity = typeof body.city === 'string' ? body.city.trim() : '';
-    if (!rawCity) {
+    // Flat billing is nationwide — no city needed. The city-scoped draft requires
+    // one. Either way, normalize to the billing bucket the quota is tracked under.
+    if (CITY_SCOPED_BILLING && !rawCity) {
       return NextResponse.json({ success: false, error: 'Please choose a city for this pack.' }, { status: 400 });
     }
-    // Normalize to the billing bucket: sheet-named cities keep their name, every
-    // other city collapses to "Other", so quota lines up with the posting side.
     const city = billingKeyForCity(rawCity);
-    // Price is resolved server-side from the city matrix — never trust a client amount.
+    // Price is resolved server-side — never trust a client amount.
     const priced = resolvePrice(pack.id, city);
     if (!priced) {
-      return NextResponse.json({ success: false, error: 'Could not price this pack for that city.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Could not price this pack.' }, { status: 400 });
     }
 
     const bypass = devBypassEnabled();

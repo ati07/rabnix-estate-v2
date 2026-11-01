@@ -577,7 +577,7 @@ export default function PostPropertyPage() {
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E7F6F1] text-[#0E7C5D] text-xs font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5 text-[#18A67D]" />
-                <span>100% Free • Direct Buyer Reach</span>
+                <span>First Property 100% Free • Direct Buyer Reach</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F2A43] tracking-tight">
                 Post Property on <span className="text-[#18A67D]">BayBayt</span>

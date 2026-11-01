@@ -6,6 +6,7 @@ import {
   CITY_PRICE_MATRIX,
   CITY_TO_COLUMN,
   SELLABLE_CITIES,
+  CITY_SCOPED_BILLING,
   razorpayConfigured,
   devBypassEnabled,
 } from '@/lib/billing';
@@ -13,21 +14,26 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// GET /api/billing — pack catalog + city pricing + the user's listing entitlement.
+// GET /api/billing — pack catalog + pricing + the user's listing entitlement.
 export async function GET() {
   const user = await getCurrentUser();
 
+  // Each pack carries its flat nationwide price (`priceRupees`); the city-scoped
+  // draft leaves it null and the client resolves via the matrix below instead.
   const packs = LISTING_PACKS.map((p) => ({
     id: p.id,
     name: p.name,
     listings: p.listings,
     durationDays: p.durationDays,
     tagline: p.tagline,
+    priceRupees: p.priceRupees ?? null,
   }));
 
-  // Pricing is a function of pack × city; the client resolves a price via
-  // priceMatrix[packId][cityToColumn[city] ?? 'other'].
+  // `cityScoped` tells the client whether to show a city selector. Under flat
+  // billing (current) prices come from each pack's priceRupees; the matrix is
+  // still sent so the (draft) city-scoped mode and the grant modal keep working.
   const pricing = {
+    cityScoped: CITY_SCOPED_BILLING,
     cities: SELLABLE_CITIES,
     cityToColumn: CITY_TO_COLUMN,
     priceMatrix: CITY_PRICE_MATRIX,

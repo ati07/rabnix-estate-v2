@@ -2518,8 +2518,9 @@ export default function AdminPortalPage() {
           onSubmit={async (data) => {
             const res = await grantListings(grantListingsTarget.id, data);
             if (res.success) {
+              const scope = data.city && data.city !== 'All' ? ` for ${data.city}` : ' (usable in any city)';
               showBanner(
-                `Granted ${data.listings} listing${data.listings === 1 ? '' : 's'} to "${grantListingsTarget.name}" for ${data.city}.`,
+                `Granted ${data.listings} listing${data.listings === 1 ? '' : 's'} to "${grantListingsTarget.name}"${scope}.`,
               );
             }
             return res;
@@ -2944,6 +2945,9 @@ function GrantListingsModal({
   onSubmit: (data: { city: string; listings: number; durationDays?: number }) => Promise<{ success: boolean; error?: string }>;
 }) {
   const [cities, setCities] = useState<string[]>([]);
+  // Under flat (global) billing the grant isn't tied to a city — it applies to
+  // the single "All" bucket. `cityScoped` toggles the city field on/off.
+  const [cityScoped, setCityScoped] = useState(true);
   const [city, setCity] = useState(target.city || '');
   const [listings, setListings] = useState('5');
   const [durationDays, setDurationDays] = useState('365');
@@ -2957,10 +2961,13 @@ function GrantListingsModal({
         const res = await fetch('/api/billing');
         const data = await res.json();
         const list: string[] = data?.pricing?.cities || [];
+        const scoped: boolean = data?.pricing?.cityScoped ?? true;
         if (!active) return;
         setCities(list);
-        // Default to the user's own city if it's sellable, else the first option.
-        setCity((prev) => (list.includes(prev) ? prev : list[0] || ''));
+        setCityScoped(scoped);
+        // Flat billing → the single "All" bucket. City-scoped → default to the
+        // user's own city if it's sellable, else the first option.
+        setCity((prev) => (scoped ? (list.includes(prev) ? prev : list[0] || '') : (list[0] || 'All')));
       } catch {
         /* leave the city list empty; the field stays a free-text input */
       }
@@ -3010,8 +3017,11 @@ function GrantListingsModal({
         </div>
 
         <p className="text-xs text-[#64748B]">
-          Add paid-equivalent listing quota to <strong className="text-[#0F2A43]">{target.name}</strong> ({target.email}) for a
-          specific city — no payment required. Quota is city-scoped and stacks with any packs the user has purchased.
+          Add paid-equivalent listing quota to <strong className="text-[#0F2A43]">{target.name}</strong> ({target.email})
+          {cityScoped ? ' for a specific city' : ''} — no payment required.{' '}
+          {cityScoped
+            ? 'Quota is city-scoped and stacks with any packs the user has purchased.'
+            : 'Quota is usable in any city and stacks with any packs the user has purchased.'}
         </p>
 
         {error && (
@@ -3022,29 +3032,31 @@ function GrantListingsModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-[#172033] uppercase">City</label>
-            {cities.length ? (
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
-              >
-                {cities.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Bangalore"
-                className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
-              />
-            )}
-            <p className="text-[10px] text-slate-400">Non-priced cities fall into the &quot;Other&quot; billing bucket.</p>
-          </div>
+          {cityScoped && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#172033] uppercase">City</label>
+              {cities.length ? (
+                <select
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
+                >
+                  {cities.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g. Bangalore"
+                  className="w-full p-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs font-medium outline-none focus:bg-white focus:border-[#18A67D]"
+                />
+              )}
+              <p className="text-[10px] text-slate-400">Non-priced cities fall into the &quot;Other&quot; billing bucket.</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

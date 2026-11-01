@@ -237,7 +237,7 @@ export function PostPropertyModal({
             <div className="bg-[#18A67D] text-white text-xs font-black px-2 py-0.5 rounded-xs">
               BayBayt
             </div>
-            <h2 className="text-sm font-bold">Post Property for Sale or Rent - 100% FREE</h2>
+            <h2 className="text-sm font-bold">Post Your First Property for Sale or Rent - 100% FREE</h2>
           </div>
           <button
             id="post-property-close-btn"

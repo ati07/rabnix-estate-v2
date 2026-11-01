@@ -6,27 +6,70 @@ import { CITIES_DATA } from '@/lib/realEstateData';
 import { isAdminRole } from '@/lib/roles';
 
 // ---------------------------------------------------------------------------
-// Listing packs & city-based pricing
+// Listing packs & pricing
 // ---------------------------------------------------------------------------
 //
-// Pricing comes from the "Price Listing" sheet: a listing is sold in PACKS
-// (a fixed quantity + validity), and the price of a pack depends on the CITY
-// it is bought for. Quota is city-scoped — a pack bought for Mumbai only lets
-// the seller post Mumbai listings (the one free listing is global).
+// ACTIVE model (Nov 2026): listings are sold in two FLAT packs at one price
+// nationwide — the buyer does not choose a city. Quota is GLOBAL: a pack's
+// listings can be used to post in any city (the one free listing is global too).
+//
+// The earlier city-scoped matrix pricing (price = pack × city, quota scoped to
+// the purchased city) is preserved below in the DRAFT section and can be
+// switched back on by flipping CITY_SCOPED_BILLING — nothing there is deleted.
+
+/**
+ * Flip to `true` to re-enable the city-scoped matrix pricing kept in the DRAFT
+ * section (LEGACY_LISTING_PACKS + CITY_PRICE_MATRIX). While `false` (current),
+ * pricing is flat and listing quota is pooled globally across all cities.
+ */
+export const CITY_SCOPED_BILLING = false;
+
+/** The single bucket every pack & credit is tracked under while billing is
+ *  global, so a pack bought once gates listings in any city. (Ignored in favour
+ *  of the per-city key when CITY_SCOPED_BILLING is re-enabled.) */
+export const GLOBAL_BILLING_KEY = 'All';
 
 // Free listings every new account gets before a paid pack is required.
 export const FREE_LISTINGS = 1;
 
 // Marks a Subscription row that was granted by a superadmin rather than paid for
 // via Razorpay. It behaves exactly like a paid pack in the entitlement maths
-// (active, city-scoped, stacks, consumed on posting) but carries amount 0 and a
-// friendly label. Kept out of the PackId union because it is not a sellable SKU.
+// (active, stacks, consumed on posting) but carries amount 0 and a friendly
+// label. Kept out of the PackId union because it is not a sellable SKU.
 export const ADMIN_GRANT_PLAN_ID = 'admin_grant';
 
 // Default validity of a superadmin listing grant (days from activation).
 export const ADMIN_GRANT_DURATION_DAYS = 365;
 
-export type PackId =
+export type PackId = 'starter_15' | 'pro_25';
+
+export interface ListingPack {
+  id: string;
+  name: string;
+  /** Number of listings the pack grants. */
+  listings: number;
+  /** Validity in days from activation. */
+  durationDays: number;
+  tagline: string;
+  /** Flat price in rupees (nationwide) for an active pack. The DRAFT city-scoped
+   *  packs leave this undefined and price via CITY_PRICE_MATRIX instead. */
+  priceRupees?: number;
+}
+
+export const LISTING_PACKS: ListingPack[] = [
+  { id: 'starter_15', name: '15 Listings', listings: 15, durationDays: 90,  tagline: 'For individual owners getting started', priceRupees: 500 },
+  { id: 'pro_25',     name: '25 Listings', listings: 25, durationDays: 180, tagline: 'Best value for active sellers',         priceRupees: 1000 },
+];
+
+// ---------------------------------------------------------------------------
+// DRAFT — city-scoped matrix pricing (kept for later; see CITY_SCOPED_BILLING)
+// ---------------------------------------------------------------------------
+//
+// The previous pricing from the "Price Listing" sheet: a listing was sold in
+// PACKS whose price depended on the CITY, with quota scoped to that city. Left
+// intact so the product can switch back without re-deriving the matrix.
+
+export type LegacyPackId =
   | 'silver_100'
   | 'silver_200'
   | 'silver_250'
@@ -38,9 +81,7 @@ export type PackId =
 
 // Price columns from the sheet. NCR sub-cities (Noida, Gurgaon, Ghaziabad, …)
 // all share one price, so they collapse into `delhiNcr`. `other` is the single
-// catch-all tier for any city NOT named individually in the sheet (it carries
-// the sheet's "Cat 2" prices — "Cat 3" is no longer used). Pune is not in the
-// sheet, so it has no dedicated column and bills at `other`.
+// catch-all tier for any city NOT named individually in the sheet.
 export type PriceColumn =
   | 'mumbai'
   | 'bangalore'
@@ -53,17 +94,7 @@ export type PriceColumn =
   | 'ahmedabad'
   | 'other';
 
-export interface ListingPack {
-  id: PackId;
-  name: string;
-  /** Number of listings the pack grants. */
-  listings: number;
-  /** Validity in days from activation. */
-  durationDays: number;
-  tagline: string;
-}
-
-export const LISTING_PACKS: ListingPack[] = [
+export const LEGACY_LISTING_PACKS: ListingPack[] = [
   { id: 'silver_100', name: '100 Silver Listings', listings: 100, durationDays: 90, tagline: 'Entry pack for individual owners' },
   { id: 'silver_200', name: '200 Silver Listings', listings: 200, durationDays: 90, tagline: 'For active owners & small agents' },
   { id: 'silver_250', name: '250 Silver Listings', listings: 250, durationDays: 180, tagline: 'Six months of steady posting' },
@@ -74,21 +105,9 @@ export const LISTING_PACKS: ListingPack[] = [
   { id: 'silver_1000', name: '1000 Silver Listings', listings: 1000, durationDays: 365, tagline: 'Maximum reach for large teams' },
 ];
 
-const PACKS_BY_ID: Record<PackId, ListingPack> = Object.fromEntries(
-  LISTING_PACKS.map((p) => [p.id, p]),
-) as Record<PackId, ListingPack>;
-
-export function getPack(packId: string): ListingPack | null {
-  return PACKS_BY_ID[packId as PackId] ?? null;
-}
-
-// Prices in rupees, taken verbatim from the sheet (incl. the rows where
-// Hyderabad / Navi Mumbai diverge from their usual band — nothing is tiered
-// away, the full matrix is stored). Navi Mumbai / Thane have their own columns
-// but are not yet app cities, so they stay dormant until added. `other` carries
-// the sheet's "Cat 2" values and is the price for every city not named above
-// (Pune, Lucknow, …); the sheet's "Cat 3" column is intentionally unused.
-export const CITY_PRICE_MATRIX: Record<PackId, Record<PriceColumn, number>> = {
+// Prices in rupees, taken verbatim from the sheet. `other` carries the sheet's
+// "Cat 2" values and is the price for every city not named above.
+export const CITY_PRICE_MATRIX: Record<LegacyPackId, Record<PriceColumn, number>> = {
   silver_100:  { mumbai: 10000, bangalore: 10000, delhiNcr: 8000,  hyderabad: 10000, chennai: 8000,  naviMumbai: 7500,  thane: 7500,  kolkata: 5000,  ahmedabad: 5000,  other: 4000 },
   silver_200:  { mumbai: 16000, bangalore: 16000, delhiNcr: 12000, hyderabad: 16000, chennai: 12000, naviMumbai: 10500, thane: 10500, kolkata: 8000,  ahmedabad: 8000,  other: 6500 },
   silver_250:  { mumbai: 20000, bangalore: 20000, delhiNcr: 14000, hyderabad: 20000, chennai: 14000, naviMumbai: 14000, thane: 14000, kolkata: 10000, ahmedabad: 10000, other: 8000 },
@@ -100,8 +119,7 @@ export const CITY_PRICE_MATRIX: Record<PackId, Record<PriceColumn, number>> = {
 };
 
 // Maps each app city (CITIES_DATA names) to its price column. Only cities named
-// individually in the sheet appear here; everything else (Pune, Lucknow, any
-// future city) is billed at the `other` tier via columnForCity.
+// individually in the sheet appear here; everything else bills at `other`.
 export const CITY_TO_COLUMN: Record<string, PriceColumn> = {
   'Mumbai': 'mumbai',
   'Bangalore': 'bangalore',
@@ -115,32 +133,48 @@ export const CITY_TO_COLUMN: Record<string, PriceColumn> = {
 };
 
 /** Label for the catch-all purchase option covering every city not named in the
- *  sheet (Pune, Lucknow, …). Packs are bought and quota is tracked under this
- *  single key, so one "Other" pack covers all such cities. */
+ *  sheet (Pune, Lucknow, …) under the city-scoped model. */
 export const OTHER_CITY_LABEL = 'Other';
-
-/** The options a pack can be purchased for: each sheet-named city individually,
- *  plus one "Other" bucket for everything else. Shown in the dashboard's city
- *  selector. */
-export const SELLABLE_CITIES: string[] = [...Object.keys(CITY_TO_COLUMN), OTHER_CITY_LABEL];
 
 export function columnForCity(city: string): PriceColumn {
   return CITY_TO_COLUMN[city] ?? 'other';
 }
 
+// ---------------------------------------------------------------------------
+// Lookups & pricing (active + draft resolved through one surface)
+// ---------------------------------------------------------------------------
+
+// Resolve a pack by id across BOTH the active flat packs and the legacy drafts,
+// so pending/old subscriptions keyed to a silver_* plan still activate & display
+// correctly after the switch to flat pricing.
+const PACKS_BY_ID: Record<string, ListingPack> = Object.fromEntries(
+  [...LISTING_PACKS, ...LEGACY_LISTING_PACKS].map((p) => [p.id, p]),
+);
+
+export function getPack(packId: string): ListingPack | null {
+  return PACKS_BY_ID[packId] ?? null;
+}
+
+/** The options a pack can be purchased/granted for. Flat billing pools quota in
+ *  one bucket (so a single "All" option); the city-scoped draft lists each
+ *  sheet-named city plus the "Other" catch-all. */
+export const SELLABLE_CITIES: string[] = CITY_SCOPED_BILLING
+  ? [...Object.keys(CITY_TO_COLUMN), OTHER_CITY_LABEL]
+  : [GLOBAL_BILLING_KEY];
+
 /**
- * The key a city's listing quota is tracked under. Sheet-named cities use their
- * own name; every other app city (Pune, Lucknow, …) collapses to the single
- * `OTHER_CITY_LABEL` bucket — so a pack bought for "Other" gates listings in any
- * such city, matching how they are priced. Keep purchase + posting + dashboard
- * all keyed through this so quota lines up with pricing.
+ * The key a listing's quota is tracked under. While billing is global this is
+ * always GLOBAL_BILLING_KEY, so a pack bought once covers every city. Under the
+ * city-scoped draft, sheet-named cities use their own name and the rest collapse
+ * to the "Other" bucket. Keep purchase + posting + grants all keyed through this.
  */
 export function billingKeyForCity(city: string): string {
+  if (!CITY_SCOPED_BILLING) return GLOBAL_BILLING_KEY;
   return CITY_TO_COLUMN[city] ? city : OTHER_CITY_LABEL;
 }
 
 export interface ResolvedPrice {
-  packId: PackId;
+  packId: string;
   city: string;
   column: PriceColumn;
   /** Price in rupees (display). */
@@ -149,12 +183,29 @@ export interface ResolvedPrice {
   amount: number;
 }
 
-/** Resolves the price of a pack for a given city, or null if either is unknown. */
-export function resolvePrice(packId: string, city: string): ResolvedPrice | null {
+/**
+ * Resolves the price of a pack, or null if unknown. Flat billing uses the pack's
+ * own `priceRupees` and ignores the city; the city-scoped draft reads the
+ * pack × city matrix.
+ */
+export function resolvePrice(packId: string, city?: string): ResolvedPrice | null {
   const pack = getPack(packId);
-  if (!pack || !city) return null;
+  if (!pack) return null;
+
+  if (!CITY_SCOPED_BILLING) {
+    if (pack.priceRupees == null) return null;
+    return {
+      packId: pack.id,
+      city: city?.trim() || GLOBAL_BILLING_KEY,
+      column: 'other',
+      rupees: pack.priceRupees,
+      amount: pack.priceRupees * 100,
+    };
+  }
+
+  if (!city) return null;
   const column = columnForCity(city);
-  const rupees = CITY_PRICE_MATRIX[pack.id][column];
+  const rupees = (CITY_PRICE_MATRIX as Record<string, Record<PriceColumn, number>>)[pack.id]?.[column];
   if (rupees == null) return null;
   return { packId: pack.id, city, column, rupees, amount: rupees * 100 };
 }
@@ -252,10 +303,13 @@ export async function getEntitlement(userId: string, role: string): Promise<Enti
   };
 }
 
-/** Listings the user can still post in a given city: the global free tier plus
- *  any active pack bought for that exact city. */
+/** Listings the user can still post in a given city. Under global billing every
+ *  active pack applies regardless of city, so this is just the total remaining;
+ *  under the city-scoped draft it is the free tier plus packs bought for that
+ *  exact city. */
 export function remainingForCity(ent: Entitlement, city: string): number {
   if (ent.unlimited) return Infinity;
+  if (!CITY_SCOPED_BILLING) return ent.totalRemaining;
   const packRemaining = ent.activePacks
     .filter((p) => p.city === city)
     .reduce((sum, p) => sum + p.remaining, 0);
@@ -294,12 +348,13 @@ export async function consumeListingCredit(
     return { source: 'free' };
   }
 
-  // Oldest active pack bought for THIS city that still has quota.
+  // Oldest active pack with quota left. Global billing draws from any pack
+  // (city pooled); the city-scoped draft restricts to packs bought for THIS city.
   const pack = await tx.subscription.findFirst({
     where: {
       userId,
       status: 'active',
-      city,
+      ...(CITY_SCOPED_BILLING ? { city } : {}),
       expiresAt: { gt: now },
       listingsUsed: { lt: prisma.subscription.fields.listingsQuota },
     },
